@@ -18,17 +18,16 @@ const Register = () => {
   );
 
   useEffect(() => {
-    if (isError) {
-      console.error(message);
-    }
-    if (isSuccess || user) {
-      navigate('/');
-    }
-    
     return () => {
       dispatch(reset());
     };
-  }, [user, isError, isSuccess, message, navigate, dispatch]);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (isSuccess || user) {
+      navigate('/');
+    }
+  }, [user, isSuccess, navigate]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
