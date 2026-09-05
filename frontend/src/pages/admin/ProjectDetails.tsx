@@ -5,7 +5,7 @@ import { RootState } from '../../store';
 import { ArrowLeft, Users, CheckCircle, Clock, Calendar, MoreVertical } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
