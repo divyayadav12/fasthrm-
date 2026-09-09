@@ -6,18 +6,22 @@ import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
-router.get('/make-admin', async (req, res) => {
+router.get('/clean-users', async (req, res) => {
   try {
-    const user = await User.findOneAndUpdate(
-      { email: 'fast@gmail.com' },
-      { role: 'ADMIN' },
-      { new: true }
-    );
-    res.json({ message: 'Account upgraded to Admin!', user });
+    const result = await User.deleteMany({
+      $or: [
+        { name: { $exists: false } },
+        { name: null },
+        { name: '' }
+      ]
+    });
+    res.json({ message: 'Deleted unknown users successfully', deletedCount: result.deletedCount });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 
 
