@@ -85,10 +85,7 @@ const EmployeeDetails = () => {
                   <Mail className="h-4 w-4 mr-2" />
                   {currentEmployee.email}
                 </div>
-                <div className="flex items-center">
-                  <Building className="h-4 w-4 mr-2" />
-                  {currentEmployee.department || 'No department assigned'}
-                </div>
+
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
                   Joined {new Date(currentEmployee.createdAt).toLocaleDateString()}
