@@ -145,13 +145,12 @@ const EmployeeDetails = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Update</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {workHistory.length === 0 ? (
-                        <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No work history found.</td></tr>
+                        <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No work history found.</td></tr>
                       ) : (
                         workHistory.map((log) => (
                           <tr key={log._id} className="hover:bg-gray-50">
@@ -164,10 +163,6 @@ const EmployeeDetails = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {getStatusBadge(log.status)}
-                              <div className="text-xs text-gray-500 mt-1">Progress: {log.progress}%</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {log.duration ? `${log.duration} mins` : '-'}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500">
                               <p className="line-clamp-2">{log.description || '-'}</p>
