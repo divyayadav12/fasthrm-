@@ -90,16 +90,16 @@ const EmployeesList = () => {
         <h1 className="text-2xl font-bold text-gray-900">Employees ({filteredEmployees.length})</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Search + Filter Bar */}
-        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
           <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm"
               placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -109,7 +109,7 @@ const EmployeesList = () => {
             {activeFilterCount > 0 && (
               <button
                 onClick={clearFilters}
-                className="flex items-center px-3 py-2 border border-red-300 rounded-lg bg-red-50 text-sm font-medium text-red-600 hover:bg-red-100"
+                className="flex items-center px-3.5 py-2 border border-red-200 rounded-xl bg-red-50 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
               >
                 <X className="h-4 w-4 mr-1" />
                 Clear ({activeFilterCount})
@@ -117,15 +117,15 @@ const EmployeesList = () => {
             )}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center px-4 py-2 border rounded-xl text-sm font-medium transition-colors shadow-xs ${
                 showFilters || activeFilterCount > 0
-                  ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters {activeFilterCount > 0 && <span className="ml-1 bg-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{activeFilterCount}</span>}
-              <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              <Filter className="h-4 w-4 mr-2 text-gray-500" />
+              Filters {activeFilterCount > 0 && <span className="ml-1.5 bg-indigo-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">{activeFilterCount}</span>}
+              <ChevronDown className={`h-4 w-4 ml-1.5 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
           </div>
         </div>
@@ -201,56 +201,53 @@ const EmployeesList = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/70">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Employee</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Loading employees...</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Loading employees...</td></tr>
               ) : filteredEmployees.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No employees found.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">No employees found.</td></tr>
               ) : (
                 paginatedEmployees.map((employee) => (
-                  <tr key={employee._id} className="hover:bg-gray-50">
+                  <tr key={employee._id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg">
-                          {employee.name?.charAt(0) || 'U'}
+                        <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm mr-3">
+                          {employee.name?.charAt(0).toLowerCase() || 'u'}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{employee.name || 'Unknown User'}</div>
-                          <div className="text-sm text-gray-500">{employee.email}</div>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">{employee.name || 'Unknown User'}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">{employee.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.designation || employee.role}</div>
+                      <div className="text-sm text-gray-700 font-medium">{employee.designation || employee.role}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        employee.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      <span className={`px-3 py-1 inline-flex text-xs font-bold tracking-wider uppercase rounded-full ${
+                        employee.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
                       }`}>
                         {employee.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                       {new Date(employee.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        <Link to={`/admin/employees/${employee._id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-md">
+                      <div className="flex justify-end">
+                        <Link to={`/admin/employees/${employee._id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-xl transition-colors" title="View Details">
                           <Eye className="h-4 w-4" />
                         </Link>
-                        <button className="text-gray-600 hover:text-gray-900 bg-gray-100 p-2 rounded-md">
-                          <Edit className="h-4 w-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -262,16 +259,16 @@ const EmployeesList = () => {
 
         {/* Pagination */}
         {filteredEmployees.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-sm text-gray-500">
-              Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{Math.max(1, totalPages)}</span>
+              Page <span className="font-semibold text-gray-800">{currentPage}</span> of <span className="font-semibold text-gray-800">{Math.max(1, totalPages)}</span>
               {' '}({filteredEmployees.length} total employees)
             </p>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage === 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage === 1 ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" /> Previous
               </button>
@@ -282,7 +279,7 @@ const EmployeesList = () => {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-md text-sm font-medium ${page === currentPage ? 'bg-indigo-600 text-white' : 'text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
+                  className={`w-8 h-8 rounded-xl text-sm font-semibold transition-colors ${page === currentPage ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
                 >
                   {page}
                 </button>
@@ -290,7 +287,7 @@ const EmployeesList = () => {
               <button
                 onClick={() => setCurrentPage(p => Math.min(Math.max(1, totalPages), p + 1))}
                 disabled={currentPage >= totalPages}
-                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage >= totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage >= totalPages ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
                 Next <ChevronRight className="h-4 w-4 ml-1" />
               </button>

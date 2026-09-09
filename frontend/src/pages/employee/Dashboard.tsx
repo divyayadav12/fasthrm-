@@ -77,15 +77,19 @@ const EmployeeDashboard = () => {
 
   const getStatusBadge = (status: string) => {
     const styles: any = {
-      WORKING: 'bg-blue-100 text-blue-800',
-      NOT_STARTED: 'bg-gray-100 text-gray-800',
-      IN_REVIEW: 'bg-purple-100 text-purple-800',
-      ON_HOLD: 'bg-yellow-100 text-yellow-800',
-      PENDING: 'bg-orange-100 text-orange-800',
-      BLOCKED: 'bg-red-100 text-red-800',
-      COMPLETED: 'bg-green-100 text-green-800',
+      WORKING: 'bg-blue-50 text-blue-600',
+      NOT_STARTED: 'bg-gray-100 text-gray-600',
+      IN_REVIEW: 'bg-purple-50 text-purple-600',
+      ON_HOLD: 'bg-yellow-50 text-yellow-700',
+      PENDING: 'bg-orange-50 text-orange-600',
+      BLOCKED: 'bg-red-50 text-red-600',
+      COMPLETED: 'bg-emerald-50 text-emerald-600',
     };
-    return <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${styles[status]}`}>{status}</span>;
+    return (
+      <span className={`px-3 py-1 inline-flex text-xs font-bold tracking-wider uppercase rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status}
+      </span>
+    );
   };
 
   const pendingTasks = tasks.filter(t => t.status !== 'COMPLETED');
@@ -99,7 +103,7 @@ const EmployeeDashboard = () => {
         </div>
         <button 
           onClick={openNewModal}
-          className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-bold"
+          className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md font-bold text-sm tracking-wide"
         >
           <Activity className="h-5 w-5 mr-2" />
           UPDATE WORK STATUS
@@ -141,33 +145,33 @@ const EmployeeDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">My Tasks</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900 tracking-wide uppercase">My Tasks</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/70">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Task Name</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Description</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading tasks...</td></tr>
+                <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">Loading tasks...</td></tr>
               ) : tasks.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No tasks assigned.</td></tr>
+                <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No tasks assigned.</td></tr>
               ) : (
                 pendingTasks.map((task) => (
-                  <tr key={task._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                  <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-gray-900">{task.title}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500 max-w-xs truncate">{task.description || '-'}</div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-600 max-w-xs truncate">{task.description || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(task.status)}
@@ -175,7 +179,7 @@ const EmployeeDashboard = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => openEditModal(task)}
-                        className="flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors"
+                        className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors"
                       >
                         <Edit2 className="h-3.5 w-3.5 mr-1" />
                         Update

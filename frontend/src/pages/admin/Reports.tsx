@@ -189,14 +189,14 @@ const Reports = () => {
         <div className="flex space-x-3">
           <button 
             onClick={handleExportCSV}
-            className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm font-medium"
+            className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors shadow-xs text-sm font-medium"
           >
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </button>
           <button 
             onClick={handleExportPDF}
-            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-sm font-medium"
+            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm text-sm font-medium"
           >
             <FileText className="h-4 w-4 mr-2" />
             Print / PDF
@@ -244,11 +244,11 @@ const Reports = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Real Employee Productivity Chart */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">Employee Productivity</h2>
-              <p className="text-xs text-gray-500">Completed vs Assigned Tasks per Employee</p>
+              <h2 className="text-base font-bold text-gray-900 tracking-wide uppercase">Employee Productivity</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Completed vs Assigned Tasks per Employee</p>
             </div>
           </div>
           {isLoading ? (
@@ -283,11 +283,11 @@ const Reports = () => {
         </div>
 
         {/* Real Task Status Distribution */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">Overall Task Status</h2>
-              <p className="text-xs text-gray-500">Live breakdown of all current tasks</p>
+              <h2 className="text-base font-bold text-gray-900 tracking-wide uppercase">Overall Task Status</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Live breakdown of all current tasks</p>
             </div>
           </div>
           {isLoading ? (

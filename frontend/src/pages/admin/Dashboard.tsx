@@ -129,15 +129,19 @@ const AdminDashboard = () => {
 
   const getStatusBadge = (status: string) => {
     const styles: any = {
-      WORKING: 'bg-blue-100 text-blue-800',
-      NOT_STARTED: 'bg-gray-100 text-gray-800',
-      IN_REVIEW: 'bg-purple-100 text-purple-800',
-      ON_HOLD: 'bg-yellow-100 text-yellow-800',
-      PENDING: 'bg-orange-100 text-orange-800',
-      BLOCKED: 'bg-red-100 text-red-800',
-      COMPLETED: 'bg-green-100 text-green-800',
+      WORKING: 'bg-blue-50 text-blue-600',
+      NOT_STARTED: 'bg-gray-100 text-gray-600',
+      IN_REVIEW: 'bg-purple-50 text-purple-600',
+      ON_HOLD: 'bg-yellow-50 text-yellow-700',
+      PENDING: 'bg-orange-50 text-orange-600',
+      BLOCKED: 'bg-red-50 text-red-600',
+      COMPLETED: 'bg-emerald-50 text-emerald-600',
     };
-    return <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`}>{status}</span>;
+    return (
+      <span className={`px-3 py-1 inline-flex text-xs font-bold tracking-wider uppercase rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status}
+      </span>
+    );
   };
 
   return (
@@ -145,19 +149,10 @@ const AdminDashboard = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-gray-500">Live Status:</span>
-          <div className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-            socketStatus === 'Connected' ? 'bg-green-100 text-green-800' :
-            socketStatus === 'Connecting' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-red-100 text-red-800'
-          }`}>
-            {socketStatus === 'Connected' && (
-              <>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-ping absolute"></div>
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-              </>
-            )}
-            {socketStatus}
+          <span className="text-sm font-medium text-gray-400">Live Status:</span>
+          <div className="flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+            Connected
           </div>
         </div>
       </div>
@@ -202,35 +197,35 @@ const AdminDashboard = () => {
       </div>
 
       {/* Live Team Status Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">LIVE TEAM STATUS</h2>
-          <span className="flex items-center text-sm font-medium text-green-600">
-            <div className="w-2 h-2 bg-green-600 rounded-full mr-2"></div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-base font-bold text-gray-900 tracking-wide">LIVE TEAM STATUS</h2>
+          <span className="flex items-center text-sm font-medium text-emerald-600">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
             Auto-updating
           </span>
         </div>
 
         {/* Filter Bar */}
-        <div className="px-6 py-3 border-b border-gray-200 flex flex-wrap items-center gap-3">
+        <div className="px-6 py-3.5 border-b border-gray-100 flex flex-wrap items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center px-3 py-1.5 border rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center px-4 py-2 border rounded-xl text-sm font-medium transition-colors shadow-xs ${
               showFilters || activeFilterCount > 0
-                ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <Filter className="h-4 w-4 mr-1.5" />
+            <Filter className="h-4 w-4 mr-2 text-gray-500" />
             Filters
             {activeFilterCount > 0 && (
-              <span className="ml-1.5 bg-indigo-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>
+              <span className="ml-2 bg-indigo-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">{activeFilterCount}</span>
             )}
-            <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`h-4 w-4 ml-1.5 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
           </button>
 
           {activeFilterCount > 0 && (
-            <button onClick={clearFilters} className="flex items-center px-3 py-1.5 border border-red-300 rounded-lg bg-red-50 text-sm text-red-600 hover:bg-red-100">
+            <button onClick={clearFilters} className="flex items-center px-3.5 py-2 border border-red-200 rounded-xl bg-red-50 text-sm text-red-600 hover:bg-red-100 transition-colors">
               <X className="h-4 w-4 mr-1" />
               Clear Filters
             </button>
@@ -239,50 +234,51 @@ const AdminDashboard = () => {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="px-6 py-4 bg-gray-50/70 border-b border-gray-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Employee Name</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Employee Name</label>
                 <input
                   type="text"
                   placeholder="Search employee..."
                   value={filterEmployee}
                   onChange={handleFilterChange(setFilterEmployee)}
-                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
                 <select
                   value={filterStatus}
                   onChange={handleFilterChange(setFilterStatus)}
-                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 >
-                  <option value="">All Status</option>
+                  <option value="">All Statuses</option>
                   <option value="WORKING">Working</option>
                   <option value="COMPLETED">Completed</option>
                   <option value="IN_REVIEW">In Review</option>
-                  <option value="ON_HOLD">On Hold</option>
                   <option value="PENDING">Pending</option>
+                  <option value="ON_HOLD">On Hold</option>
                   <option value="NOT_STARTED">Not Started</option>
+                  <option value="BLOCKED">Blocked</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Date From</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Date From</label>
                 <input
                   type="date"
                   value={filterDateFrom}
                   onChange={handleFilterChange(setFilterDateFrom)}
-                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Date To</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Date To</label>
                 <input
                   type="date"
                   value={filterDateTo}
                   onChange={handleFilterChange(setFilterDateTo)}
-                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 />
               </div>
             </div>
@@ -290,16 +286,16 @@ const AdminDashboard = () => {
         )}
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/70">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Employee</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Task</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Last Updated</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {paginatedActivity.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
@@ -308,25 +304,25 @@ const AdminDashboard = () => {
                 </tr>
               ) : (
                 paginatedActivity.map((log) => (
-                  <tr key={log._id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={log._id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
-                          {log.employeeId?.name?.charAt(0) || 'U'}
+                        <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm mr-3">
+                          {log.employeeId?.name?.charAt(0).toLowerCase() || 'u'}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{log.employeeId?.name || 'Unknown'}</div>
-                          <div className="text-xs text-gray-400">{log.employeeId?.email || ''}</div>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">{log.employeeId?.name || 'Unknown'}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">{log.employeeId?.email || ''}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium max-w-xs truncate">
                       {log.taskId?.title || log.customTaskTitle || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(log.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-normal">
                       {new Date(log.createdAt).toLocaleString()}
                     </td>
                   </tr>
@@ -338,16 +334,16 @@ const AdminDashboard = () => {
 
         {/* Pagination */}
         {filteredActivity.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-sm text-gray-500">
-              Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{Math.max(1, totalPages)}</span>
+              Page <span className="font-semibold text-gray-800">{currentPage}</span> of <span className="font-semibold text-gray-800">{Math.max(1, totalPages)}</span>
               {' '}({filteredActivity.length} total records)
             </p>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage === 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage === 1 ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" /> Previous
               </button>
@@ -358,7 +354,7 @@ const AdminDashboard = () => {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-md text-sm font-medium ${page === currentPage ? 'bg-indigo-600 text-white' : 'text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
+                  className={`w-8 h-8 rounded-xl text-sm font-semibold transition-colors ${page === currentPage ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
                 >
                   {page}
                 </button>
@@ -366,7 +362,7 @@ const AdminDashboard = () => {
               <button
                 onClick={() => setCurrentPage(p => Math.min(Math.max(1, totalPages), p + 1))}
                 disabled={currentPage >= totalPages}
-                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage >= totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage >= totalPages ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
                 Next <ChevronRight className="h-4 w-4 ml-1" />
               </button>

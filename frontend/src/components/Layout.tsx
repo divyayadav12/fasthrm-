@@ -5,7 +5,7 @@ import { RootState, AppDispatch } from '../store';
 import { logout } from '../store/slices/authSlice';
 import { fetchNotifications, markAllAsRead } from '../store/slices/notificationSlice';
 import { socket } from '../utils/socket';
-import { LogOut, Activity, Users, Briefcase, FileText, Settings, Menu, Bell, CheckSquare } from 'lucide-react';
+import { LogOut, Activity, Users, Briefcase, FileText, Settings, Menu, Bell, CheckSquare, ChevronDown } from 'lucide-react';
 
 const Layout = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -59,19 +59,19 @@ const Layout = () => {
   };
 
   const getLinkClass = (path: string) => {
-    return `flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+    return `flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
       isActive(path)
-        ? 'text-indigo-700 bg-indigo-50'
-        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        ? 'text-indigo-600 bg-indigo-50 font-semibold'
+        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
     }`;
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-[#F8FAFC]">
       {/* Sidebar */}
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="h-20 flex items-center justify-center px-3 border-b border-gray-200 bg-white">
-          <img src="/logo.png" alt="FAST Logo" className="h-16 max-w-full w-auto object-contain" />
+      <div className="w-64 bg-white border-r border-gray-100 flex flex-col shadow-xs">
+        <div className="h-20 flex items-center justify-center px-4 border-b border-gray-100 bg-white">
+          <img src="/logo.png" alt="FAST Logo" className="h-14 max-w-full w-auto object-contain" />
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
@@ -123,47 +123,44 @@ const Layout = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8">
           <div className="flex items-center">
             <button className="text-gray-500 hover:text-gray-700 lg:hidden">
               <Menu className="h-6 w-6" />
             </button>
           </div>
           <div className="flex items-center space-x-4 relative">
-            <div className={`hidden sm:flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-              socketStatus === 'Connected' ? 'bg-green-100 text-green-800' : 
-              socketStatus === 'Connecting' ? 'bg-yellow-100 text-yellow-800' : 
-              'bg-red-100 text-red-800'
+            <div className={`hidden sm:flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+              socketStatus === 'Connected' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 
+              socketStatus === 'Connecting' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 
+              'bg-red-50 text-red-700 border border-red-100'
             }`}>
               {socketStatus === 'Connected' && (
-                <>
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-ping absolute"></div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2 relative z-10"></div>
-                </>
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></div>
               )}
               {socketStatus}
             </div>
 
             <button 
-              className="text-gray-500 hover:text-gray-700 relative"
+              className="text-gray-400 hover:text-gray-600 relative p-1 rounded-lg hover:bg-gray-50 transition-colors"
               onClick={() => setShowNotifications(!showNotifications)}
             >
-              <Bell className="h-6 w-6" />
+              <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
                   {unreadCount}
                 </span>
               )}
             </button>
             
             {showNotifications && (
-              <div className="absolute right-12 top-10 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                  <h3 className="font-semibold text-gray-900">Notifications</h3>
+              <div className="absolute right-12 top-10 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                  <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
                   {unreadCount > 0 && (
                     <button 
                       onClick={() => { dispatch(markAllAsRead()); setShowNotifications(false); }}
-                      className="text-xs text-indigo-600 hover:text-indigo-800"
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
                     >
                       Mark all read
                     </button>
@@ -172,21 +169,22 @@ const Layout = () => {
                 <div className="p-4 text-center text-sm text-gray-500">
                   You have {unreadCount} unread notifications.
                   <br/>
-                  <Link to={`${prefix}/notifications`} className="text-indigo-600 mt-2 inline-block">View all</Link>
+                  <Link to={`${prefix}/notifications`} className="text-indigo-600 font-medium mt-2 inline-block">View all</Link>
                 </div>
               </div>
             )}
 
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">
-                {user?.name?.charAt(0)}
+            <div className="flex items-center cursor-pointer pl-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                {user?.name?.charAt(0) || 'U'}
               </div>
-              <span className="ml-2 text-sm font-medium text-gray-700">{user?.name}</span>
+              <span className="ml-2.5 text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
+              <ChevronDown className="h-4 w-4 ml-1.5 text-gray-400" />
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F8FAFC] p-6 sm:p-8">
           <Outlet />
         </main>
       </div>

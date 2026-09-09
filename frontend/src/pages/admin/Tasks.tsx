@@ -17,15 +17,19 @@ const TasksList = () => {
 
   const getStatusBadge = (status: string) => {
     const styles: any = {
-      WORKING: 'bg-blue-100 text-blue-800',
-      NOT_STARTED: 'bg-gray-100 text-gray-800',
-      IN_REVIEW: 'bg-purple-100 text-purple-800',
-      ON_HOLD: 'bg-yellow-100 text-yellow-800',
-      PENDING: 'bg-orange-100 text-orange-800',
-      BLOCKED: 'bg-red-100 text-red-800',
-      COMPLETED: 'bg-green-100 text-green-800',
+      WORKING: 'bg-blue-50 text-blue-600',
+      NOT_STARTED: 'bg-gray-100 text-gray-600',
+      IN_REVIEW: 'bg-purple-50 text-purple-600',
+      ON_HOLD: 'bg-yellow-50 text-yellow-700',
+      PENDING: 'bg-orange-50 text-orange-600',
+      BLOCKED: 'bg-red-50 text-red-600',
+      COMPLETED: 'bg-emerald-50 text-emerald-600',
     };
-    return <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${styles[status] || styles.NOT_STARTED}`}>{status}</span>;
+    return (
+      <span className={`px-3 py-1 inline-flex text-xs font-bold tracking-wider uppercase rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status}
+      </span>
+    );
   };
 
   // Get unique assignees for filter
@@ -47,34 +51,61 @@ const TasksList = () => {
         <h1 className="text-2xl font-bold text-gray-900">All Tasks</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm font-medium text-gray-500">Total Tasks</p>
-          <p className="text-2xl font-semibold text-gray-900">{tasks.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Tasks</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">All recorded</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0 ml-4">
+            <Clock className="h-6 w-6" />
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm font-medium text-gray-500">In Progress</p>
-          <p className="text-2xl font-semibold text-blue-600">{tasks.filter(t => t.status === 'WORKING').length}</p>
+
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">In Progress</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.filter(t => t.status === 'WORKING').length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Active right now</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 ml-4">
+            <Clock className="h-6 w-6" />
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm font-medium text-gray-500">In Review</p>
-          <p className="text-2xl font-semibold text-purple-600">{tasks.filter(t => t.status === 'IN_REVIEW').length}</p>
+
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">In Review</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.filter(t => t.status === 'IN_REVIEW').length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Pending feedback</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0 ml-4">
+            <Filter className="h-6 w-6" />
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm font-medium text-gray-500">Completed</p>
-          <p className="text-2xl font-semibold text-green-600">{tasks.filter(t => t.status === 'COMPLETED').length}</p>
+
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.filter(t => t.status === 'COMPLETED').length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Successfully closed</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 ml-4">
+            <CheckCircle className="h-6 w-6" />
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0 gap-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0 gap-3">
           <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm"
               placeholder="Search tasks..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -84,7 +115,7 @@ const TasksList = () => {
             <select
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg text-sm py-2 px-3 bg-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="border border-gray-200 rounded-xl text-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             >
               <option value="">All Assignees</option>
               {uniqueAssignees.map((name) => (
@@ -94,9 +125,9 @@ const TasksList = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg text-sm py-2 px-3 bg-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="border border-gray-200 rounded-xl text-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             >
-              <option value="">All Status</option>
+              <option value="">All Statuses</option>
               <option value="WORKING">Working</option>
               <option value="COMPLETED">Completed</option>
               <option value="IN_REVIEW">In Review</option>
@@ -108,30 +139,30 @@ const TasksList = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/70">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assignee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Task</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Assignee</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={3} className="px-6 py-8 text-center text-gray-500">Loading tasks...</td></tr>
+                <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-500">Loading tasks...</td></tr>
               ) : filteredTasks.length === 0 ? (
-                <tr><td colSpan={3} className="px-6 py-8 text-center text-gray-500">No tasks found.</td></tr>
+                <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-500">No tasks found.</td></tr>
               ) : (
                 filteredTasks.map((task) => (
-                  <tr key={task._id} className="hover:bg-gray-50">
+                  <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className={`flex-shrink-0 h-10 w-10 rounded-md flex items-center justify-center ${task.status === 'COMPLETED' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                        <div className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center ${task.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
                           {task.status === 'COMPLETED' ? <CheckCircle className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                          <div className="text-xs text-gray-500 truncate max-w-md">{task.description || '-'}</div>
+                        <div className="ml-3.5">
+                          <div className="text-sm font-semibold text-gray-900">{task.title}</div>
+                          <div className="text-xs text-gray-400 truncate max-w-md mt-0.5">{task.description || '-'}</div>
                         </div>
                       </div>
                     </td>
@@ -139,13 +170,13 @@ const TasksList = () => {
                       <div className="flex items-center">
                         {task.assignedTo ? (
                           <>
-                            <div className="h-7 w-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs mr-2">
-                              {task.assignedTo.name?.charAt(0) || 'U'}
+                            <div className="h-8 w-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs mr-2.5">
+                              {task.assignedTo.name?.charAt(0).toLowerCase() || 'u'}
                             </div>
-                            <span className="text-sm text-gray-900">{task.assignedTo.name}</span>
+                            <span className="text-sm font-medium text-gray-800">{task.assignedTo.name}</span>
                           </>
                         ) : (
-                          <span className="text-sm text-gray-500">Unassigned</span>
+                          <span className="text-sm text-gray-400">Unassigned</span>
                         )}
                       </div>
                     </td>
