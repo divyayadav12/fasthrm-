@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchEmployees } from '../../store/slices/employeeSlice';
 import { RootState, AppDispatch } from '../../store';
-import { Search, Filter, Eye, Edit, X, ChevronDown } from 'lucide-react';
+import { Search, Filter, Eye, Edit, X, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EmployeesList = () => {
@@ -32,7 +32,11 @@ const EmployeesList = () => {
     setFilterDateTo('');
     setFilterEmail('');
     setSearchTerm('');
+    setCurrentPage(1);
   };
+
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Client-side filtering
   const filteredEmployees = useMemo(() => {
@@ -72,6 +76,13 @@ const EmployeesList = () => {
       return true;
     });
   }, [employees, searchTerm, filterEmail, filterRole, filterStatus, filterDateFrom, filterDateTo]);
+
+  // Pagination slice
+  const totalPages = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
+  const paginatedEmployees = filteredEmployees.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <div className="space-y-6">
@@ -206,7 +217,7 @@ const EmployeesList = () => {
               ) : filteredEmployees.length === 0 ? (
                 <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No employees found.</td></tr>
               ) : (
-                filteredEmployees.map((employee) => (
+                paginatedEmployees.map((employee) => (
                   <tr key={employee._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -248,6 +259,44 @@ const EmployeesList = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {filteredEmployees.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{Math.max(1, totalPages)}</span>
+              {' '}({filteredEmployees.length} total employees)
+            </p>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage === 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              </button>
+              {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).slice(
+                Math.max(0, currentPage - 3),
+                Math.min(Math.max(1, totalPages), currentPage + 2)
+              ).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded-md text-sm font-medium ${page === currentPage ? 'bg-indigo-600 text-white' : 'text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(Math.max(1, totalPages), p + 1))}
+                disabled={currentPage >= totalPages}
+                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage >= totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              >
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
