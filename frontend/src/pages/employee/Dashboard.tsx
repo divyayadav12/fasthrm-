@@ -195,41 +195,20 @@ const EmployeeDashboard = () => {
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Status</label>
-                            <select 
-                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                              value={status}
-                              onChange={(e) => setStatus(e.target.value)}
-                            >
-                              <option value="NOT_STARTED">Not Started</option>
-                              <option value="WORKING">Working</option>
-                              <option value="IN_REVIEW">In Review</option>
-                              <option value="ON_HOLD">On Hold</option>
-                              <option value="BLOCKED">Blocked</option>
-                              <option value="COMPLETED">Completed</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Progress (%)</label>
-                            <input 
-                              type="number" min="0" max="100"
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                              value={progress}
-                              onChange={(e) => setProgress(Number(e.target.value))}
-                            />
-                          </div>
-                        </div>
-
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Time Spent (Minutes)</label>
-                          <input 
-                            type="number" min="0" required
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            value={duration}
-                            onChange={(e) => setDuration(Number(e.target.value))}
-                          />
+                          <label className="block text-sm font-medium text-gray-700">Status</label>
+                          <select 
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                          >
+                            <option value="NOT_STARTED">Not Started</option>
+                            <option value="WORKING">Working</option>
+                            <option value="IN_REVIEW">In Review</option>
+                            <option value="ON_HOLD">On Hold</option>
+                            <option value="BLOCKED">Blocked</option>
+                            <option value="COMPLETED">Completed</option>
+                          </select>
                         </div>
 
                         <div>
