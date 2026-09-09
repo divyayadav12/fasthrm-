@@ -91,10 +91,26 @@ export const getProductivityStats = async (req: Request, res: Response) => {
     today.setHours(0, 0, 0, 0);
 
     const activeProjects = await Project.countDocuments({ status: 'ACTIVE' });
-    const completedTasksToday = await Task.countDocuments({
+    
+    // Check completed tasks today from both WorkLog and Task collections
+    const completedWorkLogsToday = await WorkLog.find({
       status: 'COMPLETED',
-      completedAt: { $gte: today }
+      createdAt: { $gte: today }
     });
+
+    const uniqueCompletedFromLogs = new Set(
+      completedWorkLogsToday.map(log => log.taskId?.toString() || log.customTaskTitle || log._id.toString())
+    ).size;
+
+    const completedFromTasks = await Task.countDocuments({
+      status: 'COMPLETED',
+      $or: [
+        { completedAt: { $gte: today } },
+        { updatedAt: { $gte: today } }
+      ]
+    });
+
+    const completedTasksToday = Math.max(uniqueCompletedFromLogs, completedFromTasks);
 
     // Currently working employees can be determined by socket or by checking latest worklog per employee
     // For simplicity, we can fetch from worklogs where status is 'WORKING' and date is today

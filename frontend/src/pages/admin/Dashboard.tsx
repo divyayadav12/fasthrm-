@@ -85,6 +85,42 @@ const AdminDashboard = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // Calculate completed tasks today with fallback to liveActivity
+  const completedTodayCount = useMemo(() => {
+    const today = new Date();
+    const completedFromLive = liveActivity.filter((log) => {
+      if (log.status !== 'COMPLETED') return false;
+      const d = new Date(log.createdAt);
+      return d.toDateString() === today.toDateString();
+    });
+
+    const uniqueCompleted = new Set(
+      completedFromLive.map(l => l.taskId?._id || l.taskId || l.customTaskTitle || l._id)
+    ).size;
+
+    return Math.max(stats?.completedTasksToday || 0, uniqueCompleted);
+  }, [stats?.completedTasksToday, liveActivity]);
+
+  // Calculate currently working with fallback to liveActivity
+  const currentlyWorkingCount = useMemo(() => {
+    const today = new Date();
+    const todayLogs = liveActivity.filter((log) => {
+      const d = new Date(log.createdAt);
+      return d.toDateString() === today.toDateString();
+    });
+
+    const employeeLatestStatus: Record<string, string> = {};
+    todayLogs.forEach((log) => {
+      const empId = log.employeeId?._id || log.employeeId?.name || log._id;
+      if (!employeeLatestStatus[empId]) {
+        employeeLatestStatus[empId] = log.status;
+      }
+    });
+
+    const workingFromLive = Object.values(employeeLatestStatus).filter(s => s === 'WORKING').length;
+    return Math.max(stats?.currentlyWorking || 0, workingFromLive);
+  }, [stats?.currentlyWorking, liveActivity]);
+
   // Reset to page 1 when filters change
   const handleFilterChange = (setter: any) => (e: any) => {
     setter(e.target.value);
@@ -146,7 +182,7 @@ const AdminDashboard = () => {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">Completed Today</p>
-            <p className="text-2xl font-semibold text-gray-900">{stats?.completedTasksToday || 0}</p>
+            <p className="text-2xl font-semibold text-gray-900">{completedTodayCount}</p>
           </div>
         </div>
 
@@ -157,7 +193,7 @@ const AdminDashboard = () => {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">Currently Working</p>
-            <p className="text-2xl font-semibold text-gray-900">{stats?.currentlyWorking || 0}</p>
+            <p className="text-2xl font-semibold text-gray-900">{currentlyWorkingCount}</p>
           </div>
         </div>
       </div>

@@ -20,16 +20,24 @@ export const createWorkLog = async (req: Request, res: Response) => {
           assignedTo: employeeId,
           status,
           progress,
-          description
+          description,
+          completedAt: status === 'COMPLETED' ? new Date() : undefined
         });
       } else {
         task.status = status;
         task.progress = progress;
+        if (status === 'COMPLETED') {
+          task.completedAt = new Date();
+        }
         await task.save();
       }
       finalTaskId = task._id;
     } else if (taskId) {
-      await Task.findByIdAndUpdate(taskId, { status, progress });
+      await Task.findByIdAndUpdate(taskId, {
+        status,
+        progress,
+        ...(status === 'COMPLETED' ? { completedAt: new Date() } : {})
+      });
     }
 
     const workLog = await WorkLog.create({
