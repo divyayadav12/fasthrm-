@@ -1,23 +1,82 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchEmployees } from '../../store/slices/employeeSlice';
 import { RootState, AppDispatch } from '../../store';
-import { Search, Plus, Filter, MoreVertical, Eye, Edit } from 'lucide-react';
+import { Search, Plus, Filter, Eye, Edit, X, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EmployeesList = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { employees, total, isLoading } = useSelector((state: RootState) => state.employees);
-  const [searchTerm, setSearchTerm] = useState('');
   
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Filter states
+  const [filterRole, setFilterRole] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterEmail, setFilterEmail] = useState('');
+
   useEffect(() => {
-    dispatch(fetchEmployees({ limit: 50, search: searchTerm }));
-  }, [dispatch, searchTerm]);
+    dispatch(fetchEmployees({ limit: 200 }));
+  }, [dispatch]);
+
+  const activeFilterCount = [filterRole, filterStatus, filterDateFrom, filterDateTo, filterEmail].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setFilterRole('');
+    setFilterStatus('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    setFilterEmail('');
+    setSearchTerm('');
+  };
+
+  // Client-side filtering
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((emp) => {
+      // Name/email search
+      const search = searchTerm.toLowerCase();
+      if (search && !(
+        emp.name?.toLowerCase().includes(search) ||
+        emp.email?.toLowerCase().includes(search)
+      )) return false;
+
+      // Email filter
+      if (filterEmail && !emp.email?.toLowerCase().includes(filterEmail.toLowerCase())) return false;
+
+      // Role filter
+      if (filterRole && emp.role !== filterRole) return false;
+
+      // Status filter
+      if (filterStatus === 'active' && !emp.isActive) return false;
+      if (filterStatus === 'inactive' && emp.isActive) return false;
+
+      // Date from
+      if (filterDateFrom) {
+        const joined = new Date(emp.createdAt);
+        const from = new Date(filterDateFrom);
+        if (joined < from) return false;
+      }
+
+      // Date to
+      if (filterDateTo) {
+        const joined = new Date(emp.createdAt);
+        const to = new Date(filterDateTo);
+        to.setHours(23, 59, 59);
+        if (joined > to) return false;
+      }
+
+      return true;
+    });
+  }, [employees, searchTerm, filterEmail, filterRole, filterStatus, filterDateFrom, filterDateTo]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h1 className="text-2xl font-bold text-gray-900">Employees ({total})</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Employees ({filteredEmployees.length})</h1>
         <button className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
           <Plus className="h-4 w-4 mr-2" />
           Add Employee
@@ -25,6 +84,7 @@ const EmployeesList = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        {/* Search + Filter Bar */}
         <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
           <div className="relative flex-1 max-w-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -32,20 +92,107 @@ const EmployeesList = () => {
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out"
-              placeholder="Search employees..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex space-x-3">
-            <button className="flex items-center px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-              <Filter className="h-4 w-4 mr-2 text-gray-500" />
-              Filter
+            {activeFilterCount > 0 && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center px-3 py-2 border border-red-300 rounded-lg bg-red-50 text-sm font-medium text-red-600 hover:bg-red-100"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear ({activeFilterCount})
+              </button>
+            )}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                showFilters || activeFilterCount > 0
+                  ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filters {activeFilterCount > 0 && <span className="ml-1 bg-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{activeFilterCount}</span>}
+              <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
           </div>
         </div>
 
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Email Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                <input
+                  type="text"
+                  placeholder="Filter by email..."
+                  value={filterEmail}
+                  onChange={(e) => setFilterEmail(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Role Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+                <select
+                  value={filterRole}
+                  onChange={(e) => setFilterRole(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">All Roles</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="EMPLOYEE">Employee</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              {/* Joined Date Range */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Joined From</label>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Joined To</label>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -60,10 +207,10 @@ const EmployeesList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Loading employees...</td></tr>
-              ) : employees.length === 0 ? (
+              ) : filteredEmployees.length === 0 ? (
                 <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No employees found.</td></tr>
               ) : (
-                employees.map((employee) => (
+                filteredEmployees.map((employee) => (
                   <tr key={employee._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -105,7 +252,6 @@ const EmployeesList = () => {
             </tbody>
           </table>
         </div>
-        {/* Pagination would go here */}
       </div>
     </div>
   );
