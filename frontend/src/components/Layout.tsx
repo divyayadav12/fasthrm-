@@ -49,6 +49,22 @@ const Layout = () => {
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const prefix = isAdmin ? '/admin' : '/employee';
+  const location = useLocation();
+
+  const isActive = (path: string) => {
+    if (path === prefix) {
+      return location.pathname === prefix || location.pathname === `${prefix}/`;
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const getLinkClass = (path: string) => {
+    return `flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+      isActive(path)
+        ? 'text-indigo-700 bg-indigo-50'
+        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+    }`;
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -60,14 +76,14 @@ const Layout = () => {
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          <Link to={prefix} className="flex items-center px-4 py-3 text-gray-700 bg-indigo-50 rounded-lg text-sm font-medium transition-colors hover:bg-indigo-100 hover:text-indigo-700">
+          <Link to={prefix} className={getLinkClass(prefix)}>
             <Activity className="h-5 w-5 mr-3" />
             Dashboard
           </Link>
           
           {isAdmin && (
             <>
-              <Link to={`${prefix}/live`} className="flex items-center px-4 py-3 text-gray-600 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900">
+              <Link to={`${prefix}/live`} className={getLinkClass(`${prefix}/live`)}>
                 <div className="relative mr-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-ping"></div>
                   <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1"></div>
@@ -75,11 +91,11 @@ const Layout = () => {
                 </div>
                 Live Activity
               </Link>
-              <Link to={`${prefix}/employees`} className="flex items-center px-4 py-3 text-gray-600 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900">
+              <Link to={`${prefix}/employees`} className={getLinkClass(`${prefix}/employees`)}>
                 <Users className="h-5 w-5 mr-3" />
                 Employees
               </Link>
-              <Link to={`${prefix}/reports`} className="flex items-center px-4 py-3 text-gray-600 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900">
+              <Link to={`${prefix}/reports`} className={getLinkClass(`${prefix}/reports`)}>
                 <FileText className="h-5 w-5 mr-3" />
                 Reports
               </Link>
@@ -89,14 +105,14 @@ const Layout = () => {
 
 
           {isAdmin && (
-            <Link to={`${prefix}/tasks`} className="flex items-center px-4 py-3 text-gray-600 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900">
+            <Link to={`${prefix}/tasks`} className={getLinkClass(`${prefix}/tasks`)}>
               <CheckSquare className="h-5 w-5 mr-3" />
               All Tasks
             </Link>
           )}
 
           {!isAdmin && (
-            <Link to={`${prefix}/history`} className="flex items-center px-4 py-3 text-gray-600 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900">
+            <Link to={`${prefix}/history`} className={getLinkClass(`${prefix}/history`)}>
               <FileText className="h-5 w-5 mr-3" />
               My History
             </Link>

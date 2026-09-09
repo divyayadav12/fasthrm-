@@ -89,18 +89,17 @@ const WorkHistory = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Update</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Spent</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Loading history...</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading history...</td></tr>
               ) : workLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
+                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
                     <Calendar className="h-12 w-12 text-gray-300 mb-3" />
                     <p>No work history recorded for this period.</p>
                   </td>
@@ -117,10 +116,6 @@ const WorkHistory = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(log.status)}
-                      <div className="text-xs text-gray-500 mt-1">{log.progress}% Complete</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.duration ? `${log.duration} mins` : '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       <p className="line-clamp-2">{log.description || 'No description provided.'}</p>
