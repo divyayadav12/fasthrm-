@@ -47,8 +47,8 @@ export const fetchRecentActivity = createAsyncThunk('dashboard/fetchActivity', a
     const token = state.auth.user?.token;
     const config = { headers: { Authorization: `Bearer ${token}` } };
     
-    // Just fetch the latest 10 worklogs
-    const response = await axios.get(`${API_URL}/work-logs?limit=10`, config);
+    // Fetch recent worklogs to populate live activity and pagination
+    const response = await axios.get(`${API_URL}/work-logs?limit=500`, config);
     return response.data.workLogs;
   } catch (error: any) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();

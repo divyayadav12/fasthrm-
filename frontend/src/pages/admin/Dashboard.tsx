@@ -97,6 +97,7 @@ const AdminDashboard = () => {
       NOT_STARTED: 'bg-gray-100 text-gray-800',
       IN_REVIEW: 'bg-purple-100 text-purple-800',
       ON_HOLD: 'bg-yellow-100 text-yellow-800',
+      PENDING: 'bg-orange-100 text-orange-800',
       BLOCKED: 'bg-red-100 text-red-800',
       COMPLETED: 'bg-green-100 text-green-800',
     };
@@ -195,10 +196,6 @@ const AdminDashboard = () => {
               Clear Filters
             </button>
           )}
-
-          <span className="ml-auto text-sm text-gray-500">
-            Showing {filteredActivity.length} records
-          </span>
         </div>
 
         {/* Filter Panel */}
@@ -227,7 +224,7 @@ const AdminDashboard = () => {
                   <option value="COMPLETED">Completed</option>
                   <option value="IN_REVIEW">In Review</option>
                   <option value="ON_HOLD">On Hold</option>
-                  <option value="BLOCKED">Blocked</option>
+                  <option value="PENDING">Pending</option>
                   <option value="NOT_STARTED">Not Started</option>
                 </select>
               </div>
@@ -301,11 +298,11 @@ const AdminDashboard = () => {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {filteredActivity.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <p className="text-sm text-gray-500">
-              Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span>
-              {' '}({filteredActivity.length} total)
+              Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{Math.max(1, totalPages)}</span>
+              {' '}({filteredActivity.length} total records)
             </p>
             <div className="flex items-center space-x-2">
               <button
@@ -315,9 +312,9 @@ const AdminDashboard = () => {
               >
                 <ChevronLeft className="h-4 w-4 mr-1" /> Previous
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).slice(
+              {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).slice(
                 Math.max(0, currentPage - 3),
-                Math.min(totalPages, currentPage + 2)
+                Math.min(Math.max(1, totalPages), currentPage + 2)
               ).map(page => (
                 <button
                   key={page}
@@ -328,9 +325,9 @@ const AdminDashboard = () => {
                 </button>
               ))}
               <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage === totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                onClick={() => setCurrentPage(p => Math.min(Math.max(1, totalPages), p + 1))}
+                disabled={currentPage >= totalPages}
+                className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${currentPage >= totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
               >
                 Next <ChevronRight className="h-4 w-4 ml-1" />
               </button>

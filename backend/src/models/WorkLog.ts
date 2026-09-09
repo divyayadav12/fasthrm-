@@ -5,7 +5,7 @@ export interface IWorkLog extends Document {
   projectId?: mongoose.Types.ObjectId;
   taskId?: mongoose.Types.ObjectId;
   customTaskTitle?: string;
-  status: 'NOT_STARTED' | 'WORKING' | 'IN_REVIEW' | 'ON_HOLD' | 'BLOCKED' | 'COMPLETED';
+  status: 'NOT_STARTED' | 'WORKING' | 'IN_REVIEW' | 'ON_HOLD' | 'BLOCKED' | 'PENDING' | 'COMPLETED';
   progress: number;
   description?: string;
   startTime: Date;
@@ -21,7 +21,7 @@ const workLogSchema = new Schema<IWorkLog>(
     customTaskTitle: { type: String },
     status: {
       type: String,
-      enum: ['NOT_STARTED', 'WORKING', 'IN_REVIEW', 'ON_HOLD', 'BLOCKED', 'COMPLETED'],
+      enum: ['NOT_STARTED', 'WORKING', 'IN_REVIEW', 'ON_HOLD', 'BLOCKED', 'PENDING', 'COMPLETED'],
       required: true,
     },
     progress: { type: Number, required: true },

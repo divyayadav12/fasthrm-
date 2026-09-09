@@ -6,7 +6,7 @@ export interface ITask extends Document {
   projectId?: mongoose.Types.ObjectId;
   assignedTo: mongoose.Types.ObjectId;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  status: 'NOT_STARTED' | 'WORKING' | 'IN_REVIEW' | 'ON_HOLD' | 'BLOCKED' | 'COMPLETED';
+  status: 'NOT_STARTED' | 'WORKING' | 'IN_REVIEW' | 'ON_HOLD' | 'BLOCKED' | 'PENDING' | 'COMPLETED';
   progress: number;
   deadline?: Date;
   completedAt?: Date;
@@ -25,7 +25,7 @@ const taskSchema = new Schema<ITask>(
     },
     status: {
       type: String,
-      enum: ['NOT_STARTED', 'WORKING', 'IN_REVIEW', 'ON_HOLD', 'BLOCKED', 'COMPLETED'],
+      enum: ['NOT_STARTED', 'WORKING', 'IN_REVIEW', 'ON_HOLD', 'BLOCKED', 'PENDING', 'COMPLETED'],
       default: 'NOT_STARTED',
     },
     progress: { type: Number, default: 0, min: 0, max: 100 },

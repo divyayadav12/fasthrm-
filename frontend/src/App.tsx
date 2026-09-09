@@ -42,7 +42,7 @@ function App() {
           } 
         >
           <Route index element={<AdminDashboard />} />
-          <Route path="live" element={<AdminDashboard />} />
+          <Route path="live" element={<Navigate to="/admin" replace />} />
           <Route path="employees" element={<EmployeesList />} />
           <Route path="employees/:id" element={<EmployeeDetails />} />
 

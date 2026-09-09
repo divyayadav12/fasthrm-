@@ -82,14 +82,6 @@ const Layout = () => {
           
           {isAdmin && (
             <>
-              <Link to={`${prefix}/live`} className={getLinkClass(`${prefix}/live`)}>
-                <div className="relative mr-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-ping"></div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1"></div>
-                  <Activity className="h-5 w-5" />
-                </div>
-                Live Activity
-              </Link>
               <Link to={`${prefix}/employees`} className={getLinkClass(`${prefix}/employees`)}>
                 <Users className="h-5 w-5 mr-3" />
                 Employees

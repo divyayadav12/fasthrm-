@@ -81,6 +81,7 @@ const EmployeeDashboard = () => {
       NOT_STARTED: 'bg-gray-100 text-gray-800',
       IN_REVIEW: 'bg-purple-100 text-purple-800',
       ON_HOLD: 'bg-yellow-100 text-yellow-800',
+      PENDING: 'bg-orange-100 text-orange-800',
       BLOCKED: 'bg-red-100 text-red-800',
       COMPLETED: 'bg-green-100 text-green-800',
     };
@@ -224,7 +225,7 @@ const EmployeeDashboard = () => {
                             <option value="WORKING">Working</option>
                             <option value="IN_REVIEW">In Review</option>
                             <option value="ON_HOLD">On Hold</option>
-                            <option value="BLOCKED">Blocked</option>
+                            <option value="PENDING">Pending</option>
                             <option value="COMPLETED">✅ Completed</option>
                           </select>
                         </div>
