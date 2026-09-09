@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchTasks } from '../../store/slices/taskSlice';
-import { Clock, Briefcase, Activity, CheckCircle, AlertCircle } from 'lucide-react';
+import { Clock, Briefcase, Activity, CheckCircle, Edit2 } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
@@ -19,12 +19,31 @@ const EmployeeDashboard = () => {
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null); // track which task is being edited
 
   useEffect(() => {
     if (user) {
       dispatch(fetchTasks({ assignedTo: user._id }));
     }
   }, [dispatch, user]);
+
+  // Open modal for new task log
+  const openNewModal = () => {
+    setEditingTask(null);
+    setCustomTaskTitle('');
+    setStatus('WORKING');
+    setDescription('');
+    setShowUpdateModal(true);
+  };
+
+  // Open modal pre-filled with existing task
+  const openEditModal = (task: any) => {
+    setEditingTask(task);
+    setCustomTaskTitle(task.title);
+    setStatus(task.status);
+    setDescription(task.description || '');
+    setShowUpdateModal(true);
+  };
 
   const handleUpdateWork = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +63,7 @@ const EmployeeDashboard = () => {
       await axios.post(`${API_URL}/work-logs`, payload, config);
       
       setShowUpdateModal(false);
-      // Reset form
+      setEditingTask(null);
       setCustomTaskTitle('');
       setDescription('');
       setDuration(0);
@@ -78,7 +97,7 @@ const EmployeeDashboard = () => {
           <p className="text-gray-500">Here's what's happening with your tasks today.</p>
         </div>
         <button 
-          onClick={() => setShowUpdateModal(true)}
+          onClick={openNewModal}
           className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-bold"
         >
           <Activity className="h-5 w-5 mr-2" />
@@ -127,13 +146,14 @@ const EmployeeDashboard = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr><td colSpan={3} className="px-6 py-8 text-center text-gray-500">Loading tasks...</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading tasks...</td></tr>
               ) : tasks.length === 0 ? (
-                <tr><td colSpan={3} className="px-6 py-8 text-center text-gray-500">No tasks assigned.</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No tasks assigned.</td></tr>
               ) : (
                 pendingTasks.map((task) => (
                   <tr key={task._id} className="hover:bg-gray-50">
@@ -145,6 +165,15 @@ const EmployeeDashboard = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(task.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => openEditModal(task)}
+                        className="flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 mr-1" />
+                        Update
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -165,11 +194,11 @@ const EmployeeDashboard = () => {
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
-                      <Activity className="h-6 w-6 text-indigo-600" aria-hidden="true" />
+                      {editingTask ? <Edit2 className="h-5 w-5 text-indigo-600" /> : <Activity className="h-6 w-6 text-indigo-600" aria-hidden="true" />}
                     </div>
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                       <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                        Update Work Status
+                        {editingTask ? `Update: ${editingTask.title}` : 'Update Work Status'}
                       </h3>
                       <div className="mt-4 space-y-4">
                         <div>
@@ -196,7 +225,7 @@ const EmployeeDashboard = () => {
                             <option value="IN_REVIEW">In Review</option>
                             <option value="ON_HOLD">On Hold</option>
                             <option value="BLOCKED">Blocked</option>
-                            <option value="COMPLETED">Completed</option>
+                            <option value="COMPLETED">✅ Completed</option>
                           </select>
                         </div>
 
