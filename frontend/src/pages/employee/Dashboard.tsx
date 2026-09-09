@@ -107,31 +107,36 @@ const EmployeeDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center">
-          <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Tasks</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{pendingTasks.length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Tasks needing action</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 ml-4">
             <Briefcase className="h-6 w-6" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Pending Tasks</p>
-            <p className="text-2xl font-semibold text-gray-900">{pendingTasks.length}</p>
-          </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center">
-          <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.filter(t => t.status === 'COMPLETED').length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Successfully closed</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 ml-4">
             <CheckCircle className="h-6 w-6" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Completed</p>
-            <p className="text-2xl font-semibold text-gray-900">{tasks.filter(t => t.status === 'COMPLETED').length}</p>
-          </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center">
-          <div className="p-3 rounded-full bg-indigo-100 text-indigo-600 mr-4">
-            <Clock className="h-6 w-6" />
-          </div>
+
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Working Hours</p>
-            <p className="text-2xl font-semibold text-gray-900">-</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Working Hours</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">-</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Time logged today</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 ml-4">
+            <Clock className="h-6 w-6" />
           </div>
         </div>
       </div>

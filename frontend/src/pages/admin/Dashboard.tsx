@@ -165,35 +165,38 @@ const AdminDashboard = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Employees */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center">
-          <div className="p-3 rounded-full bg-indigo-100 text-indigo-600 mr-4">
-            <Users className="h-6 w-6" />
-          </div>
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Total Employees</p>
-            <p className="text-2xl font-semibold text-gray-900">{totalEmployees || employees.length}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Employees</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{totalEmployees || employees.length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Registered staff</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0 ml-4">
+            <Users className="h-6 w-6" />
           </div>
         </div>
 
         {/* Completed Today */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center">
-          <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
-            <CheckCircle className="h-6 w-6" />
-          </div>
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Completed Today</p>
-            <p className="text-2xl font-semibold text-gray-900">{completedTodayCount}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed Today</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{completedTodayCount}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Successfully closed</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 ml-4">
+            <CheckCircle className="h-6 w-6" />
           </div>
         </div>
 
         {/* Currently Working */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center">
-          <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
-            <Activity className="h-6 w-6" />
-          </div>
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Currently Working</p>
-            <p className="text-2xl font-semibold text-gray-900">{currentlyWorkingCount}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Currently Working</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{currentlyWorkingCount}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Active right now</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 ml-4">
+            <Activity className="h-6 w-6" />
           </div>
         </div>
       </div>
