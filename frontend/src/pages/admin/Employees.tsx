@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchEmployees } from '../../store/slices/employeeSlice';
 import { RootState, AppDispatch } from '../../store';
-import { Search, Plus, Filter, Eye, Edit, X, ChevronDown } from 'lucide-react';
+import { Search, Filter, Eye, Edit, X, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EmployeesList = () => {
@@ -77,10 +77,6 @@ const EmployeesList = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <h1 className="text-2xl font-bold text-gray-900">Employees ({filteredEmployees.length})</h1>
-        <button className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Employee
-        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
