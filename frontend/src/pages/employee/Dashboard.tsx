@@ -92,10 +92,14 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-end items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">My Tasks</h1>
+          <p className="text-sm text-gray-500">View and manage your daily tasks</p>
+        </div>
         <button 
           onClick={openNewModal}
-          className="flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-bold"
+          className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-bold"
         >
           <Activity className="h-5 w-5 mr-2" />
           UPDATE WORK STATUS
@@ -134,7 +138,7 @@ const EmployeeDashboard = () => {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">My Current Tasks</h2>
+          <h2 className="text-lg font-medium text-gray-900">My Tasks</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
