@@ -92,14 +92,10 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome, {user?.name}</h1>
-          <p className="text-gray-500">Here's what's happening with your tasks today.</p>
-        </div>
+      <div className="flex justify-end items-center">
         <button 
           onClick={openNewModal}
-          className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-bold"
+          className="flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-bold"
         >
           <Activity className="h-5 w-5 mr-2" />
           UPDATE WORK STATUS
