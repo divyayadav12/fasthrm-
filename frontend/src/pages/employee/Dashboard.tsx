@@ -131,12 +131,12 @@ const EmployeeDashboard = () => {
 
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Working Hours</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">-</p>
-            <p className="text-xs text-gray-400 mt-1 font-medium">Time logged today</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Working Tasks</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.filter(t => t.status === 'WORKING').length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Currently in progress</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 ml-4">
-            <Clock className="h-6 w-6" />
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 ml-4">
+            <Activity className="h-6 w-6" />
           </div>
         </div>
       </div>
