@@ -70,8 +70,8 @@ const Layout = () => {
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="h-16 flex items-center justify-center px-4 border-b border-gray-200 bg-white">
-          <img src="/logo.png" alt="FAST Logo" className="h-14 w-auto object-contain" />
+        <div className="h-20 flex items-center justify-center px-3 border-b border-gray-200 bg-white">
+          <img src="/logo.png" alt="FAST Logo" className="h-16 max-w-full w-auto object-contain" />
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
