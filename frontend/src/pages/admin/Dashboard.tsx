@@ -36,25 +36,48 @@ const AdminDashboard = () => {
     const target = targetRole.trim().toLowerCase();
 
     if (target === 'all') return true;
+
+    // Editor DTP
     if (target === 'editor dtp') {
       return dept.includes('editor') || dept.includes('dtp');
     }
+
+    // IT and support: must NOT match editor
     if (target === 'it and support' || target === 'it & support') {
-      return dept.includes('it') || dept.includes('support');
+      if (dept.includes('editor') || dept.includes('dtp')) return false;
+      return (
+        dept === 'it and support' ||
+        dept === 'it & support' ||
+        dept.includes('support') ||
+        /\b(it)\b/i.test(dept)
+      );
     }
+
+    // IOA
     if (target === 'ioa') {
-      return dept.includes('ioa');
+      return dept === 'ioa' || /\b(ioa)\b/i.test(dept);
     }
+
+    // Career
     if (target === 'career' || target === 'careear') {
       return dept.includes('career') || dept.includes('careear');
     }
-    if (target === 'others') {
-      const isKnown = dept.includes('editor') || dept.includes('dtp') ||
-                      dept.includes('it') || dept.includes('support') ||
-                      dept.includes('ioa') || dept.includes('career') || dept.includes('careear');
+
+    // Others
+    if (target === 'others' || target === 'other') {
+      const isKnown =
+        dept.includes('editor') ||
+        dept.includes('dtp') ||
+        dept.includes('support') ||
+        /\b(it)\b/i.test(dept) ||
+        dept === 'ioa' ||
+        /\b(ioa)\b/i.test(dept) ||
+        dept.includes('career') ||
+        dept.includes('careear');
       return !isKnown || dept.includes('other');
     }
-    return dept.includes(target);
+
+    return dept === target;
   };
 
   // Pagination
@@ -474,19 +497,9 @@ const AdminDashboard = () => {
                           <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm mr-3 group-hover/emp:bg-indigo-600 group-hover/emp:text-white transition-colors shrink-0">
                             {employeeName.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-semibold text-gray-900 group-hover/emp:text-indigo-600 group-hover/emp:underline transition-colors">
-                                {employeeName}
-                              </span>
-                              {empRole && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                                  {empRole}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-0.5">{log.employeeId?.email || ''}</div>
-                          </div>
+                          <span className="text-sm font-semibold text-gray-900 group-hover/emp:text-indigo-600 group-hover/emp:underline transition-colors">
+                            {employeeName}
+                          </span>
                         </div>
                       </td>
 

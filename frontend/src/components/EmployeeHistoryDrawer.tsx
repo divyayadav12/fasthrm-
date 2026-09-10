@@ -245,7 +245,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300"
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full sm:max-w-2xl w-full flex pl-0 sm:pl-10 pointer-events-none">
+      <div className="fixed inset-y-0 right-0 max-w-full sm:max-w-3xl lg:max-w-4xl w-full flex pl-0 sm:pl-10 pointer-events-none">
         <div className="w-full bg-white shadow-2xl border-l border-gray-200 flex flex-col pointer-events-auto transform transition-all duration-300 ease-in-out">
           
           {/* Header */}
@@ -359,8 +359,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             </div>
           )}
 
-          {/* Scrollable Timeline Area */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 bg-slate-50/40">
+          {/* Scrollable Table Area */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 bg-slate-50/40">
             {filteredLogs.length === 0 ? (
               <div className="py-16 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-3">
@@ -370,84 +370,88 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                 <p className="text-xs text-gray-400 mt-1">Try selecting "All" or a different date range.</p>
               </div>
             ) : (
-              <div className="space-y-6">
-                {Object.entries(groupedLogs).map(([dateLabel, dateLogs]) => (
-                  <div key={dateLabel} className="space-y-3">
-                    {/* Date Section Header */}
-                    <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-xs py-1">
-                      <span className="inline-flex items-center text-xs font-bold text-gray-600 bg-white px-3 py-1 rounded-lg border border-gray-200/80 shadow-2xs">
-                        <Calendar className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
-                        {dateLabel}
-                      </span>
-                    </div>
+              <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-xs">
+                <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+                  <thead className="bg-gray-50/80 font-semibold text-gray-600 uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Date</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Timing</th>
+                      <th scope="col" className="px-4 py-3">Task</th>
+                      <th scope="col" className="px-4 py-3">Description</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {filteredLogs.map((log) => {
+                      const logDate = new Date(log.createdAt);
+                      const formattedDate = logDate.toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      });
+                      const logTime = logDate.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                      const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
 
-                    {/* Timeline entries */}
-                    <div className="relative pl-6 space-y-3.5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                      {dateLogs.map((log) => {
-                        const logTime = new Date(log.createdAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        });
-                        const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
+                      return (
+                        <tr key={log._id} className="hover:bg-indigo-50/30 transition-colors group">
+                          {/* Date */}
+                          <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
+                            {formattedDate}
+                          </td>
 
-                        return (
-                          <div key={log._id} className="relative group">
-                            {/* Dot */}
-                            <div
-                              className={`absolute -left-6 top-3 w-2.5 h-2.5 rounded-full ${getTimelineDot(
-                                log.status
-                              )}`}
-                            />
-
-                            {/* Card */}
-                            <div className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-2xs hover:border-indigo-100 hover:shadow-xs transition-all">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-xs font-bold text-gray-900">{logTime}</span>
-                                    {getStatusBadge(log.status)}
-                                    {log.durationMinutes > 0 && (
-                                      <span className="text-[11px] font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md flex items-center">
-                                        <Clock className="h-3 w-3 mr-1 text-gray-400" />
-                                        {log.durationMinutes}m
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {/* Clickable Task Title */}
-                                  <div className="mt-1.5 flex items-center">
-                                    <span
-                                      onClick={() => {
-                                        if (onSelectTask) {
-                                          onSelectTask({
-                                            taskId: log.taskId?._id || log.taskId,
-                                            title: taskTitle,
-                                            employee,
-                                          });
-                                        }
-                                      }}
-                                      className="text-sm font-semibold text-gray-900 hover:text-indigo-600 transition-colors cursor-pointer flex items-center group-hover:underline"
-                                    >
-                                      {taskTitle}
-                                      <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-0 group-hover:opacity-100 text-indigo-500 transition-opacity" />
-                                    </span>
-                                  </div>
-
-                                  {/* Description / Notes */}
-                                  {log.description && (
-                                    <p className="text-xs text-gray-600 mt-1.5 bg-gray-50 p-2 rounded-lg border border-gray-100 font-normal">
-                                      {log.description}
-                                    </p>
-                                  )}
-                                </div>
+                          {/* Timing */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="font-semibold text-gray-900">{logTime}</span>
+                            {log.durationMinutes > 0 && (
+                              <div className="text-[10px] text-gray-500 font-normal mt-0.5">
+                                ⏱ {log.durationMinutes}m
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                            )}
+                          </td>
+
+                          {/* Task */}
+                          <td className="px-4 py-3.5">
+                            <span
+                              onClick={() => {
+                                if (onSelectTask) {
+                                  onSelectTask({
+                                    taskId: log.taskId?._id || log.taskId,
+                                    title: taskTitle,
+                                    employee,
+                                  });
+                                }
+                              }}
+                              className="font-semibold text-gray-900 hover:text-indigo-600 cursor-pointer hover:underline inline-flex items-center group-hover:text-indigo-600"
+                              title="Click to view task history"
+                            >
+                              {taskTitle}
+                              <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-indigo-500 transition-opacity flex-shrink-0" />
+                            </span>
+                          </td>
+
+                          {/* Description */}
+                          <td className="px-4 py-3.5 text-gray-600 max-w-xs break-words">
+                            {log.description ? (
+                              <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 text-xs text-gray-700 font-normal leading-relaxed">
+                                {log.description}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic">-</span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {getStatusBadge(log.status)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

@@ -187,7 +187,7 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300"
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full sm:max-w-2xl w-full flex pl-0 sm:pl-10 pointer-events-none">
+      <div className="fixed inset-y-0 right-0 max-w-full sm:max-w-3xl lg:max-w-4xl w-full flex pl-0 sm:pl-10 pointer-events-none">
         <div className="w-full bg-white shadow-2xl border-l border-gray-200 flex flex-col pointer-events-auto transform transition-all duration-300 ease-in-out">
           
           {/* Header */}
@@ -267,8 +267,8 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
             </div>
           </div>
 
-          {/* Scrollable Timeline */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 bg-slate-50/40">
+          {/* Scrollable Table Area */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 bg-slate-50/40">
             {sortedLogs.length === 0 ? (
               <div className="py-16 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-3">
@@ -278,63 +278,78 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                 <p className="text-xs text-gray-400 mt-1">Updates will appear here when an employee starts or updates work on it.</p>
               </div>
             ) : (
-              <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                {sortedLogs.map((log, index) => {
-                  const logDate = new Date(log.createdAt);
-                  const formattedDate = logDate.toLocaleDateString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  });
-                  const formattedTime = logDate.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
-                  const employeeName = log.employeeId?.name || (typeof assignedEmployee === 'object' ? assignedEmployee?.name : assignedEmployee) || 'Team Member';
+              <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-xs">
+                <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+                  <thead className="bg-gray-50/80 font-semibold text-gray-600 uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Date</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Timing</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Employee</th>
+                      <th scope="col" className="px-4 py-3">Description</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {sortedLogs.map((log, index) => {
+                      const logDate = new Date(log.createdAt);
+                      const formattedDate = logDate.toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      });
+                      const formattedTime = logDate.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                      const employeeName = log.employeeId?.name || (typeof assignedEmployee === 'object' ? assignedEmployee?.name : assignedEmployee) || 'Team Member';
 
-                  return (
-                    <div key={log._id || index} className="relative group">
-                      {/* Timeline dot */}
-                      <div
-                        className={`absolute -left-6 top-3 w-2.5 h-2.5 rounded-full ${getTimelineDot(
-                          log.status
-                        )}`}
-                      />
+                      return (
+                        <tr key={log._id || index} className="hover:bg-indigo-50/30 transition-colors group">
+                          {/* Date */}
+                          <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
+                            {formattedDate}
+                          </td>
 
-                      {/* Timeline Card */}
-                      <div className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-2xs hover:border-indigo-100 hover:shadow-xs transition-all">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs font-bold text-gray-900">{formattedDate} · {formattedTime}</span>
-                              {getStatusBadge(log.status)}
-                              {log.durationMinutes > 0 && (
-                                <span className="text-[11px] font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md flex items-center">
-                                  <Clock className="h-3 w-3 mr-1 text-gray-400" />
-                                  {log.durationMinutes}m
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Employee who logged this update */}
-                            <div className="mt-1.5 flex items-center text-xs text-gray-500">
-                              <User className="h-3 w-3 mr-1 text-gray-400" />
-                              <span>Logged by <strong className="text-gray-700">{employeeName}</strong></span>
-                            </div>
-
-                            {/* Description / note */}
-                            {log.description && (
-                              <div className="mt-2 bg-gray-50/80 p-2.5 rounded-lg border border-gray-100 text-xs text-gray-700">
-                                {log.description}
+                          {/* Timing */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="font-semibold text-gray-900">{formattedTime}</span>
+                            {log.durationMinutes > 0 && (
+                              <div className="text-[10px] text-gray-500 font-normal mt-0.5">
+                                ⏱ {log.durationMinutes}m
                               </div>
                             )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                          </td>
+
+                          {/* Employee */}
+                          <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-800">
+                            <div className="flex items-center space-x-2">
+                              <div className="h-6 w-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                                {employeeName.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="font-semibold text-gray-900">{employeeName}</span>
+                            </div>
+                          </td>
+
+                          {/* Description */}
+                          <td className="px-4 py-3.5 text-gray-600 max-w-xs break-words">
+                            {log.description ? (
+                              <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 text-xs text-gray-700 font-normal leading-relaxed">
+                                {log.description}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic">-</span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {getStatusBadge(log.status)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
