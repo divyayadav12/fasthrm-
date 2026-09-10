@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
+import WorkLog from '../models/WorkLog';
+import { io } from '../index';
 
 // @desc    Get all tasks
 // @route   GET /api/tasks
@@ -86,12 +88,34 @@ export const updateTask = async (req: Request, res: Response) => {
 
 // @desc    Delete task
 // @route   DELETE /api/tasks/:id
-// @access  Private/Admin
+// @access  Private
 export const deleteTask = async (req: Request, res: Response) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
-    res.json({ message: 'Task removed' });
+
+    const user = (req as any).user;
+    const isOwner = task.assignedTo && task.assignedTo.toString() === user._id.toString();
+    const isAdmin = user.role === 'ADMIN';
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: 'Not authorized to delete this task' });
+    }
+
+    await Task.findByIdAndDelete(req.params.id);
+
+    // Delete associated worklogs
+    await WorkLog.deleteMany({
+      $or: [
+        { taskId: task._id },
+        { customTaskTitle: task.title, employeeId: task.assignedTo }
+      ]
+    });
+
+    // Notify connected dashboards in real-time
+    io.emit('worklog_updated', { _id: null, deletedTaskId: task._id });
+
+    res.json({ message: 'Task and associated records removed successfully' });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

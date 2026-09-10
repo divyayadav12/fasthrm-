@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { fetchTasks } from '../../store/slices/taskSlice';
-import { Clock, Briefcase, Activity, CheckCircle, Edit2 } from 'lucide-react';
+import { fetchTasks, deleteTask } from '../../store/slices/taskSlice';
+import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2 } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
@@ -20,6 +20,29 @@ const EmployeeDashboard = () => {
   const [duration, setDuration] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null); // track which task is being edited
+  const [taskToDelete, setTaskToDelete] = useState<any>(null); // track task to delete
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    setIsDeleting(true);
+    try {
+      await dispatch(deleteTask(taskToDelete._id)).unwrap();
+      setTaskToDelete(null);
+      if (showUpdateModal && editingTask?._id === taskToDelete._id) {
+        setShowUpdateModal(false);
+        setEditingTask(null);
+      }
+      if (user) {
+        dispatch(fetchTasks({ assignedTo: user._id }));
+      }
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      alert('Could not delete task. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -177,13 +200,23 @@ const EmployeeDashboard = () => {
                       {getStatusBadge(task.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => openEditModal(task)}
-                        className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors"
-                      >
-                        <Edit2 className="h-3.5 w-3.5 mr-1" />
-                        Update
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => openEditModal(task)}
+                          className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors"
+                        >
+                          <Edit2 className="h-3.5 w-3.5 mr-1" />
+                          Update
+                        </button>
+                        <button
+                          onClick={() => setTaskToDelete(task)}
+                          className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors"
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1 text-rose-500" />
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -254,19 +287,76 @@ const EmployeeDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button 
-                    type="submit" 
-                    disabled={isSubmitting}
-                    className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm ${isSubmitting ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-                  >
-                    {isSubmitting ? 'Saving...' : 'Log Work'}
-                  </button>
-                  <button type="button" onClick={() => setShowUpdateModal(false)} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                    Cancel
-                  </button>
+                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:items-center sm:justify-between">
+                  {editingTask && (
+                    <button 
+                      type="button" 
+                      onClick={() => setTaskToDelete(editingTask)}
+                      className="inline-flex items-center px-3.5 py-2 border border-rose-200 text-xs font-semibold rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors mb-3 sm:mb-0 cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1.5 text-rose-500" />
+                      Delete Task
+                    </button>
+                  )}
+                  <div className="flex flex-row-reverse gap-2 sm:ml-auto">
+                    <button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                      className={`w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 text-sm font-medium text-white focus:outline-none ${isSubmitting ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                    >
+                      {isSubmitting ? 'Saving...' : 'Log Work'}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowUpdateModal(false)} 
+                      className="w-full sm:w-auto inline-flex justify-center rounded-xl border border-gray-300 shadow-xs px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {taskToDelete && (
+        <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={() => !isDeleting && setTaskToDelete(null)}></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full p-6 border border-gray-100">
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-2xl bg-rose-50 sm:mx-0 sm:h-11 sm:w-11 text-rose-600 border border-rose-100">
+                  <Trash2 className="h-5 w-5" />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <h3 className="text-base font-bold text-gray-900">Delete Task</h3>
+                  <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                    Are you sure you want to delete <strong className="text-gray-800">"{taskToDelete.title}"</strong>? This will also remove any related activity history logged for this task.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse gap-2">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={confirmDeleteTask}
+                  className="w-full inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 focus:outline-none sm:w-auto disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  {isDeleting ? 'Deleting...' : 'Yes, Delete Task'}
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setTaskToDelete(null)}
+                  className="mt-2 sm:mt-0 w-full inline-flex justify-center rounded-xl border border-gray-200 shadow-xs px-4 py-2 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none sm:w-auto transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -194,3 +194,28 @@ export const getTaskWorkLogs = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Delete a work log
+// @route   DELETE /api/work-logs/:id
+// @access  Private
+export const deleteWorkLog = async (req: Request, res: Response) => {
+  try {
+    const log = await WorkLog.findById(req.params.id);
+    if (!log) return res.status(404).json({ message: 'Work log not found' });
+
+    const user = (req as any).user;
+    const isOwner = log.employeeId && log.employeeId.toString() === user._id.toString();
+    const isAdmin = user.role === 'ADMIN';
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: 'Not authorized to delete this work log' });
+    }
+
+    await WorkLog.findByIdAndDelete(req.params.id);
+    io.emit('worklog_updated', { _id: null, deletedLogId: log._id });
+
+    res.json({ message: 'Work log removed successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -11,6 +11,6 @@ router.route('/')
 router.route('/:id')
   .get(protect, getTaskById)
   .put(protect, updateTask)
-  .delete(protect, adminOnly, deleteTask);
+  .delete(protect, deleteTask);
 
 export default router;
