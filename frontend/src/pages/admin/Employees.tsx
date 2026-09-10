@@ -259,27 +259,27 @@ const EmployeesList = () => {
 
         {/* Pagination */}
         {filteredEmployees.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+            <p className="text-xs sm:text-sm text-gray-500">
               Page <span className="font-semibold text-gray-800">{currentPage}</span> of <span className="font-semibold text-gray-800">{Math.max(1, totalPages)}</span>
               {' '}({filteredEmployees.length} total employees)
             </p>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto max-w-full pb-1 sm:pb-0">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage === 1 ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                className={`flex items-center px-2.5 sm:px-3.5 py-1.5 border rounded-xl text-xs sm:text-sm font-medium transition-colors ${currentPage === 1 ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" /> Prev
               </button>
               {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).slice(
-                Math.max(0, currentPage - 3),
+                Math.max(0, currentPage - 2),
                 Math.min(Math.max(1, totalPages), currentPage + 2)
               ).map(page => (
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-xl text-sm font-semibold transition-colors ${page === currentPage ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center ${page === currentPage ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
                 >
                   {page}
                 </button>
@@ -287,9 +287,9 @@ const EmployeesList = () => {
               <button
                 onClick={() => setCurrentPage(p => Math.min(Math.max(1, totalPages), p + 1))}
                 disabled={currentPage >= totalPages}
-                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage >= totalPages ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                className={`flex items-center px-2.5 sm:px-3.5 py-1.5 border rounded-xl text-xs sm:text-sm font-medium transition-colors ${currentPage >= totalPages ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
-                Next <ChevronRight className="h-4 w-4 ml-1" />
+                Next <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
               </button>
             </div>
           </div>

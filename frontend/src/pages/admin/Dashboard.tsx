@@ -185,8 +185,8 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium text-gray-400">Live Status:</span>
           <div className="flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
@@ -197,12 +197,12 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         {/* Total Employees */}
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Employees</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">{totalEmployees || employees.length}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">{totalEmployees || employees.length}</p>
             <p className="text-xs text-gray-400 mt-1 font-medium">Registered staff</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0 ml-4">
@@ -214,7 +214,7 @@ const AdminDashboard = () => {
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed Today</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">{completedTodayCount}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">{completedTodayCount}</p>
             <p className="text-xs text-gray-400 mt-1 font-medium">Successfully closed</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 ml-4">
@@ -223,10 +223,10 @@ const AdminDashboard = () => {
         </div>
 
         {/* Currently Working */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between sm:col-span-2 md:col-span-1">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Currently Working</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">{currentlyWorkingCount}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">{currentlyWorkingCount}</p>
             <p className="text-xs text-gray-400 mt-1 font-medium">Active right now</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 ml-4">
@@ -237,23 +237,23 @@ const AdminDashboard = () => {
 
       {/* Live Team Status Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-bold text-gray-900 tracking-wide">LIVE TEAM STATUS</h2>
             <p className="text-xs text-gray-400 mt-0.5">Click on any employee or task to inspect instant chronological history</p>
           </div>
-          <span className="flex items-center text-sm font-medium text-emerald-600">
+          <span className="flex items-center text-sm font-medium text-emerald-600 self-start sm:self-auto">
             <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
             Auto-updating
           </span>
         </div>
 
         {/* Filter Bar */}
-        <div className="px-6 py-3.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center px-4 py-2 border rounded-xl text-sm font-medium transition-colors shadow-xs ${
+              className={`flex items-center px-3.5 sm:px-4 py-2 border rounded-xl text-sm font-medium transition-colors shadow-xs ${
                 showFilters || activeFilterCount > 0
                   ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                   : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
@@ -268,37 +268,37 @@ const AdminDashboard = () => {
             </button>
 
             {activeFilterCount > 0 && (
-              <button onClick={clearFilters} className="flex items-center px-3.5 py-2 border border-red-200 rounded-xl bg-red-50 text-sm text-red-600 hover:bg-red-100 transition-colors">
+              <button onClick={clearFilters} className="flex items-center px-3 sm:px-3.5 py-2 border border-red-200 rounded-xl bg-red-50 text-xs sm:text-sm text-red-600 hover:bg-red-100 transition-colors">
                 <X className="h-4 w-4 mr-1" />
-                Clear Filters
+                Clear
               </button>
             )}
           </div>
 
           {/* Quick Date Shortcuts */}
-          <div className="flex items-center space-x-1.5 text-xs">
-            <span className="text-gray-400 font-medium mr-1 hidden sm:inline">Quick dates:</span>
+          <div className="flex items-center space-x-1.5 text-xs overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+            <span className="text-gray-400 font-medium mr-1 hidden sm:inline flex-shrink-0">Quick dates:</span>
             <button
               onClick={() => handleQuickDatePreset('all')}
-              className={`px-2.5 py-1.5 rounded-lg font-medium transition-colors ${!filterDateFrom && !filterDateTo ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`px-2.5 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${!filterDateFrom && !filterDateTo ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               All
             </button>
             <button
               onClick={() => handleQuickDatePreset('today')}
-              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
             >
               Today
             </button>
             <button
               onClick={() => handleQuickDatePreset('yesterday')}
-              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
             >
               Yesterday
             </button>
             <button
               onClick={() => handleQuickDatePreset('7days')}
-              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
             >
               Last 7 Days
             </button>
@@ -307,7 +307,7 @@ const AdminDashboard = () => {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="px-6 py-4 bg-gray-50/70 border-b border-gray-100">
+          <div className="px-4 sm:px-6 py-4 bg-gray-50/70 border-b border-gray-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Employee Name</label>
@@ -497,27 +497,27 @@ const AdminDashboard = () => {
 
         {/* Pagination */}
         {filteredActivity.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+            <p className="text-xs sm:text-sm text-gray-500">
               Page <span className="font-semibold text-gray-800">{currentPage}</span> of <span className="font-semibold text-gray-800">{Math.max(1, totalPages)}</span>
               {' '}({filteredActivity.length} total records)
             </p>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto max-w-full pb-1 sm:pb-0">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage === 1 ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                className={`flex items-center px-2.5 sm:px-3.5 py-1.5 border rounded-xl text-xs sm:text-sm font-medium transition-colors ${currentPage === 1 ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" /> Prev
               </button>
               {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).slice(
-                Math.max(0, currentPage - 3),
+                Math.max(0, currentPage - 2),
                 Math.min(Math.max(1, totalPages), currentPage + 2)
               ).map(page => (
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-xl text-sm font-semibold transition-colors ${page === currentPage ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center ${page === currentPage ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
                 >
                   {page}
                 </button>
@@ -525,9 +525,9 @@ const AdminDashboard = () => {
               <button
                 onClick={() => setCurrentPage(p => Math.min(Math.max(1, totalPages), p + 1))}
                 disabled={currentPage >= totalPages}
-                className={`flex items-center px-3.5 py-1.5 border rounded-xl text-sm font-medium transition-colors ${currentPage >= totalPages ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                className={`flex items-center px-2.5 sm:px-3.5 py-1.5 border rounded-xl text-xs sm:text-sm font-medium transition-colors ${currentPage >= totalPages ? 'text-gray-300 border-gray-100 cursor-not-allowed' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               >
-                Next <ChevronRight className="h-4 w-4 ml-1" />
+                Next <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
               </button>
             </div>
           </div>
