@@ -245,27 +245,6 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
             )}
           </div>
 
-          {/* Quick Metrics */}
-          <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100 grid grid-cols-4 gap-3">
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</p>
-              <p className="text-sm font-bold text-gray-900 mt-1 truncate">{metrics.currentStatus}</p>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Duration</p>
-              <p className="text-sm font-bold text-gray-900 mt-1">{metrics.totalDuration}</p>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Updates Count</p>
-              <p className="text-sm font-bold text-indigo-600 mt-1">{metrics.updateCount}</p>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">First Started</p>
-              <p className="text-xs font-semibold text-gray-700 mt-1 truncate">
-                {metrics.startedAt ? metrics.startedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}
-              </p>
-            </div>
-          </div>
 
           {/* Filter & Sort Bar */}
           <div className="px-6 py-2.5 border-b border-gray-100 bg-white flex items-center justify-between">

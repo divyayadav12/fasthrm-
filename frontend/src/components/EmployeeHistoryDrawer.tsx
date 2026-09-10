@@ -297,25 +297,6 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             )}
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100 grid grid-cols-4 gap-3">
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Tasks</p>
-              <p className="text-xl font-bold text-gray-900 mt-0.5">{stats.totalTasks}</p>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Completed</p>
-              <p className="text-xl font-bold text-emerald-600 mt-0.5">{stats.completedCount}</p>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Working</p>
-              <p className="text-xl font-bold text-blue-600 mt-0.5">{stats.workingCount}</p>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Logged Time</p>
-              <p className="text-xl font-bold text-gray-900 mt-0.5">{stats.totalDuration}</p>
-            </div>
-          </div>
 
           {/* Filter Bar */}
           <div className="px-6 py-3 border-b border-gray-100 bg-white flex flex-wrap items-center justify-between gap-2">
