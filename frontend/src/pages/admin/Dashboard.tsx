@@ -4,7 +4,9 @@ import { RootState, AppDispatch } from '../../store';
 import { fetchDashboardStats, fetchRecentActivity, addLiveActivity } from '../../store/slices/dashboardSlice';
 import { fetchEmployees } from '../../store/slices/employeeSlice';
 import { socket } from '../../utils/socket';
-import { CheckCircle, Users, Activity, Filter, X, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, Users, Activity, Filter, X, ChevronDown, ChevronLeft, ChevronRight, History } from 'lucide-react';
+import { EmployeeHistoryDrawer } from '../../components/EmployeeHistoryDrawer';
+import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -14,9 +16,14 @@ const AdminDashboard = () => {
   const { employees, total: totalEmployees } = useSelector((state: RootState) => state.employees);
   const [socketStatus, setSocketStatus] = useState<'Connecting' | 'Connected' | 'Reconnecting' | 'Offline'>('Connecting');
 
+  // History Drawer states
+  const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [filterEmployee, setFilterEmployee] = useState('');
+  const [filterTask, setFilterTask] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -50,10 +57,11 @@ const AdminDashboard = () => {
     };
   }, [dispatch]);
 
-  const activeFilterCount = [filterEmployee, filterStatus, filterDateFrom, filterDateTo].filter(Boolean).length;
+  const activeFilterCount = [filterEmployee, filterTask, filterStatus, filterDateFrom, filterDateTo].filter(Boolean).length;
 
   const clearFilters = () => {
     setFilterEmployee('');
+    setFilterTask('');
     setFilterStatus('');
     setFilterDateFrom('');
     setFilterDateTo('');
@@ -63,6 +71,10 @@ const AdminDashboard = () => {
   const filteredActivity = useMemo(() => {
     return liveActivity.filter((log) => {
       if (filterEmployee && !log.employeeId?.name?.toLowerCase().includes(filterEmployee.toLowerCase())) return false;
+      if (filterTask) {
+        const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
+        if (!title.includes(filterTask.toLowerCase())) return false;
+      }
       if (filterStatus && log.status !== filterStatus) return false;
       if (filterDateFrom) {
         const logDate = new Date(log.createdAt);
@@ -76,7 +88,7 @@ const AdminDashboard = () => {
       }
       return true;
     });
-  }, [liveActivity, filterEmployee, filterStatus, filterDateFrom, filterDateTo]);
+  }, [liveActivity, filterEmployee, filterTask, filterStatus, filterDateFrom, filterDateTo]);
 
   // Pagination
   const totalPages = Math.ceil(filteredActivity.length / ITEMS_PER_PAGE);
@@ -124,6 +136,33 @@ const AdminDashboard = () => {
   // Reset to page 1 when filters change
   const handleFilterChange = (setter: any) => (e: any) => {
     setter(e.target.value);
+    setCurrentPage(1);
+  };
+
+  // Quick Date presets
+  const handleQuickDatePreset = (preset: 'today' | 'yesterday' | '7days' | 'all') => {
+    const today = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    if (preset === 'today') {
+      const todayStr = formatDate(today);
+      setFilterDateFrom(todayStr);
+      setFilterDateTo(todayStr);
+    } else if (preset === 'yesterday') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      const yStr = formatDate(y);
+      setFilterDateFrom(yStr);
+      setFilterDateTo(yStr);
+    } else if (preset === '7days') {
+      const past = new Date();
+      past.setDate(past.getDate() - 7);
+      setFilterDateFrom(formatDate(past));
+      setFilterDateTo(formatDate(today));
+    } else {
+      setFilterDateFrom('');
+      setFilterDateTo('');
+    }
     setCurrentPage(1);
   };
 
@@ -199,7 +238,10 @@ const AdminDashboard = () => {
       {/* Live Team Status Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900 tracking-wide">LIVE TEAM STATUS</h2>
+          <div>
+            <h2 className="text-base font-bold text-gray-900 tracking-wide">LIVE TEAM STATUS</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Click on any employee or task to inspect instant chronological history</p>
+          </div>
           <span className="flex items-center text-sm font-medium text-emerald-600">
             <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
             Auto-updating
@@ -207,35 +249,66 @@ const AdminDashboard = () => {
         </div>
 
         {/* Filter Bar */}
-        <div className="px-6 py-3.5 border-b border-gray-100 flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center px-4 py-2 border rounded-xl text-sm font-medium transition-colors shadow-xs ${
-              showFilters || activeFilterCount > 0
-                ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Filter className="h-4 w-4 mr-2 text-gray-500" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="ml-2 bg-indigo-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">{activeFilterCount}</span>
-            )}
-            <ChevronDown className={`h-4 w-4 ml-1.5 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-          </button>
-
-          {activeFilterCount > 0 && (
-            <button onClick={clearFilters} className="flex items-center px-3.5 py-2 border border-red-200 rounded-xl bg-red-50 text-sm text-red-600 hover:bg-red-100 transition-colors">
-              <X className="h-4 w-4 mr-1" />
-              Clear Filters
+        <div className="px-6 py-3.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center px-4 py-2 border rounded-xl text-sm font-medium transition-colors shadow-xs ${
+                showFilters || activeFilterCount > 0
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Filter className="h-4 w-4 mr-2 text-gray-500" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="ml-2 bg-indigo-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">{activeFilterCount}</span>
+              )}
+              <ChevronDown className={`h-4 w-4 ml-1.5 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
-          )}
+
+            {activeFilterCount > 0 && (
+              <button onClick={clearFilters} className="flex items-center px-3.5 py-2 border border-red-200 rounded-xl bg-red-50 text-sm text-red-600 hover:bg-red-100 transition-colors">
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </button>
+            )}
+          </div>
+
+          {/* Quick Date Shortcuts */}
+          <div className="flex items-center space-x-1.5 text-xs">
+            <span className="text-gray-400 font-medium mr-1 hidden sm:inline">Quick dates:</span>
+            <button
+              onClick={() => handleQuickDatePreset('all')}
+              className={`px-2.5 py-1.5 rounded-lg font-medium transition-colors ${!filterDateFrom && !filterDateTo ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => handleQuickDatePreset('today')}
+              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              Today
+            </button>
+            <button
+              onClick={() => handleQuickDatePreset('yesterday')}
+              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              Yesterday
+            </button>
+            <button
+              onClick={() => handleQuickDatePreset('7days')}
+              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              Last 7 Days
+            </button>
+          </div>
         </div>
 
         {/* Filter Panel */}
         {showFilters && (
           <div className="px-6 py-4 bg-gray-50/70 border-b border-gray-100">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Employee Name</label>
                 <input
@@ -243,6 +316,16 @@ const AdminDashboard = () => {
                   placeholder="Search employee..."
                   value={filterEmployee}
                   onChange={handleFilterChange(setFilterEmployee)}
+                  className="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Task Title</label>
+                <input
+                  type="text"
+                  placeholder="Search task..."
+                  value={filterTask}
+                  onChange={handleFilterChange(setFilterTask)}
                   className="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 />
               </div>
@@ -293,40 +376,120 @@ const AdminDashboard = () => {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Task</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Last Updated</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {paginatedActivity.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                     No activity found.
                   </td>
                 </tr>
               ) : (
-                paginatedActivity.map((log) => (
-                  <tr key={log._id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm mr-3">
-                          {log.employeeId?.name?.charAt(0).toLowerCase() || 'u'}
+                paginatedActivity.map((log) => {
+                  const employeeName = log.employeeId?.name || 'Unknown';
+                  const taskTitle = log.taskId?.title || log.customTaskTitle || '-';
+
+                  return (
+                    <tr key={log._id} className="hover:bg-indigo-50/30 transition-colors group">
+                      {/* Employee Column - Clickable */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div
+                          onClick={() => setSelectedEmployee({
+                            _id: log.employeeId?._id || log.employeeId,
+                            name: employeeName,
+                            email: log.employeeId?.email || '',
+                            department: log.employeeId?.department,
+                            designation: log.employeeId?.designation,
+                            status: log.status,
+                            currentTask: taskTitle !== '-' ? taskTitle : undefined,
+                          })}
+                          className="flex items-center cursor-pointer group/emp w-fit"
+                          title="Click to view employee profile & complete history"
+                        >
+                          <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm mr-3 group-hover/emp:bg-indigo-600 group-hover/emp:text-white transition-colors">
+                            {employeeName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900 group-hover/emp:text-indigo-600 group-hover/emp:underline transition-colors flex items-center">
+                              {employeeName}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">{log.employeeId?.email || ''}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900">{log.employeeId?.name || 'Unknown'}</div>
-                          <div className="text-xs text-gray-400 mt-0.5">{log.employeeId?.email || ''}</div>
+                      </td>
+
+                      {/* Task Column - Clickable */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {taskTitle !== '-' ? (
+                          <div
+                            onClick={() => setSelectedTask({
+                              taskId: log.taskId?._id || log.taskId,
+                              title: taskTitle,
+                              employee: log.employeeId,
+                              status: log.status,
+                            })}
+                            className="text-sm text-gray-800 hover:text-indigo-600 font-medium max-w-xs truncate cursor-pointer hover:underline flex items-center space-x-1.5"
+                            title="Click to view dedicated task history"
+                          >
+                            <span>{taskTitle}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                      </td>
+
+                      {/* Status Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(log.status)}
+                      </td>
+
+                      {/* Last Updated Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-normal">
+                        {new Date(log.createdAt).toLocaleString()}
+                      </td>
+
+                      {/* Quick History Actions Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => setSelectedEmployee({
+                              _id: log.employeeId?._id || log.employeeId,
+                              name: employeeName,
+                              email: log.employeeId?.email || '',
+                              department: log.employeeId?.department,
+                              designation: log.employeeId?.designation,
+                              status: log.status,
+                              currentTask: taskTitle !== '-' ? taskTitle : undefined,
+                            })}
+                            className="px-2.5 py-1 text-xs font-medium rounded-lg text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100 transition-colors flex items-center"
+                            title="View Employee History"
+                          >
+                            <History className="h-3.5 w-3.5 mr-1" />
+                            Employee
+                          </button>
+
+                          {taskTitle !== '-' && (
+                            <button
+                              onClick={() => setSelectedTask({
+                                taskId: log.taskId?._id || log.taskId,
+                                title: taskTitle,
+                                employee: log.employeeId,
+                                status: log.status,
+                              })}
+                              className="px-2.5 py-1 text-xs font-medium rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center"
+                              title="View Task History"
+                            >
+                              <History className="h-3.5 w-3.5 mr-1" />
+                              Task
+                            </button>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium max-w-xs truncate">
-                      {log.taskId?.title || log.customTaskTitle || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(log.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-normal">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -370,6 +533,30 @@ const AdminDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Employee History Slide-over Drawer */}
+      <EmployeeHistoryDrawer
+        isOpen={!!selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
+        employee={selectedEmployee}
+        initialLogs={liveActivity}
+        onSelectTask={(task) => {
+          setSelectedEmployee(null);
+          setSelectedTask(task);
+        }}
+      />
+
+      {/* Dedicated Task History Slide-over Drawer */}
+      <TaskHistoryDrawer
+        isOpen={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+        task={selectedTask}
+        initialLogs={liveActivity}
+        onSelectEmployee={(emp) => {
+          setSelectedTask(null);
+          setSelectedEmployee(emp);
+        }}
+      />
     </div>
   );
 };

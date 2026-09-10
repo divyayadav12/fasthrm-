@@ -122,7 +122,7 @@ export const getEmployeeWorkLogs = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Not authorized to view other employee history' });
     }
 
-    const { projectId, status, dateFrom, dateTo, page = '1', limit = '20' } = req.query;
+    const { projectId, status, dateFrom, dateTo, page = '1', limit = '100' } = req.query;
     const query: any = { employeeId: req.params.employeeId };
 
     if (projectId) query.projectId = projectId;
@@ -140,8 +140,9 @@ export const getEmployeeWorkLogs = async (req: Request, res: Response) => {
 
     const total = await WorkLog.countDocuments(query);
     const workLogs = await WorkLog.find(query)
+      .populate('employeeId', 'name email department designation profileImage')
       .populate('projectId', 'name')
-      .populate('taskId', 'title')
+      .populate('taskId', 'title description status')
       .skip(startIndex)
       .limit(limitNumber)
       .sort({ createdAt: -1 });
@@ -151,6 +152,43 @@ export const getEmployeeWorkLogs = async (req: Request, res: Response) => {
       page: pageNumber,
       pages: Math.ceil(total / limitNumber),
       total,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get all work logs for a specific task
+// @route   GET /api/work-logs/task/:taskId
+// @access  Private
+export const getTaskWorkLogs = async (req: Request, res: Response) => {
+  try {
+    const taskId = String(req.params.taskId || '');
+    let query: any = {};
+
+    const isValidId = /^[0-9a-fA-F]{24}$/.test(taskId);
+    if (isValidId) {
+      query = {
+        $or: [
+          { taskId },
+          { _id: taskId }
+        ]
+      };
+    } else {
+      query = {
+        customTaskTitle: decodeURIComponent(taskId)
+      };
+    }
+
+    const workLogs = await WorkLog.find(query)
+      .populate('employeeId', 'name email department designation profileImage')
+      .populate('projectId', 'name')
+      .populate('taskId', 'title description status assignedTo')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      workLogs,
+      total: workLogs.length,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });

@@ -62,9 +62,9 @@ export const dashboardSlice = createSlice({
   reducers: {
     // Action to handle incoming socket events
     addLiveActivity: (state, action: PayloadAction<any>) => {
-      // Add new log to the beginning, keep only latest 50
+      // Add new log to the beginning, keep up to latest 500
       state.liveActivity.unshift(action.payload);
-      if (state.liveActivity.length > 50) {
+      if (state.liveActivity.length > 500) {
         state.liveActivity.pop();
       }
     }
