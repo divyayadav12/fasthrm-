@@ -55,7 +55,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
 
     // Populate for socket event
     const populatedLog = await WorkLog.findById(workLog._id)
-      .populate('employeeId', 'name email profileImage')
+      .populate('employeeId', 'name email department designation role profileImage')
       .populate('projectId', 'name')
       .populate('taskId', 'title');
 
@@ -93,7 +93,7 @@ export const getWorkLogs = async (req: Request, res: Response) => {
 
     const total = await WorkLog.countDocuments(query);
     const workLogs = await WorkLog.find(query)
-      .populate('employeeId', 'name email')
+      .populate('employeeId', 'name email department designation role profileImage')
       .populate('projectId', 'name')
       .populate('taskId', 'title')
       .skip(startIndex)

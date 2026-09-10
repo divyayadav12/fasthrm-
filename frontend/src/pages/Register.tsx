@@ -10,6 +10,8 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const [role, setRole] = useState('Editor DTP');
+
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
@@ -31,47 +33,73 @@ const Register = () => {
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(register({ name, email, password }));
+    dispatch(register({ name, email, password, role }));
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-lg border border-gray-100">
         <div className="text-center">
-          <Briefcase className="mx-auto h-12 w-12 text-indigo-600" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Create an Account</h2>
+          <img src="/logo.png" alt="FAST Logo" className="mx-auto h-16 w-auto object-contain mb-3" />
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">Create an Account</h2>
+          <p className="text-xs text-gray-500 mt-1">Register as employee with your role</p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={onSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+        <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+          <div className="space-y-4">
             <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Full Name
+              </label>
               <input
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Full Name"
+                className="block w-full px-3.5 py-2.5 border border-gray-300 rounded-xl bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm shadow-2xs"
+                placeholder="Enter full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Email Address
+              </label>
               <input
                 type="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                className="block w-full px-3.5 py-2.5 border border-gray-300 rounded-xl bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm shadow-2xs"
+                placeholder="Enter email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Password
+              </label>
               <input
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="block w-full px-3.5 py-2.5 border border-gray-300 rounded-xl bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm shadow-2xs"
+                placeholder="Create password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Role / Department
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="block w-full px-3.5 py-2.5 border border-gray-300 rounded-xl bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm font-medium shadow-2xs"
+              >
+                <option value="Editor DTP">Editor DTP</option>
+                <option value="IT and support">IT and support</option>
+                <option value="IOA">IOA</option>
+                <option value="Career">Career</option>
+                <option value="Others">Others</option>
+              </select>
             </div>
           </div>
 

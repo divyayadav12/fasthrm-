@@ -9,6 +9,7 @@ import { EmployeeHistoryDrawer } from '../../components/EmployeeHistoryDrawer';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const ITEMS_PER_PAGE = 10;
+const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'IOA', 'Career', 'Others'] as const;
 
 const AdminDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -21,12 +22,40 @@ const AdminDashboard = () => {
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
   // Filter states
+  const [selectedRoleTab, setSelectedRoleTab] = useState<string>('All');
   const [showFilters, setShowFilters] = useState(false);
   const [filterEmployee, setFilterEmployee] = useState('');
   const [filterTask, setFilterTask] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+
+  // Helper function to match employee role/department flexibly
+  const isRoleMatch = (empDept: string, targetRole: string) => {
+    const dept = (empDept || '').trim().toLowerCase();
+    const target = targetRole.trim().toLowerCase();
+
+    if (target === 'all') return true;
+    if (target === 'editor dtp') {
+      return dept.includes('editor') || dept.includes('dtp');
+    }
+    if (target === 'it and support' || target === 'it & support') {
+      return dept.includes('it') || dept.includes('support');
+    }
+    if (target === 'ioa') {
+      return dept.includes('ioa');
+    }
+    if (target === 'career' || target === 'careear') {
+      return dept.includes('career') || dept.includes('careear');
+    }
+    if (target === 'others') {
+      const isKnown = dept.includes('editor') || dept.includes('dtp') ||
+                      dept.includes('it') || dept.includes('support') ||
+                      dept.includes('ioa') || dept.includes('career') || dept.includes('careear');
+      return !isKnown || dept.includes('other');
+    }
+    return dept.includes(target);
+  };
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,11 +94,19 @@ const AdminDashboard = () => {
     setFilterStatus('');
     setFilterDateFrom('');
     setFilterDateTo('');
+    setSelectedRoleTab('All');
     setCurrentPage(1);
   };
 
   const filteredActivity = useMemo(() => {
     return liveActivity.filter((log) => {
+      // Role Filter Tab
+      if (selectedRoleTab !== 'All') {
+        const empId = log.employeeId?._id || log.employeeId;
+        const employeeObj = employees.find(e => e._id === empId) || (typeof log.employeeId === 'object' ? log.employeeId : null);
+        const empDept = employeeObj?.department || employeeObj?.designation || log.employeeId?.department || '';
+        if (!isRoleMatch(empDept, selectedRoleTab)) return false;
+      }
       if (filterEmployee && !log.employeeId?.name?.toLowerCase().includes(filterEmployee.toLowerCase())) return false;
       if (filterTask) {
         const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
@@ -88,7 +125,7 @@ const AdminDashboard = () => {
       }
       return true;
     });
-  }, [liveActivity, filterEmployee, filterTask, filterStatus, filterDateFrom, filterDateTo]);
+  }, [liveActivity, employees, selectedRoleTab, filterEmployee, filterTask, filterStatus, filterDateFrom, filterDateTo]);
 
   // Pagination
   const totalPages = Math.ceil(filteredActivity.length / ITEMS_PER_PAGE);
@@ -249,27 +286,50 @@ const AdminDashboard = () => {
         </div>
 
         {/* Filter Bar */}
-        <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center px-3.5 sm:px-4 py-2 border rounded-xl text-sm font-medium transition-colors shadow-xs ${
+              className={`flex items-center px-3 sm:px-3.5 py-1.5 border rounded-xl text-xs sm:text-sm font-medium transition-colors shadow-xs shrink-0 ${
                 showFilters || activeFilterCount > 0
                   ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                   : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <Filter className="h-4 w-4 mr-2 text-gray-500" />
+              <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 text-gray-500" />
               Filters
               {activeFilterCount > 0 && (
-                <span className="ml-2 bg-indigo-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">{activeFilterCount}</span>
+                <span className="ml-1.5 bg-indigo-600 text-white text-[10px] sm:text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">{activeFilterCount}</span>
               )}
-              <ChevronDown className={`h-4 w-4 ml-1.5 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
 
+            {/* Role Filter Tabs beside Filters */}
+            <div className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+              {ROLE_TABS.map((roleTab) => {
+                const isActive = selectedRoleTab === roleTab;
+                return (
+                  <button
+                    key={roleTab}
+                    onClick={() => {
+                      setSelectedRoleTab(roleTab);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                    }`}
+                  >
+                    {roleTab}
+                  </button>
+                );
+              })}
+            </div>
+
             {activeFilterCount > 0 && (
-              <button onClick={clearFilters} className="flex items-center px-3 sm:px-3.5 py-2 border border-red-200 rounded-xl bg-red-50 text-xs sm:text-sm text-red-600 hover:bg-red-100 transition-colors">
-                <X className="h-4 w-4 mr-1" />
+              <button onClick={clearFilters} className="flex items-center px-2.5 py-1.5 border border-red-200 rounded-xl bg-red-50 text-xs text-red-600 hover:bg-red-100 transition-colors shrink-0">
+                <X className="h-3.5 w-3.5 mr-1" />
                 Clear
               </button>
             )}
@@ -390,6 +450,9 @@ const AdminDashboard = () => {
                 paginatedActivity.map((log) => {
                   const employeeName = log.employeeId?.name || 'Unknown';
                   const taskTitle = log.taskId?.title || log.customTaskTitle || '-';
+                  const empId = log.employeeId?._id || log.employeeId;
+                  const employeeObj = employees.find(e => e._id === empId) || (typeof log.employeeId === 'object' ? log.employeeId : null);
+                  const empRole = employeeObj?.department || employeeObj?.designation || log.employeeId?.department || '';
 
                   return (
                     <tr key={log._id} className="hover:bg-indigo-50/30 transition-colors group">
@@ -397,23 +460,30 @@ const AdminDashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div
                           onClick={() => setSelectedEmployee({
-                            _id: log.employeeId?._id || log.employeeId,
+                            _id: empId,
                             name: employeeName,
                             email: log.employeeId?.email || '',
-                            department: log.employeeId?.department,
-                            designation: log.employeeId?.designation,
+                            department: empRole || log.employeeId?.department,
+                            designation: employeeObj?.designation || log.employeeId?.designation,
                             status: log.status,
                             currentTask: taskTitle !== '-' ? taskTitle : undefined,
                           })}
                           className="flex items-center cursor-pointer group/emp w-fit"
                           title="Click to view employee profile & complete history"
                         >
-                          <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm mr-3 group-hover/emp:bg-indigo-600 group-hover/emp:text-white transition-colors">
+                          <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm mr-3 group-hover/emp:bg-indigo-600 group-hover/emp:text-white transition-colors shrink-0">
                             {employeeName.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="text-sm font-semibold text-gray-900 group-hover/emp:text-indigo-600 group-hover/emp:underline transition-colors flex items-center">
-                              {employeeName}
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-semibold text-gray-900 group-hover/emp:text-indigo-600 group-hover/emp:underline transition-colors">
+                                {employeeName}
+                              </span>
+                              {empRole && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                  {empRole}
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-400 mt-0.5">{log.employeeId?.email || ''}</div>
                           </div>

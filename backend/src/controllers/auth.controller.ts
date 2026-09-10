@@ -7,7 +7,7 @@ import generateToken from '../utils/generateToken';
 // @access  Public
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     const userExists = await User.findOne({ email });
 
@@ -15,12 +15,14 @@ export const registerUser = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Default to EMPLOYEE role for self-registered users
+    // Default to EMPLOYEE role for self-registered users, and save selected role as department
     const user = await User.create({
       name,
       email,
       password,
       role: 'EMPLOYEE',
+      department: role || 'Editor DTP',
+      designation: role || 'Editor DTP',
     });
 
     if (user) {
@@ -29,6 +31,8 @@ export const registerUser = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        department: user.department,
+        designation: user.designation,
         token: generateToken(user._id as any),
       });
     } else {
@@ -44,13 +48,20 @@ export const registerUser = async (req: Request, res: Response) => {
 // @access  Public
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
       if (!user.isActive) {
         return res.status(401).json({ message: 'Account is deactivated' });
+      }
+
+      // If a role was selected on login and user is not an ADMIN, update department & designation
+      if (role && user.role !== 'ADMIN') {
+        user.department = role;
+        user.designation = role;
+        await user.save();
       }
 
       res.json({
