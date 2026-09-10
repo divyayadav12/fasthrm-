@@ -9,7 +9,7 @@ import { EmployeeHistoryDrawer } from '../../components/EmployeeHistoryDrawer';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const ITEMS_PER_PAGE = 10;
-const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'IOA', 'Career', 'Others'] as const;
+const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'Others', 'IOA', 'Career'] as const;
 
 const AdminDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();

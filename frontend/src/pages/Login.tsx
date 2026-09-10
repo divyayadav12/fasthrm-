@@ -83,9 +83,9 @@ const Login = () => {
               >
                 <option value="Editor DTP">Editor DTP</option>
                 <option value="IT and support">IT and support</option>
+                <option value="Others">Others</option>
                 <option value="IOA">IOA</option>
                 <option value="Career">Career</option>
-                <option value="Others">Others</option>
               </select>
             </div>
           </div>
