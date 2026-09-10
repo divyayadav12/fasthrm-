@@ -263,7 +263,6 @@ const AdminDashboard = () => {
         <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-bold text-gray-900 tracking-wide">LIVE TEAM STATUS</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Click on any employee or task to inspect instant chronological history</p>
           </div>
           <span className="flex items-center text-sm font-medium text-emerald-600 self-start sm:self-auto">
             <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
