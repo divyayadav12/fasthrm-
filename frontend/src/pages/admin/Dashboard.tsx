@@ -256,44 +256,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-        {/* Total Employees */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Employees</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">{totalEmployees || employees.length}</p>
-            <p className="text-xs text-gray-400 mt-1 font-medium">Registered staff</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0 ml-4">
-            <Users className="h-6 w-6" />
-          </div>
-        </div>
 
-        {/* Completed Today */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed Today</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">{completedTodayCount}</p>
-            <p className="text-xs text-gray-400 mt-1 font-medium">Successfully closed</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 ml-4">
-            <CheckCircle className="h-6 w-6" />
-          </div>
-        </div>
-
-        {/* Currently Working */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between sm:col-span-2 md:col-span-1">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Currently Working</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">{currentlyWorkingCount}</p>
-            <p className="text-xs text-gray-400 mt-1 font-medium">Active right now</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 ml-4">
-            <Activity className="h-6 w-6" />
-          </div>
-        </div>
-      </div>
 
       {/* Live Team Status Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
