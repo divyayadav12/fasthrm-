@@ -195,14 +195,27 @@ export const verifyOtp = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Email and OTP are required' });
     }
 
+    const cleanEmail = email.trim();
+    const cleanOtp = otp.toString().trim();
+
     const user = await User.findOne({
-      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') },
-      resetPasswordOtp: otp,
-      resetPasswordExpires: { $gt: new Date() },
+      email: { $regex: new RegExp(`^${cleanEmail}$`, 'i') },
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(404).json({ message: 'No account registered with this email address.' });
+    }
+
+    if (!user.resetPasswordOtp) {
+      return res.status(400).json({ message: 'No active OTP request found. Please request a new OTP.' });
+    }
+
+    if (user.resetPasswordExpires && new Date() > user.resetPasswordExpires) {
+      return res.status(400).json({ message: 'OTP code has expired. Please click Resend OTP.' });
+    }
+
+    if (user.resetPasswordOtp.toString().trim() !== cleanOtp) {
+      return res.status(400).json({ message: 'Incorrect OTP code. Please enter the latest 6-digit code sent to your email.' });
     }
 
     res.json({ message: 'OTP verified successfully' });
@@ -225,14 +238,27 @@ export const resetPassword = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
 
+    const cleanEmail = email.trim();
+    const cleanOtp = otp.toString().trim();
+
     const user = await User.findOne({
-      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') },
-      resetPasswordOtp: otp,
-      resetPasswordExpires: { $gt: new Date() },
+      email: { $regex: new RegExp(`^${cleanEmail}$`, 'i') },
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(404).json({ message: 'No account registered with this email address.' });
+    }
+
+    if (!user.resetPasswordOtp) {
+      return res.status(400).json({ message: 'No active OTP request found. Please request a new OTP.' });
+    }
+
+    if (user.resetPasswordExpires && new Date() > user.resetPasswordExpires) {
+      return res.status(400).json({ message: 'OTP code has expired. Please click Resend OTP.' });
+    }
+
+    if (user.resetPasswordOtp.toString().trim() !== cleanOtp) {
+      return res.status(400).json({ message: 'Incorrect OTP code. Please enter the latest 6-digit code sent to your email.' });
     }
 
     // Set new password (pre-save hook will hash it)

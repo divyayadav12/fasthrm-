@@ -61,6 +61,7 @@ const ForgotPassword = () => {
       setSuccessMsg(res.data.message || 'OTP verified successfully.');
       setStep('PASSWORD');
     } catch (err: any) {
+      setSuccessMsg('');
       setError(err.response?.data?.message || 'Invalid or expired OTP. Please try again.');
     } finally {
       setLoading(false);
@@ -93,6 +94,7 @@ const ForgotPassword = () => {
       setSuccessMsg(res.data.message || 'Password has been reset successfully.');
       setStep('SUCCESS');
     } catch (err: any) {
+      setSuccessMsg('');
       setError(err.response?.data?.message || 'Failed to reset password. Please try again.');
     } finally {
       setLoading(false);
