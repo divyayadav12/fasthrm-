@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchTasks, deleteTask } from '../../store/slices/taskSlice';
-import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw } from 'lucide-react';
+import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
 import { socket } from '../../utils/socket';
 import axios from 'axios';
 
@@ -22,7 +22,17 @@ const EmployeeDashboard = () => {
   const [duration, setDuration] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null); // track which task is being edited
-  const [taskToDelete, setTaskToDelete] = useState<any>(null); // track task to delete
+  const [editRestartReason, setEditRestartReason] = useState('');
+  const [modalError, setModalError] = useState('');
+
+  // Restart Task Modal state
+  const [restartingTask, setRestartingTask] = useState<any | null>(null);
+  const [restartReason, setRestartReason] = useState('');
+  const [restartReasonError, setRestartReasonError] = useState('');
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  // Delete task modal state
+  const [taskToDelete, setTaskToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const confirmDeleteTask = async () => {
@@ -71,6 +81,8 @@ const EmployeeDashboard = () => {
     setCustomTaskTitle('');
     setStatus('WORKING');
     setDescription('');
+    setEditRestartReason('');
+    setModalError('');
     setShowUpdateModal(true);
   };
 
@@ -80,46 +92,91 @@ const EmployeeDashboard = () => {
     setCustomTaskTitle(task.title);
     setStatus(task.status);
     setDescription(task.description || '');
+    setEditRestartReason(task.restartReason || '');
+    setModalError('');
     setShowUpdateModal(true);
   };
 
-  // Quick Restart task directly from dashboard table
-  const handleRestartTask = async (task: any) => {
+  // Open modal to prompt restart reason
+  const openRestartModal = (task: any) => {
+    setRestartingTask(task);
+    setRestartReason('');
+    setRestartReasonError('');
+  };
+
+  // Confirm restart with reason
+  const handleConfirmRestartTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanReason = restartReason.trim();
+    if (!cleanReason) {
+      setRestartReasonError('Please provide a reason explaining why this task is being restarted.');
+      return;
+    }
+    if (!restartingTask || isRestarting) return;
+    setIsRestarting(true);
     try {
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      const updatedDescription = restartingTask.description 
+        ? `[Restarted: ${cleanReason}] - ${restartingTask.description}` 
+        : `[Restarted: ${cleanReason}]`;
+
       await axios.post(
         `${API_URL}/work-logs`,
         {
-          customTaskTitle: task.title,
+          customTaskTitle: restartingTask.title,
           status: 'WORKING',
           progress: 50,
-          description: task.description || 'Resumed work on task',
+          restartReason: cleanReason,
+          description: updatedDescription,
           duration: 0,
           startTime: new Date(),
         },
         config
       );
+
       if (user) {
         dispatch(fetchTasks({ assignedTo: user._id }));
       }
+      setRestartingTask(null);
+      setTaskTab('ACTIVE'); // Switch to active tab so employee sees their restarted task!
     } catch (error) {
       console.error('Failed to restart task:', error);
+    } finally {
+      setIsRestarting(false);
     }
   };
 
   const handleUpdateWork = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    const isReactivating = editingTask && editingTask.status === 'COMPLETED' && status !== 'COMPLETED';
+    const cleanRestartReason = editRestartReason.trim();
+
+    if (isReactivating && !cleanRestartReason) {
+      setModalError('Please provide a reason for reactivating/restarting this completed task.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const payload = {
+      let finalDescription = description;
+      if (isReactivating && cleanRestartReason && !description.includes(cleanRestartReason)) {
+        finalDescription = `[Restarted: ${cleanRestartReason}] - ${description}`;
+      }
+
+      const payload: any = {
         customTaskTitle,
         status,
         progress: Number(progress),
-        description,
+        description: finalDescription,
         duration: Number(duration),
         startTime: new Date(Date.now() - Number(duration) * 60000),
       };
+
+      if (isReactivating && cleanRestartReason) {
+        payload.restartReason = cleanRestartReason;
+      }
 
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
       await axios.post(`${API_URL}/work-logs`, payload, config);
@@ -130,6 +187,9 @@ const EmployeeDashboard = () => {
       setDescription('');
       setDuration(0);
       dispatch(fetchTasks({ assignedTo: user?._id }));
+      if (isReactivating) {
+        setTaskTab('ACTIVE');
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -292,6 +352,11 @@ const EmployeeDashboard = () => {
                   <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gray-900">{task.title}</div>
+                      {task.restartReason && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md max-w-fit">
+                          <span>🔄 Restart Reason: {task.restartReason}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-600 max-w-xs truncate">{task.description || '-'}</div>
@@ -303,9 +368,9 @@ const EmployeeDashboard = () => {
                       <div className="flex items-center justify-end space-x-2">
                         {task.status === 'COMPLETED' && (
                           <button
-                            onClick={() => handleRestartTask(task)}
+                            onClick={() => openRestartModal(task)}
                             className="flex items-center px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
-                            title="Restart task & set to Working"
+                            title="Restart task with reason"
                           >
                             <RotateCcw className="h-3.5 w-3.5 mr-1 text-emerald-600" />
                             Restart
@@ -335,6 +400,93 @@ const EmployeeDashboard = () => {
           </table>
         </div>
       </div>
+
+      {/* Restart Reason Prompt Modal (Dashboard) */}
+      {restartingTask && (
+        <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="dashboard-restart-modal" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 bg-gray-900/60 transition-opacity backdrop-blur-xs"
+              onClick={() => !isRestarting && setRestartingTask(null)}
+            ></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100 p-6">
+              <form onSubmit={handleConfirmRestartTask}>
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100 flex-shrink-0">
+                    <RotateCcw className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900" id="dashboard-restart-modal">
+                      Restart Completed Task
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Specify the reason for reopening this task
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 mb-4">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">Task Name</span>
+                  <span className="text-sm font-bold text-gray-800">{restartingTask.title}</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                      Reason for Restart <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      required
+                      autoFocus
+                      rows={3}
+                      placeholder="e.g. Additional modifications required, Client feedback, Bug found..."
+                      className="w-full border border-gray-300 rounded-xl shadow-2xs py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all font-medium text-gray-800"
+                      value={restartReason}
+                      onChange={(e) => {
+                        setRestartReason(e.target.value);
+                        if (restartReasonError) setRestartReasonError('');
+                      }}
+                    />
+                    {restartReasonError && (
+                      <p className="mt-1 text-xs font-medium text-rose-600 flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {restartReasonError}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl flex items-start space-x-2">
+                    <Activity className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      After confirming, this task will change to <strong>WORKING</strong> and move to your <strong>Active Tasks</strong> list.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-row-reverse gap-2">
+                  <button
+                    type="submit"
+                    disabled={isRestarting || !restartReason.trim()}
+                    className="w-full sm:w-auto inline-flex justify-center items-center rounded-xl border border-transparent shadow-xs px-4 py-2 bg-amber-600 text-xs font-bold text-white hover:bg-amber-700 focus:outline-none transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    {isRestarting ? 'Restarting...' : 'Confirm & Restart Task'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isRestarting}
+                    onClick={() => setRestartingTask(null)}
+                    className="w-full sm:w-auto inline-flex justify-center rounded-xl border border-gray-200 shadow-xs px-4 py-2 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Update Work Modal */}
       {showUpdateModal && (
@@ -371,7 +523,10 @@ const EmployeeDashboard = () => {
                           <select 
                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
                             value={status}
-                            onChange={(e) => setStatus(e.target.value)}
+                            onChange={(e) => {
+                              setStatus(e.target.value);
+                              if (modalError) setModalError('');
+                            }}
                           >
                             <option value="NOT_STARTED">Not Started</option>
                             <option value="WORKING">Working</option>
@@ -381,6 +536,33 @@ const EmployeeDashboard = () => {
                             <option value="COMPLETED">✅ Completed</option>
                           </select>
                         </div>
+
+                        {/* If reactivating a completed task in modal, prompt reason */}
+                        {editingTask && editingTask.status === 'COMPLETED' && status !== 'COMPLETED' && (
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5">
+                            <label className="block text-xs font-bold text-amber-900">
+                              Reason for Reactivating / Restarting <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Additional work needed, Client revisions"
+                              className="w-full bg-white border border-amber-300 rounded-lg py-1.5 px-3 text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                              value={editRestartReason}
+                              onChange={(e) => {
+                                setEditRestartReason(e.target.value);
+                                if (modalError) setModalError('');
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {modalError && (
+                          <p className="text-xs font-medium text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            {modalError}
+                          </p>
+                        )}
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Work Description</label>

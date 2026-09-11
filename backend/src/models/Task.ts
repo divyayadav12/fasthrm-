@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface ITask extends Document {
   title: string;
   description?: string;
+  restartReason?: string;
   projectId?: mongoose.Types.ObjectId;
   assignedTo: mongoose.Types.ObjectId;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
@@ -16,6 +17,7 @@ const taskSchema = new Schema<ITask>(
   {
     title: { type: String, required: true },
     description: { type: String },
+    restartReason: { type: String },
     projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
     assignedTo: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     priority: {

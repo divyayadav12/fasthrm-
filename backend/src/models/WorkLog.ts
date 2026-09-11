@@ -8,6 +8,7 @@ export interface IWorkLog extends Document {
   status: 'NOT_STARTED' | 'WORKING' | 'IN_REVIEW' | 'ON_HOLD' | 'BLOCKED' | 'PENDING' | 'COMPLETED';
   progress: number;
   description?: string;
+  restartReason?: string;
   startTime: Date;
   endTime?: Date;
   duration?: number; // duration in minutes
@@ -26,6 +27,7 @@ const workLogSchema = new Schema<IWorkLog>(
     },
     progress: { type: Number, required: true },
     description: { type: String },
+    restartReason: { type: String },
     startTime: { type: Date, required: true },
     endTime: { type: Date },
     duration: { type: Number },

@@ -8,7 +8,7 @@ import { io } from '../index';
 // @access  Private
 export const createWorkLog = async (req: Request, res: Response) => {
   try {
-    const { projectId, taskId, customTaskTitle, status, progress, description, startTime, endTime, duration } = req.body;
+    const { projectId, taskId, customTaskTitle, status, progress, description, restartReason, startTime, endTime, duration } = req.body;
     const employeeId = (req as any).user._id;
 
     let finalTaskId = taskId;
@@ -21,11 +21,15 @@ export const createWorkLog = async (req: Request, res: Response) => {
           status,
           progress,
           description,
+          restartReason: restartReason || undefined,
           completedAt: status === 'COMPLETED' ? new Date() : undefined
         });
       } else {
         task.status = status;
         task.progress = progress;
+        if (restartReason) {
+          task.restartReason = restartReason;
+        }
         if (status === 'COMPLETED') {
           task.completedAt = new Date();
         } else {
@@ -38,6 +42,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
       await Task.findByIdAndUpdate(taskId, {
         status,
         progress,
+        ...(restartReason ? { restartReason } : {}),
         ...(status === 'COMPLETED' ? { completedAt: new Date() } : { completedAt: null })
       });
     }
@@ -50,6 +55,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
       status,
       progress,
       description,
+      restartReason: restartReason || undefined,
       startTime,
       endTime,
       duration,
@@ -227,7 +233,7 @@ export const deleteWorkLog = async (req: Request, res: Response) => {
 // @access  Private
 export const updateWorkLog = async (req: Request, res: Response) => {
   try {
-    const { customTaskTitle, status, description, progress } = req.body;
+    const { customTaskTitle, status, description, progress, restartReason } = req.body;
     const workLog = await WorkLog.findById(req.params.id);
     if (!workLog) {
       return res.status(404).json({ message: 'Work log not found' });
@@ -247,6 +253,7 @@ export const updateWorkLog = async (req: Request, res: Response) => {
     if (customTaskTitle !== undefined) workLog.customTaskTitle = customTaskTitle.trim();
     if (status !== undefined) workLog.status = status;
     if (description !== undefined) workLog.description = description;
+    if (restartReason !== undefined) workLog.restartReason = restartReason;
     if (progress !== undefined) workLog.progress = Number(progress);
 
     await workLog.save();
@@ -265,6 +272,7 @@ export const updateWorkLog = async (req: Request, res: Response) => {
 
     if (task) {
       if (customTaskTitle) task.title = customTaskTitle.trim();
+      if (restartReason !== undefined) task.restartReason = restartReason;
       if (status !== undefined) {
         task.status = status;
         if (status === 'COMPLETED') {
@@ -294,6 +302,7 @@ export const updateWorkLog = async (req: Request, res: Response) => {
         status: status || workLog.status,
         progress: progress !== undefined ? Number(progress) : ((status || workLog.status) === 'COMPLETED' ? 100 : 50),
         description: description !== undefined ? description : workLog.description,
+        restartReason: restartReason || undefined,
         completedAt: (status || workLog.status) === 'COMPLETED' ? new Date() : undefined,
       });
       workLog.taskId = task._id;

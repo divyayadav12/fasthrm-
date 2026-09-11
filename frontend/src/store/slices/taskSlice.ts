@@ -8,6 +8,7 @@ export interface Task {
   _id: string;
   title: string;
   description: string;
+  restartReason?: string;
   status: string;
   progress: number;
   priority: string;
