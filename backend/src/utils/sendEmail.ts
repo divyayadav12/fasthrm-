@@ -46,8 +46,8 @@ export const sendEmail = async (options: {
 
     console.log(`[Email Service] Successfully sent OTP email to ${options.to}`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Email Service] Error sending email:', error);
-    return false;
+    throw error;
   }
 };

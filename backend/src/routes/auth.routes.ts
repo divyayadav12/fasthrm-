@@ -36,6 +36,20 @@ router.post('/logout', protect, logoutUser);
 router.get('/me', protect, getCurrentUser);
 
 // Password Reset Routes
+router.get('/test-email', async (req, res) => {
+  try {
+    const { sendEmail } = await import('../utils/sendEmail');
+    const result = await sendEmail({
+      to: 'divyayadav141203@gmail.com',
+      subject: 'Fast HRM Test Email',
+      text: 'This is a test email from Render backend.',
+    });
+    res.json({ success: result });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
