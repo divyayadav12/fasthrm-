@@ -7,28 +7,32 @@ export const sendEmail = async (options: {
   html?: string;
 }): Promise<boolean> => {
   try {
-    const user = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'divyayadav141203@gmail.com';
+    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'nhvdndiomfuwotyl';
     const host = process.env.SMTP_HOST || 'smtp.gmail.com';
     const port = Number(process.env.SMTP_PORT) || 465;
-    const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || `"Fast HRM" <${user || 'no-reply@fasthrm.com'}>`;
+    const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || `"Fast HRM" <${user}>`;
 
     if (!user || !pass) {
-      console.warn(`[Email Service] SMTP credentials not configured (SMTP_USER/SMTP_PASS missing). Email to ${options.to} was not sent.`);
+      console.warn(`[Email Service] SMTP credentials missing. Email to ${options.to} was not sent.`);
       return false;
     }
+
+    const cleanPass = pass.replace(/\s+/g, '');
 
     const transporter = nodemailer.createTransport(
       host === 'smtp.gmail.com' || user.endsWith('@gmail.com')
         ? {
             service: 'gmail',
-            auth: { user, pass },
+            auth: { user: user.trim(), pass: cleanPass },
+            tls: { rejectUnauthorized: false },
           }
         : {
             host,
             port,
             secure: port === 465,
-            auth: { user, pass },
+            auth: { user: user.trim(), pass: cleanPass },
+            tls: { rejectUnauthorized: false },
           }
     );
 
