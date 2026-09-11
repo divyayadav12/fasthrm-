@@ -117,7 +117,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Please provide an email address' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') },
+    });
     if (!user) {
       return res.status(404).json({ message: 'No account registered with this email address' });
     }
@@ -132,8 +134,8 @@ export const forgotPassword = async (req: Request, res: Response) => {
     user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
     await user.save();
 
-    // Send email via nodemailer
-    const emailSent = await sendEmail({
+    // Send email asynchronously in background so response returns instantly to user
+    sendEmail({
       to: user.email,
       subject: 'Fast HRM - Password Reset OTP',
       text: `Hello ${user.name},\n\nYour Fast HRM password reset OTP is: ${otp}\nThis code will expire in 15 minutes.\n\nIf you did not make this request, please contact your administrator immediately.`,
@@ -151,6 +153,8 @@ export const forgotPassword = async (req: Request, res: Response) => {
           <p style="color: #94a3b8; font-size: 12px;">If you did not request this, please ignore this email or notify your system administrator.</p>
         </div>
       `,
+    }).catch((err) => {
+      console.error('[Email Dispatch Error]:', err);
     });
 
     // Create notifications for all Admins and broadcast via Socket.IO
@@ -174,9 +178,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     });
 
     res.json({
-      message: emailSent
-        ? 'OTP has been sent to your registered email.'
-        : 'OTP generated and sent to your email.',
+      message: 'OTP has been sent to your registered email.',
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -194,7 +196,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
     }
 
     const user = await User.findOne({
-      email,
+      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') },
       resetPasswordOtp: otp,
       resetPasswordExpires: { $gt: new Date() },
     });
@@ -224,7 +226,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 
     const user = await User.findOne({
-      email,
+      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') },
       resetPasswordOtp: otp,
       resetPasswordExpires: { $gt: new Date() },
     });
