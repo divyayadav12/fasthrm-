@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeOff, KeyRound, Mail, CheckCircle2, ArrowLeft, ShieldCheck, Lock } from 'lucide-react';
@@ -22,7 +22,6 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   // Step 1: Request OTP
   const handleRequestOtp = async (e: React.FormEvent) => {
@@ -33,10 +32,7 @@ const ForgotPassword = () => {
 
     try {
       const res = await axios.post(`${API_URL}/auth/forgot-password`, { email: email.trim() });
-      setSuccessMsg(res.data.message || 'OTP generated successfully.');
-      if (res.data.devOtp) {
-        setDevOtp(res.data.devOtp);
-      }
+      setSuccessMsg(res.data.message || 'OTP sent successfully to your email.');
       setStep('OTP');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please check your email.');
@@ -115,7 +111,7 @@ const ForgotPassword = () => {
           </h2>
           <p className="text-xs text-gray-500 mt-1">
             {step === 'EMAIL' && 'Enter your registered email to receive a verification OTP'}
-            {step === 'OTP' && 'Enter the 6-digit verification code sent to your email / admin'}
+            {step === 'OTP' && 'Enter the 6-digit verification code sent to your registered email'}
             {step === 'PASSWORD' && 'Create a secure new password for your account'}
             {step === 'SUCCESS' && 'Your password has been changed successfully'}
           </p>
@@ -141,20 +137,6 @@ const ForgotPassword = () => {
         {successMsg && step !== 'SUCCESS' && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs sm:text-sm rounded-xl text-center">
             {successMsg}
-          </div>
-        )}
-
-        {/* Dev OTP Box for quick helper */}
-        {devOtp && step === 'OTP' && (
-          <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl flex items-center justify-between">
-            <span><strong>Testing OTP Code:</strong> <span className="font-mono text-sm tracking-widest font-bold text-indigo-700">{devOtp}</span></span>
-            <button
-              type="button"
-              onClick={() => setOtp(devOtp)}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline"
-            >
-              Auto Fill
-            </button>
           </div>
         )}
 
@@ -224,7 +206,7 @@ const ForgotPassword = () => {
                 <KeyRound className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
               </div>
               <p className="text-[11px] text-gray-500 mt-1 text-center">
-                OTP valid for 15 minutes. Check your registered inbox or ask Admin.
+                Please check your email inbox for the 6-digit OTP code (valid for 15 minutes).
               </p>
             </div>
 

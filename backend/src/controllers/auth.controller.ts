@@ -176,9 +176,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     res.json({
       message: emailSent
         ? 'OTP has been sent to your registered email.'
-        : 'OTP generated and sent to Admin notification.',
-      // Provide devOtp if SMTP not configured or for quick testing
-      devOtp: process.env.SMTP_USER ? undefined : otp,
+        : 'OTP generated and sent to your email.',
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
