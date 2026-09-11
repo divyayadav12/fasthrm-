@@ -75,10 +75,15 @@ export const updateTask = async (req: Request, res: Response) => {
     if (status === 'COMPLETED' && !req.body.completedAt) {
       req.body.completedAt = new Date();
       req.body.progress = 100;
+    } else if (status && status !== 'COMPLETED') {
+      req.body.completedAt = null;
     }
     
     const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    // Notify connected dashboards in real-time
+    io.emit('worklog_updated', { _id: null, updatedTaskId: task._id });
     
     res.json(task);
   } catch (error: any) {

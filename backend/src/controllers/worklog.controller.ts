@@ -28,6 +28,8 @@ export const createWorkLog = async (req: Request, res: Response) => {
         task.progress = progress;
         if (status === 'COMPLETED') {
           task.completedAt = new Date();
+        } else {
+          task.completedAt = undefined;
         }
         await task.save();
       }
@@ -36,7 +38,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
       await Task.findByIdAndUpdate(taskId, {
         status,
         progress,
-        ...(status === 'COMPLETED' ? { completedAt: new Date() } : {})
+        ...(status === 'COMPLETED' ? { completedAt: new Date() } : { completedAt: null })
       });
     }
 
@@ -215,6 +217,98 @@ export const deleteWorkLog = async (req: Request, res: Response) => {
     io.emit('worklog_updated', { _id: null, deletedLogId: log._id });
 
     res.json({ message: 'Work log removed successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update a work log & sync with Task (edit history & restart work)
+// @route   PUT /api/work-logs/:id
+// @access  Private
+export const updateWorkLog = async (req: Request, res: Response) => {
+  try {
+    const { customTaskTitle, status, description, progress } = req.body;
+    const workLog = await WorkLog.findById(req.params.id);
+    if (!workLog) {
+      return res.status(404).json({ message: 'Work log not found' });
+    }
+
+    const user = (req as any).user;
+    const isOwner = workLog.employeeId && workLog.employeeId.toString() === user._id.toString();
+    const isAdmin = user.role === 'ADMIN';
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: 'Not authorized to edit this work log' });
+    }
+
+    const previousTitle = workLog.customTaskTitle;
+
+    // Update work log fields
+    if (customTaskTitle !== undefined) workLog.customTaskTitle = customTaskTitle.trim();
+    if (status !== undefined) workLog.status = status;
+    if (description !== undefined) workLog.description = description;
+    if (progress !== undefined) workLog.progress = Number(progress);
+
+    await workLog.save();
+
+    // Sync with corresponding Task so it reflects on Dashboard & Admin status
+    let task = null;
+    if (workLog.taskId) {
+      task = await Task.findById(workLog.taskId);
+    }
+    if (!task && (customTaskTitle || previousTitle)) {
+      task = await Task.findOne({
+        title: (customTaskTitle || previousTitle).trim(),
+        assignedTo: workLog.employeeId,
+      });
+    }
+
+    if (task) {
+      if (customTaskTitle) task.title = customTaskTitle.trim();
+      if (status !== undefined) {
+        task.status = status;
+        if (status === 'COMPLETED') {
+          task.completedAt = new Date();
+          task.progress = 100;
+        } else {
+          task.completedAt = undefined;
+          if (progress !== undefined) {
+            task.progress = Number(progress);
+          } else if (task.progress === 100) {
+            task.progress = 50;
+          }
+        }
+      }
+      if (description !== undefined) task.description = description;
+      await task.save();
+
+      if (!workLog.taskId) {
+        workLog.taskId = task._id;
+        await workLog.save();
+      }
+    } else if (customTaskTitle || workLog.customTaskTitle) {
+      // If task didn't exist in Task collection, create it so it shows on Dashboard
+      task = await Task.create({
+        title: (customTaskTitle || workLog.customTaskTitle).trim(),
+        assignedTo: workLog.employeeId,
+        status: status || workLog.status,
+        progress: progress !== undefined ? Number(progress) : ((status || workLog.status) === 'COMPLETED' ? 100 : 50),
+        description: description !== undefined ? description : workLog.description,
+        completedAt: (status || workLog.status) === 'COMPLETED' ? new Date() : undefined,
+      });
+      workLog.taskId = task._id;
+      await workLog.save();
+    }
+
+    const populatedLog = await WorkLog.findById(workLog._id)
+      .populate('employeeId', 'name email department designation role profileImage')
+      .populate('projectId', 'name')
+      .populate('taskId', 'title description status progress');
+
+    // Emit socket event for real-time dashboard update (Admin + Employee)
+    io.emit('worklog_updated', populatedLog);
+
+    res.json(populatedLog);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

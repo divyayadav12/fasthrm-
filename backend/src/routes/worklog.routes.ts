@@ -1,5 +1,5 @@
 import express from 'express';
-import { createWorkLog, getWorkLogs, getEmployeeWorkLogs, getTaskWorkLogs, deleteWorkLog } from '../controllers/worklog.controller';
+import { createWorkLog, getWorkLogs, getEmployeeWorkLogs, getTaskWorkLogs, deleteWorkLog, updateWorkLog } from '../controllers/worklog.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 
 const router = express.Router();
@@ -9,6 +9,7 @@ router.route('/')
   .get(protect, adminOnly, getWorkLogs);
 
 router.route('/:id')
+  .put(protect, updateWorkLog)
   .delete(protect, deleteWorkLog);
 
 router.route('/employee/:employeeId')

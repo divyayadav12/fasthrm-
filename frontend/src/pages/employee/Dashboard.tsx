@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchTasks, deleteTask } from '../../store/slices/taskSlice';
-import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2 } from 'lucide-react';
+import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw } from 'lucide-react';
+import { socket } from '../../utils/socket';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
@@ -12,6 +13,7 @@ const EmployeeDashboard = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { tasks, isLoading } = useSelector((state: RootState) => state.tasks);
   
+  const [taskTab, setTaskTab] = useState<'ACTIVE' | 'COMPLETED' | 'ALL'>('ACTIVE');
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [customTaskTitle, setCustomTaskTitle] = useState('');
   const [status, setStatus] = useState('WORKING');
@@ -48,6 +50,19 @@ const EmployeeDashboard = () => {
     if (user) {
       dispatch(fetchTasks({ assignedTo: user._id }));
     }
+
+    if (!socket.connected) socket.connect();
+    const onWorkLogUpdated = () => {
+      if (user) {
+        dispatch(fetchTasks({ assignedTo: user._id }));
+      }
+    };
+
+    socket.on('worklog_updated', onWorkLogUpdated);
+
+    return () => {
+      socket.off('worklog_updated', onWorkLogUpdated);
+    };
   }, [dispatch, user]);
 
   // Open modal for new task log
@@ -66,6 +81,30 @@ const EmployeeDashboard = () => {
     setStatus(task.status);
     setDescription(task.description || '');
     setShowUpdateModal(true);
+  };
+
+  // Quick Restart task directly from dashboard table
+  const handleRestartTask = async (task: any) => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.post(
+        `${API_URL}/work-logs`,
+        {
+          customTaskTitle: task.title,
+          status: 'WORKING',
+          progress: 50,
+          description: task.description || 'Resumed work on task',
+          duration: 0,
+          startTime: new Date(),
+        },
+        config
+      );
+      if (user) {
+        dispatch(fetchTasks({ assignedTo: user._id }));
+      }
+    } catch (error) {
+      console.error('Failed to restart task:', error);
+    }
   };
 
   const handleUpdateWork = async (e: React.FormEvent) => {
@@ -116,6 +155,13 @@ const EmployeeDashboard = () => {
   };
 
   const pendingTasks = tasks.filter(t => t.status !== 'COMPLETED');
+  const completedTasks = tasks.filter(t => t.status === 'COMPLETED');
+  const displayedTasks =
+    taskTab === 'ACTIVE'
+      ? pendingTasks
+      : taskTab === 'COMPLETED'
+      ? completedTasks
+      : tasks;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -126,7 +172,7 @@ const EmployeeDashboard = () => {
         </div>
         <button 
           onClick={openNewModal}
-          className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md font-bold text-sm tracking-wide"
+          className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md font-bold text-sm tracking-wide cursor-pointer"
         >
           <Activity className="h-5 w-5 mr-2" />
           UPDATE WORK STATUS
@@ -134,31 +180,44 @@ const EmployeeDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+        <div 
+          onClick={() => setTaskTab('ACTIVE')}
+          className={`bg-white p-5 sm:p-6 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+            taskTab === 'ACTIVE' ? 'border-indigo-400 ring-2 ring-indigo-500/10 shadow-md' : 'border-gray-100 shadow-sm hover:shadow-md'
+          }`}
+        >
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Tasks</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Active Tasks</p>
             <p className="text-3xl font-extrabold text-gray-900 mt-1">{pendingTasks.length}</p>
-            <p className="text-xs text-gray-400 mt-1 font-medium">Tasks needing action</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Tasks in progress</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 ml-4">
             <Briefcase className="h-6 w-6" />
           </div>
         </div>
 
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+        <div 
+          onClick={() => setTaskTab('COMPLETED')}
+          className={`bg-white p-5 sm:p-6 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+            taskTab === 'COMPLETED' ? 'border-emerald-400 ring-2 ring-emerald-500/10 shadow-md' : 'border-gray-100 shadow-sm hover:shadow-md'
+          }`}
+        >
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.filter(t => t.status === 'COMPLETED').length}</p>
-            <p className="text-xs text-gray-400 mt-1 font-medium">Successfully closed</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{completedTasks.length}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Click to view & restart</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 ml-4">
             <CheckCircle className="h-6 w-6" />
           </div>
         </div>
 
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+        <div 
+          onClick={() => setTaskTab('ACTIVE')}
+          className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer"
+        >
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Working Tasks</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Working Now</p>
             <p className="text-3xl font-extrabold text-gray-900 mt-1">{tasks.filter(t => t.status === 'WORKING').length}</p>
             <p className="text-xs text-gray-400 mt-1 font-medium">Currently in progress</p>
           </div>
@@ -169,9 +228,42 @@ const EmployeeDashboard = () => {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-base font-bold text-gray-900 tracking-wide uppercase">My Tasks</h2>
+          <div className="inline-flex p-1 bg-gray-100 rounded-xl">
+            <button
+              onClick={() => setTaskTab('ACTIVE')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                taskTab === 'ACTIVE'
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Active ({pendingTasks.length})
+            </button>
+            <button
+              onClick={() => setTaskTab('COMPLETED')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                taskTab === 'COMPLETED'
+                  ? 'bg-white text-emerald-700 shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Completed ({completedTasks.length})
+            </button>
+            <button
+              onClick={() => setTaskTab('ALL')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                taskTab === 'ALL'
+                  ? 'bg-white text-gray-900 shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              All ({tasks.length})
+            </button>
+          </div>
         </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50/70">
@@ -179,16 +271,24 @@ const EmployeeDashboard = () => {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Task Name</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Description</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
                 <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">Loading tasks...</td></tr>
-              ) : tasks.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No tasks assigned.</td></tr>
+              ) : displayedTasks.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">
+                    {taskTab === 'ACTIVE'
+                      ? 'No active tasks. You can log a new task using UPDATE WORK STATUS, or restart a task from My Work History.'
+                      : taskTab === 'COMPLETED'
+                      ? 'No completed tasks found.'
+                      : 'No tasks assigned.'}
+                  </td>
+                </tr>
               ) : (
-                pendingTasks.map((task) => (
+                displayedTasks.map((task) => (
                   <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gray-900">{task.title}</div>
@@ -199,18 +299,28 @@ const EmployeeDashboard = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(task.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        {task.status === 'COMPLETED' && (
+                          <button
+                            onClick={() => handleRestartTask(task)}
+                            className="flex items-center px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
+                            title="Restart task & set to Working"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                            Restart
+                          </button>
+                        )}
                         <button
                           onClick={() => openEditModal(task)}
-                          className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors"
+                          className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors cursor-pointer"
                         >
                           <Edit2 className="h-3.5 w-3.5 mr-1" />
                           Update
                         </button>
                         <button
                           onClick={() => setTaskToDelete(task)}
-                          className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors"
+                          className="flex items-center px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors cursor-pointer"
                           title="Delete task"
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-1 text-rose-500" />
@@ -259,7 +369,7 @@ const EmployeeDashboard = () => {
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Status</label>
                           <select 
-                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
                           >
@@ -302,14 +412,14 @@ const EmployeeDashboard = () => {
                     <button 
                       type="submit" 
                       disabled={isSubmitting}
-                      className={`w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 text-sm font-medium text-white focus:outline-none ${isSubmitting ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                      className={`w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 text-sm font-medium text-white focus:outline-none cursor-pointer ${isSubmitting ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                     >
                       {isSubmitting ? 'Saving...' : 'Log Work'}
                     </button>
                     <button 
                       type="button" 
                       onClick={() => setShowUpdateModal(false)} 
-                      className="w-full sm:w-auto inline-flex justify-center rounded-xl border border-gray-300 shadow-xs px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                      className="w-full sm:w-auto inline-flex justify-center rounded-xl border border-gray-300 shadow-xs px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none cursor-pointer"
                     >
                       Cancel
                     </button>
