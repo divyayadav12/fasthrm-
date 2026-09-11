@@ -10,6 +10,8 @@ export interface IUser extends Document {
   designation?: string;
   profileImage?: string;
   isActive: boolean;
+  resetPasswordOtp?: string;
+  resetPasswordExpires?: Date;
   matchPassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -27,6 +29,8 @@ const userSchema = new Schema<IUser>(
     designation: { type: String },
     profileImage: { type: String },
     isActive: { type: Boolean, default: true },
+    resetPasswordOtp: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );

@@ -9,7 +9,7 @@ import { LogOut, Activity, Users, Briefcase, FileText, Settings, Menu, Bell, Che
 
 const Layout = () => {
   const { user } = useSelector((state: RootState) => state.auth);
-  const { unreadCount } = useSelector((state: RootState) => state.notifications);
+  const { notifications, unreadCount } = useSelector((state: RootState) => state.notifications);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -34,14 +34,19 @@ const Layout = () => {
       const onConnect = () => setSocketStatus('Connected');
       const onDisconnect = () => setSocketStatus('Offline');
       const onReconnect = () => setSocketStatus('Reconnecting');
+      const onAdminNotification = () => {
+        dispatch(fetchNotifications());
+      };
 
       socket.on('connect', onConnect);
       socket.on('disconnect', onDisconnect);
+      socket.on('admin_notification', onAdminNotification);
       socket.io.on('reconnect_attempt', onReconnect);
 
       return () => {
         socket.off('connect', onConnect);
         socket.off('disconnect', onDisconnect);
+        socket.off('admin_notification', onAdminNotification);
         socket.io.off('reconnect_attempt', onReconnect);
       };
     } else {
@@ -211,22 +216,53 @@ const Layout = () => {
             </button>
             
             {showNotifications && (
-              <div className="absolute right-0 top-12 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                  <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
+              <div className="absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 bg-red-100 text-red-700 font-bold text-xs rounded-full">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
                   {unreadCount > 0 && (
                     <button 
-                      onClick={() => { dispatch(markAllAsRead()); setShowNotifications(false); }}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                      onClick={() => { dispatch(markAllAsRead()); }}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
                     >
                       Mark all read
                     </button>
                   )}
                 </div>
-                <div className="p-4 text-center text-sm text-gray-500">
-                  You have {unreadCount} unread notifications.
-                  <br/>
-                  <Link to={`${prefix}/notifications`} className="text-indigo-600 font-medium mt-2 inline-block">View all</Link>
+
+                <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                  {notifications && notifications.length > 0 ? (
+                    notifications.slice(0, 6).map((item) => (
+                      <div
+                        key={item._id}
+                        className={`p-3.5 text-xs transition-colors hover:bg-gray-50/80 ${
+                          !item.isRead ? 'bg-indigo-50/30 font-medium' : 'text-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={`font-semibold text-xs ${item.type === 'WARNING' ? 'text-amber-700' : item.type === 'SUCCESS' ? 'text-emerald-700' : 'text-gray-900'}`}>
+                            {item.title}
+                          </span>
+                          <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-gray-600 leading-relaxed break-words select-text">
+                          {item.message}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-xs text-gray-400">
+                      No notifications yet
+                    </div>
+                  )}
                 </div>
               </div>
             )}

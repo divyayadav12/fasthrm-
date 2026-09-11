@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from './store';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from './pages/admin/Dashboard';
 import EmployeesList from './pages/admin/Employees';
 import EmployeeDetails from './pages/admin/EmployeeDetails';
@@ -23,6 +24,7 @@ function App() {
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
+        <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to="/" />} />
         
         <Route 
           path="/" 
