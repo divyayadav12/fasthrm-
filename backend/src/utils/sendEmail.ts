@@ -13,17 +13,13 @@ export const sendEmail = async (options: {
 
   if (scriptUrl) {
     try {
-      const response = await fetch(scriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          to: options.to,
-          subject: options.subject,
-          html: options.html || options.text,
-        }),
+      const getUrl = `${scriptUrl}?to=${encodeURIComponent(options.to)}&subject=${encodeURIComponent(options.subject)}&html=${encodeURIComponent(options.html || options.text)}`;
+      const response = await fetch(getUrl, {
+        method: 'GET',
+        redirect: 'follow',
       });
+      console.log(`[Email Service - WebApp] Dispatched email to ${options.to}, Status: ${response.status}`);
       if (response.ok || response.status === 200 || response.status === 302) {
-        console.log(`[Email Service - WebApp] Dispatched email to ${options.to}`);
         return true;
       }
     } catch (scriptError: any) {
