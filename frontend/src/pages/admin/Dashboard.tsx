@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import axios from 'axios';
 import { RootState, AppDispatch } from '../../store';
 import { fetchDashboardStats, fetchRecentActivity, addLiveActivity } from '../../store/slices/dashboardSlice';
 import { fetchEmployees } from '../../store/slices/employeeSlice';
 import { socket } from '../../utils/socket';
-import { CheckCircle, Users, Activity, Filter, X, ChevronDown, ChevronLeft, ChevronRight, History } from 'lucide-react';
+import { CheckCircle, Users, Activity, Filter, X, ChevronDown, ChevronLeft, ChevronRight, History, KeyRound, Copy, Check } from 'lucide-react';
 import { EmployeeHistoryDrawer } from '../../components/EmployeeHistoryDrawer';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
@@ -29,6 +30,25 @@ const AdminDashboard = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+
+  // Password Reset Requests
+  const [resetRequests, setResetRequests] = useState<any[]>([]);
+  const [copiedOtp, setCopiedOtp] = useState<string | null>(null);
+
+  const fetchResetRequests = async () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return;
+      const token = JSON.parse(userStr).token;
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api'}/auth/reset-requests`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setResetRequests(res.data || []);
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // Helper function to match employee role/department flexibly
   const isRoleMatch = (empDept: string, targetRole: string) => {
@@ -87,6 +107,7 @@ const AdminDashboard = () => {
     dispatch(fetchDashboardStats());
     dispatch(fetchRecentActivity());
     dispatch(fetchEmployees({ limit: 200 }));
+    fetchResetRequests();
 
     if (!socket.connected) socket.connect();
 
@@ -96,16 +117,21 @@ const AdminDashboard = () => {
       dispatch(addLiveActivity(data));
       dispatch(fetchDashboardStats());
     };
+    const onAdminNotification = () => {
+      fetchResetRequests();
+    };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('worklog_updated', onWorkLogUpdated);
+    socket.on('admin_notification', onAdminNotification);
     if (socket.connected) onConnect();
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('worklog_updated', onWorkLogUpdated);
+      socket.off('admin_notification', onAdminNotification);
     };
   }, [dispatch]);
 
@@ -256,9 +282,69 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* Active Password Reset Requests (OTP) for Admin */}
+      {resetRequests.length > 0 && (
+        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2 bg-amber-100 text-amber-700 rounded-xl">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-amber-950">
+                  Password Reset Requests ({resetRequests.length})
+                </h3>
+                <p className="text-xs text-amber-800/80">
+                  Employees who requested a password reset. Active 6-digit OTP codes shown below:
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={fetchResetRequests}
+              className="text-xs font-semibold text-amber-800 hover:text-amber-950 bg-amber-100/70 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              Refresh
+            </button>
+          </div>
 
-
-      {/* Live Team Status Table */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {resetRequests.map((req) => (
+              <div
+                key={req._id}
+                className="bg-white border border-amber-200/90 rounded-xl p-3.5 shadow-2xs flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs sm:text-sm text-gray-900 truncate">{req.name}</div>
+                  <div className="text-[11px] text-gray-500 truncate">{req.email}</div>
+                  <span className="inline-block mt-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-semibold rounded-md">
+                    {req.department || req.designation || req.role}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end flex-shrink-0">
+                  <span className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">Active OTP</span>
+                  <div className="flex items-center space-x-1.5 mt-1">
+                    <span className="font-mono text-base font-extrabold tracking-widest text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-lg border border-indigo-200 select-all">
+                      {req.resetPasswordOtp}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(req.resetPasswordOtp);
+                        setCopiedOtp(req._id);
+                        setTimeout(() => setCopiedOtp(null), 2000);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                      title="Copy OTP"
+                    >
+                      {copiedOtp === req._id ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
