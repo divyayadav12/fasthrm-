@@ -4,6 +4,7 @@ import { RootState, AppDispatch } from '../../store';
 import { fetchTasks, deleteTask } from '../../store/slices/taskSlice';
 import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
 import { socket } from '../../utils/socket';
+import { formatDuration, getTaskLiveMinutes } from '../../utils/timeFormat';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
@@ -331,15 +332,16 @@ const EmployeeDashboard = () => {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Task Name</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Description</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Time Spent</th>
                 <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">Loading tasks...</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Loading tasks...</td></tr>
               ) : displayedTasks.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
                     {taskTab === 'ACTIVE'
                       ? 'No active tasks. You can log a new task using UPDATE WORK STATUS, or restart a task from My Work History.'
                       : taskTab === 'COMPLETED'
@@ -348,22 +350,38 @@ const EmployeeDashboard = () => {
                   </td>
                 </tr>
               ) : (
-                displayedTasks.map((task) => (
-                  <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">{task.title}</div>
-                      {task.restartReason && (
-                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md max-w-fit">
-                          <span>🔄 Restart Reason: {task.restartReason}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 max-w-xs truncate">{task.description || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(task.status)}
-                    </td>
+                displayedTasks.map((task) => {
+                  const liveMins = getTaskLiveMinutes(task);
+                  return (
+                    <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900">{task.title}</div>
+                        {task.restartReason && (
+                          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md max-w-fit">
+                            <span>🔄 Restart Reason: {task.restartReason}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600 max-w-xs truncate">{task.description || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(task.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {task.status === 'WORKING' ? (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200/80 rounded-lg text-xs font-bold text-blue-700">
+                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                            <span>{formatDuration(liveMins)}</span>
+                            <span className="text-[10px] font-semibold text-blue-500 uppercase">(Active)</span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200/70 px-2.5 py-1 rounded-lg">
+                            <Clock className="w-3.5 h-3.5 text-gray-400" />
+                            <span>{formatDuration(liveMins)}</span>
+                          </div>
+                        )}
+                      </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end space-x-2">
                         {task.status === 'COMPLETED' && (
@@ -394,11 +412,12 @@ const EmployeeDashboard = () => {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
       </div>
 
       {/* Restart Reason Prompt Modal (Dashboard) */}

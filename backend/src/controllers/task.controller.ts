@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Task from '../models/Task';
 import WorkLog from '../models/WorkLog';
 import { io } from '../index';
+import { syncTaskTimingOnStatusChange } from './worklog.controller';
 
 // @desc    Get all tasks
 // @route   GET /api/tasks
@@ -69,18 +70,23 @@ export const createTask = async (req: Request, res: Response) => {
 // @access  Private
 export const updateTask = async (req: Request, res: Response) => {
   try {
-    const { status, progress } = req.body;
+    const { status, progress, description, restartReason, title, priority, deadline } = req.body;
     
-    // If completed
-    if (status === 'COMPLETED' && !req.body.completedAt) {
-      req.body.completedAt = new Date();
-      req.body.progress = 100;
-    } else if (status && status !== 'COMPLETED') {
-      req.body.completedAt = null;
-    }
-    
-    const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    if (title) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (restartReason !== undefined) task.restartReason = restartReason;
+    if (priority) task.priority = priority;
+    if (deadline !== undefined) task.deadline = deadline;
+    if (progress !== undefined) task.progress = Number(progress);
+
+    if (status) {
+      await syncTaskTimingOnStatusChange(task, status, task.assignedTo);
+    }
+
+    await task.save();
 
     // Notify connected dashboards in real-time
     io.emit('worklog_updated', { _id: null, updatedTaskId: task._id });

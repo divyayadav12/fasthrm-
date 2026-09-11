@@ -9,6 +9,8 @@ export interface ITask extends Document {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   status: 'NOT_STARTED' | 'WORKING' | 'IN_REVIEW' | 'ON_HOLD' | 'BLOCKED' | 'PENDING' | 'COMPLETED';
   progress: number;
+  totalDuration?: number;
+  startedAt?: Date;
   deadline?: Date;
   completedAt?: Date;
 }
@@ -31,6 +33,8 @@ const taskSchema = new Schema<ITask>(
       default: 'NOT_STARTED',
     },
     progress: { type: Number, default: 0, min: 0, max: 100 },
+    totalDuration: { type: Number, default: 0 },
+    startedAt: { type: Date },
     deadline: { type: Date },
     completedAt: { type: Date },
   },

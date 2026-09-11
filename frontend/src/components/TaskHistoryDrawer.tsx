@@ -3,6 +3,7 @@ import { X, Clock, Calendar, CheckCircle2, User, FileText, ArrowRight, RefreshCw
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
+import { formatDuration, getTaskLiveMinutes } from '../utils/timeFormat';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
 
@@ -10,10 +11,13 @@ interface TaskHistoryDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   task: {
+    _id?: string;
     taskId?: string;
     title: string;
     employee?: any;
     status?: string;
+    totalDuration?: number;
+    startedAt?: string | Date;
   } | null;
   initialLogs?: any[];
   onSelectEmployee?: (employee: any) => void;
@@ -115,29 +119,35 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
     const employeesMap = new Map<string, any>();
 
     logs.forEach((log) => {
-      if (log.durationMinutes) totalMinutes += Number(log.durationMinutes);
+      const dur = log.duration ?? log.durationMinutes;
+      if (dur) totalMinutes += Number(dur);
       if (log.employeeId) {
         const id = log.employeeId?._id || log.employeeId?.name || log.employeeId;
         employeesMap.set(id, log.employeeId);
       }
     });
 
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    const formattedDuration = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    if (task) {
+      const liveMinutes = getTaskLiveMinutes(task);
+      if (liveMinutes > totalMinutes) {
+        totalMinutes = liveMinutes;
+      }
+    }
+
+    const formattedDuration = formatDuration(totalMinutes);
 
     const earliestLog = logs.length > 0 ? logs[logs.length - 1] : null;
     const latestLog = logs.length > 0 ? logs[0] : null;
 
     return {
-      totalDuration: totalMinutes > 0 ? formattedDuration : '0m',
+      totalDuration: formattedDuration,
       updateCount: logs.length,
-      startedAt: earliestLog ? new Date(earliestLog.createdAt) : null,
+      startedAt: earliestLog ? new Date(earliestLog.createdAt) : (task?.startedAt ? new Date(task.startedAt) : null),
       lastUpdatedAt: latestLog ? new Date(latestLog.createdAt) : null,
       currentStatus: latestLog?.status || task?.status || 'IN_PROGRESS',
       contributingEmployees: Array.from(employeesMap.values()),
     };
-  }, [logs, task?.status]);
+  }, [logs, task]);
 
   if (!isOpen || !task) return null;
 
@@ -313,9 +323,9 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                           {/* Timing */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             <span className="font-semibold text-gray-900">{formattedTime}</span>
-                            {log.durationMinutes > 0 && (
-                              <div className="text-[10px] text-gray-500 font-normal mt-0.5">
-                                ⏱ {log.durationMinutes}m
+                            {(log.duration || log.durationMinutes) > 0 && (
+                              <div className="text-[10px] text-gray-500 font-medium mt-0.5">
+                                ⏱ {formatDuration(log.duration || log.durationMinutes)}
                               </div>
                             )}
                           </td>

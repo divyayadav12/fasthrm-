@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Download, FileText, Users, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Download, FileText, Users, CheckCircle, Clock, AlertCircle, Search, History } from 'lucide-react';
 import axios from 'axios';
+import { formatDuration, getTaskLiveMinutes } from '../../utils/timeFormat';
+import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
 
@@ -23,6 +25,8 @@ const Reports = () => {
   const [tasks, setTasks] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [taskSearchTerm, setTaskSearchTerm] = useState('');
+  const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<any>(null);
 
   useEffect(() => {
     const fetchRealReports = async () => {
@@ -155,15 +159,20 @@ const Reports = () => {
       return;
     }
 
-    const headers = ['Task Title', 'Description', 'Assignee Name', 'Assignee Email', 'Status', 'Created Date'];
-    const rows = tasks.map((t) => [
-      `"${(t.title || '').replace(/"/g, '""')}"`,
-      `"${(t.description || '').replace(/"/g, '""')}"`,
-      `"${(t.assignedTo?.name || 'Unassigned').replace(/"/g, '""')}"`,
-      `"${(t.assignedTo?.email || '').replace(/"/g, '""')}"`,
-      `"${t.status || ''}"`,
-      `"${new Date(t.createdAt).toLocaleDateString()}"`,
-    ]);
+    const headers = ['Task Title', 'Description', 'Assignee Name', 'Assignee Email', 'Status', 'Time Spent (Duration)', 'Created Date'];
+    const rows = tasks.map((t) => {
+      const liveMins = getTaskLiveMinutes(t);
+      const formattedDur = formatDuration(liveMins);
+      return [
+        `"${(t.title || '').replace(/"/g, '""')}"`,
+        `"${(t.description || '').replace(/"/g, '""')}"`,
+        `"${(t.assignedTo?.name || 'Unassigned').replace(/"/g, '""')}"`,
+        `"${(t.assignedTo?.email || '').replace(/"/g, '""')}"`,
+        `"${t.status || ''}"`,
+        `"${formattedDur}"`,
+        `"${new Date(t.createdAt).toLocaleDateString()}"`,
+      ];
+    });
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -319,6 +328,136 @@ const Reports = () => {
           )}
         </div>
       </div>
+
+      {/* Detailed Task Time Spent Breakdown Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 tracking-wide uppercase">Task Time & Duration Breakdown</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Exact hours and minutes logged per task across team</p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs"
+              placeholder="Search by task or assignee..."
+              value={taskSearchTerm}
+              onChange={(e) => setTaskSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-100 text-left">
+            <thead className="bg-gray-50/70">
+              <tr>
+                <th className="px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Task Title</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Assigned Employee</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Time Spent (Hours)</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Created Date</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Detail</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400">Loading task report...</td></tr>
+              ) : tasks.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400">No tasks logged yet.</td></tr>
+              ) : (
+                tasks
+                  .filter((t) => {
+                    if (!taskSearchTerm) return true;
+                    const search = taskSearchTerm.toLowerCase();
+                    return (
+                      t.title?.toLowerCase().includes(search) ||
+                      t.assignedTo?.name?.toLowerCase().includes(search) ||
+                      t.status?.toLowerCase().includes(search)
+                    );
+                  })
+                  .map((t) => {
+                    const liveMins = getTaskLiveMinutes(t);
+                    const isWorking = t.status === 'WORKING';
+                    return (
+                      <tr key={t._id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-semibold text-gray-900">{t.title}</div>
+                          {t.description && (
+                            <div className="text-xs text-gray-400 truncate max-w-xs mt-0.5">{t.description}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-xs font-medium text-gray-800">
+                            {t.assignedTo?.name || 'Unassigned'}
+                          </div>
+                          {t.assignedTo?.email && (
+                            <div className="text-[11px] text-gray-400">{t.assignedTo.email}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2.5 py-0.5 inline-flex text-xs font-bold tracking-wider uppercase rounded-full ${
+                            t.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' :
+                            t.status === 'WORKING' ? 'bg-blue-50 text-blue-600' :
+                            t.status === 'PENDING' ? 'bg-orange-50 text-orange-600' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {t.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {isWorking ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200/80 rounded-xl text-xs font-bold text-blue-700">
+                              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                              <span>{formatDuration(liveMins)}</span>
+                              <span className="text-[10px] font-semibold text-blue-500 uppercase">(Active)</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200/70 px-3 py-1 rounded-xl">
+                              <Clock className="w-3.5 h-3.5 text-gray-400" />
+                              <span>{formatDuration(liveMins)}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                          {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => setSelectedTaskForHistory({
+                              _id: t._id,
+                              taskId: t._id,
+                              title: t.title,
+                              employee: t.assignedTo,
+                              status: t.status,
+                              totalDuration: t.totalDuration,
+                              startedAt: t.startedAt,
+                            })}
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors cursor-pointer"
+                          >
+                            <History className="h-3.5 w-3.5 mr-1" />
+                            Timeline
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Task History Drawer */}
+      {selectedTaskForHistory && (
+        <TaskHistoryDrawer
+          isOpen={!!selectedTaskForHistory}
+          onClose={() => setSelectedTaskForHistory(null)}
+          task={selectedTaskForHistory}
+        />
+      )}
     </div>
   );
 };

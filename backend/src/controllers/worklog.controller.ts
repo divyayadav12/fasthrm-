@@ -3,6 +3,115 @@ import WorkLog from '../models/WorkLog';
 import Task from '../models/Task';
 import { io } from '../index';
 
+/**
+ * Ensures an employee has only ONE actively 'WORKING' task at a time,
+ * accumulates accurate durations (in minutes), and auto-resumes pending tasks upon completion.
+ */
+export const syncTaskTimingOnStatusChange = async (
+  task: any,
+  newStatus: string,
+  employeeId: any,
+  manualDuration?: number
+) => {
+  const empId = employeeId?._id || employeeId || task.assignedTo;
+
+  if (newStatus === 'WORKING') {
+    // 1. Shift ALL OTHER currently 'WORKING' tasks for this employee to 'PENDING'
+    const otherWorkingTasks = await Task.find({
+      assignedTo: empId,
+      status: 'WORKING',
+      _id: { $ne: task._id },
+    });
+
+    for (const other of otherWorkingTasks) {
+      const elapsed = other.startedAt
+        ? Math.max(1, Math.round((Date.now() - new Date(other.startedAt).getTime()) / 60000))
+        : 0;
+
+      other.totalDuration = (other.totalDuration || 0) + elapsed;
+      other.status = 'PENDING';
+      other.startedAt = undefined;
+      await other.save();
+
+      // Log the transition to PENDING in WorkLog history
+      await WorkLog.create({
+        employeeId: empId,
+        projectId: other.projectId,
+        taskId: other._id,
+        customTaskTitle: other.title,
+        status: 'PENDING',
+        progress: other.progress || 0,
+        description: 'Auto-paused to Pending as another task was started',
+        startTime: new Date(Date.now() - elapsed * 60000),
+        endTime: new Date(),
+        duration: elapsed,
+      });
+
+      // Emit real-time notification
+      io.emit('worklog_updated', { _id: null, updatedTaskId: other._id });
+    }
+
+    // 2. Set this task as actively working with startedAt now
+    if (task.status !== 'WORKING' || !task.startedAt) {
+      task.startedAt = new Date();
+    }
+    if (manualDuration && Number(manualDuration) > 0) {
+      task.totalDuration = (task.totalDuration || 0) + Number(manualDuration);
+    }
+    task.status = 'WORKING';
+    task.completedAt = undefined;
+  } else if (newStatus === 'COMPLETED') {
+    // 1. Calculate time spent on this completing task
+    const elapsed = task.startedAt
+      ? Math.max(1, Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000))
+      : (manualDuration ? Number(manualDuration) : 0);
+
+    task.totalDuration = (task.totalDuration || 0) + elapsed;
+    task.status = 'COMPLETED';
+    task.progress = 100;
+    task.completedAt = new Date();
+    task.startedAt = undefined;
+
+    // 2. Auto-resume the most recently updated 'PENDING' task for this employee
+    const nextPendingTask = await Task.findOne({
+      assignedTo: empId,
+      status: 'PENDING',
+      _id: { $ne: task._id },
+    }).sort({ updatedAt: -1 });
+
+    if (nextPendingTask) {
+      nextPendingTask.status = 'WORKING';
+      nextPendingTask.startedAt = new Date();
+      await nextPendingTask.save();
+
+      await WorkLog.create({
+        employeeId: empId,
+        projectId: nextPendingTask.projectId,
+        taskId: nextPendingTask._id,
+        customTaskTitle: nextPendingTask.title,
+        status: 'WORKING',
+        progress: nextPendingTask.progress || 50,
+        description: 'Auto-resumed timer after previous task completed',
+        startTime: new Date(),
+      });
+
+      // Real-time notification for auto-resumed task
+      io.emit('worklog_updated', { _id: null, updatedTaskId: nextPendingTask._id });
+    }
+  } else {
+    // Status changed to PENDING, ON_HOLD, IN_REVIEW, NOT_STARTED, etc.
+    if (task.status === 'WORKING' && task.startedAt) {
+      const elapsed = Math.max(1, Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000));
+      task.totalDuration = (task.totalDuration || 0) + elapsed;
+    } else if (manualDuration && Number(manualDuration) > 0) {
+      task.totalDuration = (task.totalDuration || 0) + Number(manualDuration);
+    }
+    task.status = newStatus;
+    task.startedAt = undefined;
+    task.completedAt = undefined;
+  }
+};
+
 // @desc    Create new work log (Permanent history)
 // @route   POST /api/work-logs
 // @access  Private
@@ -12,53 +121,48 @@ export const createWorkLog = async (req: Request, res: Response) => {
     const employeeId = (req as any).user._id;
 
     let finalTaskId = taskId;
+    let task = null;
+
     if (customTaskTitle) {
-      let task = await Task.findOne({ title: customTaskTitle, assignedTo: employeeId });
+      task = await Task.findOne({ title: customTaskTitle.trim(), assignedTo: employeeId });
       if (!task) {
-        task = await Task.create({
-          title: customTaskTitle,
+        task = new Task({
+          title: customTaskTitle.trim(),
           assignedTo: employeeId,
-          status,
-          progress,
+          projectId,
+          progress: progress !== undefined ? Number(progress) : 0,
           description,
           restartReason: restartReason || undefined,
-          completedAt: status === 'COMPLETED' ? new Date() : undefined
         });
-      } else {
-        task.status = status;
-        task.progress = progress;
-        if (restartReason) {
-          task.restartReason = restartReason;
-        }
-        if (status === 'COMPLETED') {
-          task.completedAt = new Date();
-        } else {
-          task.completedAt = undefined;
-        }
-        await task.save();
       }
-      finalTaskId = task._id;
     } else if (taskId) {
-      await Task.findByIdAndUpdate(taskId, {
-        status,
-        progress,
-        ...(restartReason ? { restartReason } : {}),
-        ...(status === 'COMPLETED' ? { completedAt: new Date() } : { completedAt: null })
-      });
+      task = await Task.findById(taskId);
     }
+
+    if (task) {
+      if (progress !== undefined) task.progress = Number(progress);
+      if (description !== undefined) task.description = description;
+      if (restartReason) task.restartReason = restartReason;
+
+      await syncTaskTimingOnStatusChange(task, status, employeeId, duration);
+      await task.save();
+      finalTaskId = task._id;
+    }
+
+    const calculatedDuration = duration ? Number(duration) : (task?.totalDuration || 0);
 
     const workLog = await WorkLog.create({
       employeeId,
-      projectId,
+      projectId: projectId || task?.projectId,
       taskId: finalTaskId,
-      customTaskTitle,
+      customTaskTitle: task?.title || customTaskTitle,
       status,
-      progress,
+      progress: progress !== undefined ? Number(progress) : (task?.progress || 0),
       description,
       restartReason: restartReason || undefined,
-      startTime,
+      startTime: startTime || new Date(),
       endTime,
-      duration,
+      duration: calculatedDuration,
     });
 
     // Populate for socket event
@@ -273,21 +377,13 @@ export const updateWorkLog = async (req: Request, res: Response) => {
     if (task) {
       if (customTaskTitle) task.title = customTaskTitle.trim();
       if (restartReason !== undefined) task.restartReason = restartReason;
-      if (status !== undefined) {
-        task.status = status;
-        if (status === 'COMPLETED') {
-          task.completedAt = new Date();
-          task.progress = 100;
-        } else {
-          task.completedAt = undefined;
-          if (progress !== undefined) {
-            task.progress = Number(progress);
-          } else if (task.progress === 100) {
-            task.progress = 50;
-          }
-        }
-      }
       if (description !== undefined) task.description = description;
+      if (progress !== undefined) {
+        task.progress = Number(progress);
+      }
+      if (status !== undefined) {
+        await syncTaskTimingOnStatusChange(task, status, workLog.employeeId);
+      }
       await task.save();
 
       if (!workLog.taskId) {
@@ -296,15 +392,15 @@ export const updateWorkLog = async (req: Request, res: Response) => {
       }
     } else if (customTaskTitle || workLog.customTaskTitle) {
       // If task didn't exist in Task collection, create it so it shows on Dashboard
-      task = await Task.create({
+      task = new Task({
         title: (customTaskTitle || workLog.customTaskTitle).trim(),
         assignedTo: workLog.employeeId,
-        status: status || workLog.status,
         progress: progress !== undefined ? Number(progress) : ((status || workLog.status) === 'COMPLETED' ? 100 : 50),
         description: description !== undefined ? description : workLog.description,
         restartReason: restartReason || undefined,
-        completedAt: (status || workLog.status) === 'COMPLETED' ? new Date() : undefined,
       });
+      await syncTaskTimingOnStatusChange(task, status || workLog.status, workLog.employeeId);
+      await task.save();
       workLog.taskId = task._id;
       await workLog.save();
     }

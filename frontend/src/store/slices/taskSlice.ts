@@ -12,6 +12,11 @@ export interface Task {
   status: string;
   progress: number;
   priority: string;
+  totalDuration?: number;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   projectId?: any;
   assignedTo?: any;
 }

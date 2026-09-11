@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchTasks, deleteTask } from '../../store/slices/taskSlice';
-import { Search, Filter, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { Search, Filter, CheckCircle, Clock, Trash2, History } from 'lucide-react';
+import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
+import { formatDuration, getTaskLiveMinutes } from '../../utils/timeFormat';
 
 const TasksList = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -12,6 +14,7 @@ const TasksList = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [taskToDelete, setTaskToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<any>(null);
 
   const confirmDeleteTask = async () => {
     if (!taskToDelete) return;
@@ -162,57 +165,93 @@ const TasksList = () => {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Task</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Assignee</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Time Spent</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">Loading tasks...</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Loading tasks...</td></tr>
               ) : filteredTasks.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No tasks found.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">No tasks found.</td></tr>
               ) : (
-                filteredTasks.map((task) => (
-                  <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center ${task.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                          {task.status === 'COMPLETED' ? <CheckCircle className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
+                filteredTasks.map((task) => {
+                  const liveMinutes = getTaskLiveMinutes(task);
+                  return (
+                    <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center ${task.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                            {task.status === 'COMPLETED' ? <CheckCircle className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
+                          </div>
+                          <div className="ml-3.5">
+                            <div className="text-sm font-semibold text-gray-900">{task.title}</div>
+                            <div className="text-xs text-gray-400 truncate max-w-md mt-0.5">{task.description || '-'}</div>
+                          </div>
                         </div>
-                        <div className="ml-3.5">
-                          <div className="text-sm font-semibold text-gray-900">{task.title}</div>
-                          <div className="text-xs text-gray-400 truncate max-w-md mt-0.5">{task.description || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {task.assignedTo ? (
+                            <>
+                              <div className="h-8 w-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs mr-2.5">
+                                {task.assignedTo.name?.charAt(0).toLowerCase() || 'u'}
+                              </div>
+                              <span className="text-sm font-medium text-gray-800">{task.assignedTo.name}</span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400">Unassigned</span>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {task.assignedTo ? (
-                          <>
-                            <div className="h-8 w-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs mr-2.5">
-                              {task.assignedTo.name?.charAt(0).toLowerCase() || 'u'}
-                            </div>
-                            <span className="text-sm font-medium text-gray-800">{task.assignedTo.name}</span>
-                          </>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(task.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {task.status === 'WORKING' ? (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200/80 rounded-lg text-xs font-bold text-blue-700">
+                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                            <span>{formatDuration(liveMinutes)}</span>
+                            <span className="text-[10px] font-semibold text-blue-500 uppercase">(Active)</span>
+                          </div>
                         ) : (
-                          <span className="text-sm text-gray-400">Unassigned</span>
+                          <div className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200/70 px-2.5 py-1 rounded-lg">
+                            <Clock className="w-3.5 h-3.5 text-gray-400" />
+                            <span>{formatDuration(liveMinutes)}</span>
+                          </div>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(task.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => setTaskToDelete(task)}
-                        className="flex items-center px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors"
-                        title="Delete task"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-1 text-rose-500" />
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => setSelectedTaskForHistory({
+                              _id: task._id,
+                              taskId: task._id,
+                              title: task.title,
+                              employee: task.assignedTo,
+                              status: task.status,
+                              totalDuration: task.totalDuration,
+                              startedAt: task.startedAt,
+                            })}
+                            className="flex items-center px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors cursor-pointer"
+                            title="View task progression & time logs"
+                          >
+                            <History className="h-3.5 w-3.5 mr-1" />
+                            History
+                          </button>
+                          <button
+                            onClick={() => setTaskToDelete(task)}
+                            className="flex items-center px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors cursor-pointer"
+                            title="Delete task"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1 text-rose-500" />
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -258,6 +297,15 @@ const TasksList = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Task History Drawer */}
+      {selectedTaskForHistory && (
+        <TaskHistoryDrawer
+          isOpen={!!selectedTaskForHistory}
+          onClose={() => setSelectedTaskForHistory(null)}
+          task={selectedTaskForHistory}
+        />
       )}
     </div>
   );
