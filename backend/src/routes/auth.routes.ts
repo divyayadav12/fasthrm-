@@ -16,14 +16,60 @@ const router = express.Router();
 
 router.get('/clean-users', async (req, res) => {
   try {
-    const result = await User.deleteMany({
+    const WorkLog = (await import('../models/WorkLog')).default;
+    const Task = (await import('../models/Task')).default;
+
+    // 1. Find Unknown users
+    const unknownUsers = await User.find({
       $or: [
+        { name: { $regex: /^unknown$/i } },
         { name: { $exists: false } },
         { name: null },
-        { name: '' }
+        { name: '' },
+        { email: { $regex: /^unknown/i } }
       ]
     });
-    res.json({ message: 'Deleted unknown users successfully', deletedCount: result.deletedCount });
+
+    const unknownUserIds = unknownUsers.map(u => u._id);
+
+    // Delete Unknown users
+    let deletedUsersCount = 0;
+    if (unknownUserIds.length > 0) {
+      const userDel = await User.deleteMany({ _id: { $in: unknownUserIds } });
+      deletedUsersCount = userDel.deletedCount;
+    }
+
+    // Get all currently remaining valid users
+    const validUsers = await User.find({}).select('_id');
+    const validUserIds = validUsers.map(u => u._id);
+
+    // 2. Delete all worklogs tied to unknown or non-existent users
+    const workLogDel = await WorkLog.deleteMany({
+      $or: [
+        { employeeId: { $in: unknownUserIds } },
+        { employeeId: { $nin: validUserIds } },
+        { employeeId: null },
+        { employeeId: { $exists: false } },
+        { customTaskTitle: { $regex: /^unknown$/i } }
+      ]
+    });
+
+    // 3. Delete all tasks tied to unknown or non-existent users
+    const taskDel = await Task.deleteMany({
+      $or: [
+        { assignedTo: { $in: unknownUserIds } },
+        { assignedTo: { $nin: validUserIds } },
+        { assignedTo: null },
+        { assignedTo: { $exists: false } }
+      ]
+    });
+
+    res.json({
+      message: 'Unknown user and associated records deleted successfully',
+      deletedUsersCount,
+      deletedWorkLogsCount: workLogDel.deletedCount,
+      deletedTasksCount: taskDel.deletedCount,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

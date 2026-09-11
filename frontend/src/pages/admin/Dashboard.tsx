@@ -123,6 +123,11 @@ const AdminDashboard = () => {
 
   const filteredActivity = useMemo(() => {
     return liveActivity.filter((log) => {
+      // Exclude invalid or unknown employee activity records
+      if (!log || !log.employeeId || !log.employeeId.name || log.employeeId.name.trim().toLowerCase() === 'unknown') {
+        return false;
+      }
+
       // Role Filter Tab
       if (selectedRoleTab !== 'All') {
         const empId = log.employeeId?._id || log.employeeId;

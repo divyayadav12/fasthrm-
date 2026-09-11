@@ -41,6 +41,8 @@ const EmployeesList = () => {
   // Client-side filtering
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
+      if (!emp || !emp.name || emp.name.trim().toLowerCase() === 'unknown') return false;
+
       // Name/email search
       const search = searchTerm.toLowerCase();
       if (search && !(
