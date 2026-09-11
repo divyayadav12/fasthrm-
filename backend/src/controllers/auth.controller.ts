@@ -157,26 +157,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
       console.error('[Email Dispatch Error]:', err);
     });
 
-    // Create notifications for all Admins and broadcast via Socket.IO
-    const adminUsers = await User.find({ role: 'ADMIN' });
-    for (const admin of adminUsers) {
-      await Notification.create({
-        userId: admin._id,
-        title: 'Password Reset Request',
-        message: `Employee ${user.name} (${user.email}) requested a password reset. OTP: ${otp}`,
-        type: 'WARNING',
-      });
-    }
-
-    io.emit('admin_notification', {
-      title: 'Password Reset Request',
-      message: `Employee ${user.name} (${user.email}) requested a password reset OTP: ${otp}`,
-      type: 'WARNING',
-      email: user.email,
-      otp,
-      createdAt: new Date(),
-    });
-
     res.json({
       message: 'OTP has been sent to your registered email.',
     });
@@ -267,32 +247,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    // Broadcast success
-    io.emit('admin_notification', {
-      title: 'Password Reset Successful',
-      message: `User ${user.name} (${user.email}) has successfully reset their password.`,
-      type: 'SUCCESS',
-      email: user.email,
-      createdAt: new Date(),
-    });
-
     res.json({ message: 'Password has been reset successfully. You can now login with your new password.' });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Get Active Password Reset Requests (Admin only)
-// @route   GET /api/auth/reset-requests
-// @access  Private (Admin)
-export const getResetRequests = async (req: Request, res: Response) => {
-  try {
-    const requests = await User.find({
-      resetPasswordOtp: { $exists: true, $ne: null },
-      resetPasswordExpires: { $gt: new Date() },
-    }).select('name email role department designation resetPasswordOtp resetPasswordExpires');
-
-    res.json(requests);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

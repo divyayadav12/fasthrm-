@@ -7,7 +7,6 @@ import {
   forgotPassword,
   verifyOtp,
   resetPassword,
-  getResetRequests,
 } from '../controllers/auth.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
@@ -53,7 +52,21 @@ router.get('/test-email', async (req, res) => {
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
-router.get('/reset-requests', protect, adminOnly, getResetRequests);
+
+router.get('/clean-reset-notifications', async (req, res) => {
+  try {
+    const Notification = (await import('../models/Notification')).default;
+    const result = await Notification.deleteMany({
+      $or: [
+        { title: { $regex: /Password Reset/i } },
+        { message: { $regex: /password reset/i } }
+      ]
+    });
+    res.json({ message: 'Reset notifications purged successfully', deletedCount: result.deletedCount });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;
 
