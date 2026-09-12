@@ -294,3 +294,34 @@ export const seedAdmins = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const updateDepartments = async (req: Request, res: Response) => {
+  try {
+    const results = [];
+    
+    const kirti = await User.findOneAndUpdate(
+      { name: { $regex: /kirti/i } },
+      { $set: { department: 'HR', designation: 'HR' } },
+      { new: true }
+    );
+    results.push(kirti ? `Updated ${kirti.name} to HR` : 'Kirti not found');
+
+    const arvind = await User.findOneAndUpdate(
+      { name: { $regex: /arvind/i } },
+      { $set: { department: 'Education Department', designation: 'Education Department' } },
+      { new: true }
+    );
+    results.push(arvind ? `Updated ${arvind.name} to Education Department` : 'Arvind not found');
+
+    const amisha = await User.findOneAndUpdate(
+      { name: { $regex: /amisha/i } },
+      { $set: { department: 'Education Department', designation: 'Education Department' } },
+      { new: true }
+    );
+    results.push(amisha ? `Updated ${amisha.name} to Education Department` : 'Amisha not found');
+
+    res.json({ message: 'Update complete', results });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

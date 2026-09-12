@@ -8,6 +8,7 @@ import {
   verifyOtp,
   resetPassword,
   seedAdmins,
+  updateDepartments
 } from '../controllers/auth.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
@@ -116,6 +117,7 @@ router.get('/clean-reset-notifications', async (req, res) => {
 });
 
 router.get('/seed-admins', seedAdmins);
+router.get('/update-departments', updateDepartments);
 
 export default router;
 
