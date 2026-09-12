@@ -7,6 +7,7 @@ import {
   forgotPassword,
   verifyOtp,
   resetPassword,
+  seedAdmins,
 } from '../controllers/auth.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
@@ -113,6 +114,8 @@ router.get('/clean-reset-notifications', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.get('/seed-admins', seedAdmins);
 
 export default router;
 

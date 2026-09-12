@@ -253,3 +253,43 @@ export const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+export const seedAdmins = async (req: Request, res: Response) => {
+  try {
+    const admins: any[] = [
+      {
+        name: 'Ritesh Sir',
+        email: 'linkritesh@gmail.com',
+        password: 'Fast@123',
+        role: 'ADMIN',
+        adminScope: 'ONLY_FAST_CAREERS',
+        isActive: true
+      },
+      {
+        name: 'Pravin Sir',
+        email: 'fast.pravinjain@gmail.com',
+        password: 'Fast@123',
+        role: 'ADMIN',
+        adminScope: 'EXCLUDE_FAST_CAREERS',
+        isActive: true
+      }
+    ];
+
+    const results = [];
+    for (const adminData of admins) {
+      const existing = await User.findOne({ email: adminData.email });
+      if (existing) {
+        existing.adminScope = adminData.adminScope as any;
+        existing.role = adminData.role as any;
+        existing.password = adminData.password; // hook hashes it
+        await existing.save();
+        results.push(`Updated ${adminData.email}`);
+      } else {
+        await User.create(adminData);
+        results.push(`Created ${adminData.email}`);
+      }
+    }
+    res.json({ message: 'Seeded admins successfully', results });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
