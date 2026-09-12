@@ -300,15 +300,7 @@ const AdminDashboard = () => {
           <div>
             <h2 className="text-base font-bold text-gray-900 tracking-wide">LIVE TEAM STATUS</h2>
           </div>
-          <span className="flex items-center text-sm font-medium text-emerald-600 self-start sm:self-auto">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
-            Auto-updating
-          </span>
-        </div>
-
-        {/* Filter Bar */}
-        <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+          <div className="flex items-center gap-3 self-start sm:self-auto">
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center px-3 sm:px-3.5 py-1.5 border rounded-xl text-xs sm:text-sm font-medium transition-colors shadow-xs shrink-0 ${
@@ -324,6 +316,16 @@ const AdminDashboard = () => {
               )}
               <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
+            <span className="flex items-center text-sm font-medium text-emerald-600">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+              Auto-updating
+            </span>
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
 
             {/* Role Filter Tabs beside Filters */}
             <div className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
