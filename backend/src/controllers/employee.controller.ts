@@ -16,6 +16,10 @@ export const getEmployees = async (req: Request, res: Response) => {
     if (department) query.department = department;
     if (role) query.role = role;
 
+    const { getUserScopeFilter } = require('../utils/scopeHelper');
+    const scopeFilter = await getUserScopeFilter((req as any).user);
+    Object.assign(query, scopeFilter);
+
     const pageNumber = parseInt(page as string, 10);
     const limitNumber = parseInt(limit as string, 10);
     const startIndex = (pageNumber - 1) * limitNumber;

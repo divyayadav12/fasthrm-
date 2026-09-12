@@ -1,26 +1,16 @@
-import Project from '../models/Project';
+import User from '../models/User';
+
+const getCareerUserIds = async () => {
+  // Find all users whose department matches 'career' or 'careear' (case-insensitive)
+  const careerUsers = await User.find({
+    department: { $regex: /career|careear/i }
+  }).select('_id');
+  return careerUsers.map(u => u._id);
+};
 
 export const getProjectScopeFilter = async (user: any) => {
-  if (!user || user.role !== 'ADMIN' || !user.adminScope || user.adminScope === 'ALL') {
-    return {};
-  }
-
-  const fastCareersProject = await Project.findOne({ name: { $regex: /^fast careers$/i } });
-
-  if (user.adminScope === 'ONLY_FAST_CAREERS') {
-    if (!fastCareersProject) {
-      return { _id: null };
-    }
-    return { _id: fastCareersProject._id };
-  }
-
-  if (user.adminScope === 'EXCLUDE_FAST_CAREERS') {
-    if (!fastCareersProject) {
-      return {};
-    }
-    return { _id: { $ne: fastCareersProject._id } };
-  }
-
+  // We no longer filter Projects based on department directly,
+  // but if needed we could return something. For now, return empty.
   return {};
 };
 
@@ -29,17 +19,52 @@ export const getTaskScopeFilter = async (user: any) => {
     return {};
   }
 
-  const fastCareersProject = await Project.findOne({ name: { $regex: /^fast careers$/i } });
+  const careerUserIds = await getCareerUserIds();
 
   if (user.adminScope === 'ONLY_FAST_CAREERS') {
-    if (!fastCareersProject) return { projectId: null };
-    return { projectId: fastCareersProject._id };
+    return { assignedTo: { $in: careerUserIds } };
   }
 
   if (user.adminScope === 'EXCLUDE_FAST_CAREERS') {
-    if (!fastCareersProject) return {};
-    return { projectId: { $ne: fastCareersProject._id } };
+    return { assignedTo: { $nin: careerUserIds } };
   }
 
   return {};
 };
+
+export const getWorkLogScopeFilter = async (user: any) => {
+  if (!user || user.role !== 'ADMIN' || !user.adminScope || user.adminScope === 'ALL') {
+    return {};
+  }
+
+  const careerUserIds = await getCareerUserIds();
+
+  if (user.adminScope === 'ONLY_FAST_CAREERS') {
+    return { employeeId: { $in: careerUserIds } };
+  }
+
+  if (user.adminScope === 'EXCLUDE_FAST_CAREERS') {
+    return { employeeId: { $nin: careerUserIds } };
+  }
+
+  return {};
+};
+
+export const getUserScopeFilter = async (user: any) => {
+  if (!user || user.role !== 'ADMIN' || !user.adminScope || user.adminScope === 'ALL') {
+    return {};
+  }
+
+  const careerUserIds = await getCareerUserIds();
+
+  if (user.adminScope === 'ONLY_FAST_CAREERS') {
+    return { _id: { $in: careerUserIds } };
+  }
+
+  if (user.adminScope === 'EXCLUDE_FAST_CAREERS') {
+    return { _id: { $nin: careerUserIds } };
+  }
+
+  return {};
+};
+

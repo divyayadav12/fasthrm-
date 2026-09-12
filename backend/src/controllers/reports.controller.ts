@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import WorkLog from '../models/WorkLog';
 import Project from '../models/Project';
 import Task from '../models/Task';
-import { getProjectScopeFilter, getTaskScopeFilter } from '../utils/scopeHelper';
+import { getProjectScopeFilter, getTaskScopeFilter, getWorkLogScopeFilter } from '../utils/scopeHelper';
 
 // @desc    Get employee productivity report
 // @route   GET /api/reports/employee
@@ -19,9 +19,9 @@ export const getEmployeeReport = async (req: Request, res: Response) => {
       if (dateTo) match.createdAt.$lte = new Date(dateTo as string);
     }
 
-    const taskScopeFilter = await getTaskScopeFilter((req as any).user);
-    if (taskScopeFilter.projectId) {
-      match.projectId = taskScopeFilter.projectId;
+    const workLogScope = await getWorkLogScopeFilter((req as any).user);
+    if (workLogScope.employeeId) {
+      match.employeeId = workLogScope.employeeId;
     }
 
     const productivity = await WorkLog.aggregate([
@@ -101,10 +101,11 @@ export const getProductivityStats = async (req: Request, res: Response) => {
     const activeProjects = await Project.countDocuments({ ...projectScope, status: 'ACTIVE' });
     
     const taskScope = await getTaskScopeFilter((req as any).user);
+    const workLogScope = await getWorkLogScopeFilter((req as any).user);
 
     // Check completed tasks today from both WorkLog and Task collections
     const completedWorkLogsToday = await WorkLog.find({
-      ...taskScope,
+      ...workLogScope,
       status: 'COMPLETED',
       createdAt: { $gte: today }
     });
@@ -125,7 +126,7 @@ export const getProductivityStats = async (req: Request, res: Response) => {
     const completedTasksToday = Math.max(uniqueCompletedFromLogs, completedFromTasks);
 
     const currentlyWorking = await WorkLog.aggregate([
-      { $match: { createdAt: { $gte: today }, ...taskScope } },
+      { $match: { createdAt: { $gte: today }, ...workLogScope } },
       { $sort: { createdAt: -1 } },
       {
         $group: {
