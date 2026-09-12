@@ -371,18 +371,6 @@ const AdminDashboard = () => {
             >
               Today
             </button>
-            <button
-              onClick={() => handleQuickDatePreset('yesterday')}
-              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
-            >
-              Yesterday
-            </button>
-            <button
-              onClick={() => handleQuickDatePreset('7days')}
-              className="px-2.5 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
-            >
-              Last 7 Days
-            </button>
           </div>
         </div>
 
