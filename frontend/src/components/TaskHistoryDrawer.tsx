@@ -253,6 +253,62 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                 )}
               </div>
             )}
+
+            {/* ── Time Spent Summary Row ── */}
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Total Time */}
+              <div className="flex flex-col items-start bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Total Time Spent</span>
+                <span className="text-lg font-extrabold text-indigo-700 mt-0.5 leading-none">
+                  {metrics.totalDuration || '0m'}
+                </span>
+                {task?.status === 'WORKING' && (
+                  <span className="text-[9px] font-semibold text-indigo-400 mt-1 uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping inline-block" />
+                    Live – updating
+                  </span>
+                )}
+              </div>
+
+              {/* Total Updates */}
+              <div className="flex flex-col items-start bg-slate-50 border border-gray-100 rounded-xl px-3 py-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Status Updates</span>
+                <span className="text-lg font-extrabold text-gray-800 mt-0.5 leading-none">
+                  {metrics.updateCount}
+                </span>
+                <span className="text-[9px] font-semibold text-gray-400 mt-1 uppercase">logs recorded</span>
+              </div>
+
+              {/* Started At */}
+              <div className="flex flex-col items-start bg-slate-50 border border-gray-100 rounded-xl px-3 py-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Started At</span>
+                <span className="text-sm font-bold text-gray-800 mt-0.5 leading-tight">
+                  {metrics.startedAt
+                    ? metrics.startedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+                    : '—'}
+                </span>
+                <span className="text-[9px] font-semibold text-gray-400 mt-0.5">
+                  {metrics.startedAt
+                    ? metrics.startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : ''}
+                </span>
+              </div>
+
+              {/* Last Updated */}
+              <div className="flex flex-col items-start bg-slate-50 border border-gray-100 rounded-xl px-3 py-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Last Updated</span>
+                <span className="text-sm font-bold text-gray-800 mt-0.5 leading-tight">
+                  {metrics.lastUpdatedAt
+                    ? metrics.lastUpdatedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+                    : '—'}
+                </span>
+                <span className="text-[9px] font-semibold text-gray-400 mt-0.5">
+                  {metrics.lastUpdatedAt
+                    ? metrics.lastUpdatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : ''}
+                </span>
+              </div>
+            </div>
           </div>
 
 
