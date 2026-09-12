@@ -1,19 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
-import { Clock, CheckCircle, Activity, Briefcase, BarChart2, AlertCircle } from 'lucide-react';
+import { Clock, BarChart2, Calendar, AlertCircle, Search } from 'lucide-react';
 import axios from 'axios';
+import { getTaskLiveMinutes, formatDuration } from '../../utils/timeFormat';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
-
-const formatDuration = (totalMinutes: number): string => {
-  if (!totalMinutes || totalMinutes <= 0) return '0m';
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = Math.round(totalMinutes % 60);
-  if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
-  if (hours > 0) return `${hours}h`;
-  return `${mins}m`;
-};
 
 const getStatusStyle = (status: string) => {
   const map: Record<string, string> = {
@@ -58,6 +50,7 @@ const MyReport: React.FC = () => {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -136,11 +129,24 @@ const MyReport: React.FC = () => {
 
       {/* Task Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">Task Time Breakdown</h2>
-          <span className="text-xs text-gray-400 font-medium">
-            {tasks.length} task{tasks.length !== 1 ? 's' : ''}
-          </span>
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">Task Time Breakdown</h2>
+            <span className="text-xs text-gray-400 font-medium">
+              {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50/50 w-full"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
@@ -165,14 +171,20 @@ const MyReport: React.FC = () => {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-400">
-                      <BarChart2 className="h-8 w-8 opacity-30" />
-                      <p className="text-sm font-medium">No tasks found for this period.</p>
-                      <p className="text-xs">Start working on a task to see your report here.</p>
+                      <Calendar className="h-10 w-10 opacity-50" />
+                      <p>No tasks found for this period.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                tasks.map((task) => {
+                tasks
+                  .filter((t) => {
+                    const title = (t.title || '').toLowerCase();
+                    const desc = (t.description || '').toLowerCase();
+                    const query = searchQuery.toLowerCase();
+                    return title.includes(query) || desc.includes(query);
+                  })
+                  .map((task) => {
                   const barWidth = maxMinutes > 0 ? Math.round((task.totalMinutes / maxMinutes) * 100) : 0;
                   const isLive = task.status === 'WORKING';
                   return (

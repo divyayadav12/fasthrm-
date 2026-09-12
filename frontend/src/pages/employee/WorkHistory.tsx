@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
-import { Calendar, Filter, Edit2, RotateCcw, X, Check, ArrowRight, Activity, AlertCircle, HelpCircle, ExternalLink } from 'lucide-react';
+import { Calendar, Filter, Edit2, RotateCcw, X, Check, ArrowRight, Activity, AlertCircle, HelpCircle, ExternalLink, Search } from 'lucide-react';
 import axios from 'axios';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
@@ -14,6 +14,7 @@ const WorkHistory = () => {
   const [workLogs, setWorkLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -297,9 +298,20 @@ const WorkHistory = () => {
             View, edit, or restart any completed task to resume work on your dashboard
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-2">
+        <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white w-full sm:w-64"
+            />
+          </div>
           <select 
-            className="border border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+            className="border border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 bg-white w-full sm:w-auto"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
@@ -308,7 +320,7 @@ const WorkHistory = () => {
             <option value="week">Last 7 Days</option>
             <option value="month">This Month</option>
           </select>
-          <button className="flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50">
+          <button className="flex items-center justify-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 w-full sm:w-auto">
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </button>
@@ -338,7 +350,14 @@ const WorkHistory = () => {
                   </td>
                 </tr>
               ) : (
-                workLogs.map((log) => (
+                workLogs
+                  .filter((log) => {
+                    const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
+                    const desc = (log.description || '').toLowerCase();
+                    const query = searchQuery.toLowerCase();
+                    return title.includes(query) || desc.includes(query);
+                  })
+                  .map((log) => (
                   <tr key={log._id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{new Date(log.createdAt).toLocaleDateString()}</div>
