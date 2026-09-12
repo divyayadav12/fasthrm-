@@ -126,52 +126,6 @@ const MyReport: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Time</p>
-              <p className="text-2xl font-extrabold text-gray-900 mt-1">{formatDuration(summary.totalMinutes)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">Across all tasks</p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-              <Clock className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed</p>
-              <p className="text-2xl font-extrabold text-emerald-600 mt-1">{summary.completedTasks}</p>
-              <p className="text-xs text-gray-400 mt-0.5">Tasks finished</p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Active Now</p>
-              <p className="text-2xl font-extrabold text-blue-600 mt-1">{summary.activeTasks}</p>
-              <p className="text-xs text-gray-400 mt-0.5">Currently working</p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <Activity className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Tasks</p>
-              <p className="text-2xl font-extrabold text-gray-900 mt-1">{summary.totalTasks}</p>
-              <p className="text-xs text-gray-400 mt-0.5">All assigned tasks</p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
-              <Briefcase className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Error */}
       {error && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
