@@ -350,6 +350,7 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                     <tr>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Date</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Timing</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Time Spent</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Employee</th>
                       <th scope="col" className="px-4 py-3">Description</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
@@ -379,10 +380,17 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                           {/* Timing */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             <span className="font-semibold text-gray-900">{formattedTime}</span>
-                            {(log.duration || log.durationMinutes) > 0 && (
-                              <div className="text-[10px] text-gray-500 font-medium mt-0.5">
-                                ⏱ {formatDuration(log.duration || log.durationMinutes)}
+                          </td>
+
+                          {/* Time Spent */}
+                          <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
+                            {(log.duration || log.durationMinutes) > 0 ? (
+                              <div className="inline-flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 border border-gray-200/70 px-2 py-1 rounded-md font-semibold">
+                                <Clock className="w-3 h-3 text-gray-400" />
+                                {formatDuration(log.duration || log.durationMinutes)}
                               </div>
+                            ) : (
+                              <span className="text-gray-400 font-normal">-</span>
                             )}
                           </td>
 
