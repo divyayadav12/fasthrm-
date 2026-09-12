@@ -175,6 +175,13 @@ const EmployeeDashboard = () => {
         startTime: new Date(Date.now() - Number(duration) * 60000),
       };
 
+      // When editing an existing task, pass its _id for exact DB lookup.
+      // Without this, backend searches by title which can create a duplicate task,
+      // leaving the original task stuck in WORKING status forever.
+      if (editingTask && editingTask._id) {
+        payload.taskId = editingTask._id;
+      }
+
       if (isReactivating && cleanRestartReason) {
         payload.restartReason = cleanRestartReason;
       }

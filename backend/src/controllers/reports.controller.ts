@@ -135,3 +135,92 @@ export const getProductivityStats = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get employee's own task-level time breakdown report
+// @route   GET /api/reports/my-tasks
+// @access  Private (Employee + Admin)
+export const getMyTaskReport = async (req: Request, res: Response) => {
+  try {
+    const employeeId = (req as any).user._id;
+    const { dateFrom, dateTo } = req.query;
+
+    // Date filter for WorkLog lookups
+    const dateMatch: any = {};
+    if (dateFrom || dateTo) {
+      dateMatch.createdAt = {};
+      if (dateFrom) dateMatch.createdAt.$gte = new Date(dateFrom as string);
+      if (dateTo) dateMatch.createdAt.$lte = new Date(dateTo as string);
+    }
+
+    // Fetch all tasks belonging to this employee
+    const tasks = await Task.find({ assignedTo: employeeId }).sort({ updatedAt: -1 });
+
+    // Aggregate latest worklog date per task
+    const taskIds = tasks.map((t) => t._id);
+    const latestLogPerTask = await WorkLog.aggregate([
+      {
+        $match: {
+          employeeId,
+          taskId: { $in: taskIds },
+          ...dateMatch,
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: '$taskId',
+          lastActivity: { $first: '$createdAt' },
+          logCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const logMap: Record<string, { lastActivity: Date; logCount: number }> = {};
+    for (const entry of latestLogPerTask) {
+      logMap[entry._id.toString()] = {
+        lastActivity: entry.lastActivity,
+        logCount: entry.logCount,
+      };
+    }
+
+    // Build report — include live elapsed time for WORKING tasks
+    const now = Date.now();
+    const report = tasks.map((task) => {
+      let totalMinutes = task.totalDuration || 0;
+      if (task.status === 'WORKING' && task.startedAt) {
+        const liveElapsed = Math.max(0, Math.round((now - new Date(task.startedAt).getTime()) / 60000));
+        totalMinutes += liveElapsed;
+      }
+      const logInfo = logMap[task._id.toString()];
+      const taskAny = task as any; // Mongoose timestamps not typed in ITask
+      return {
+        _id: task._id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        progress: task.progress,
+        totalMinutes,
+        startedAt: task.startedAt,
+        completedAt: task.completedAt,
+        lastActivity: logInfo?.lastActivity || taskAny.updatedAt,
+        logCount: logInfo?.logCount || 0,
+        createdAt: taskAny.createdAt,
+      };
+    });
+
+    const totalMinutesAll = report.reduce((sum, t) => sum + t.totalMinutes, 0);
+
+    res.json({
+      tasks: report,
+      summary: {
+        totalTasks: report.length,
+        completedTasks: report.filter((t) => t.status === 'COMPLETED').length,
+        activeTasks: report.filter((t) => t.status === 'WORKING').length,
+        pendingTasks: report.filter((t) => t.status === 'PENDING').length,
+        totalMinutes: totalMinutesAll,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

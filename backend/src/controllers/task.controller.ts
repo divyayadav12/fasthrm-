@@ -83,10 +83,16 @@ export const updateTask = async (req: Request, res: Response) => {
     if (progress !== undefined) task.progress = Number(progress);
 
     if (status) {
-      await syncTaskTimingOnStatusChange(task, status, task.assignedTo);
-    }
+      const { autoResumedTaskId } = await syncTaskTimingOnStatusChange(task, status, task.assignedTo);
+      await task.save();
 
-    await task.save();
+      // Emit for auto-resumed task AFTER the status-changing task is saved
+      if (autoResumedTaskId) {
+        io.emit('worklog_updated', { _id: null, updatedTaskId: autoResumedTaskId });
+      }
+    } else {
+      await task.save();
+    }
 
     // Notify connected dashboards in real-time
     io.emit('worklog_updated', { _id: null, updatedTaskId: task._id });

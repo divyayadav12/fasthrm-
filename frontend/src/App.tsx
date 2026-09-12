@@ -14,6 +14,7 @@ import TasksList from './pages/admin/Tasks';
 import Reports from './pages/admin/Reports';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import WorkHistory from './pages/employee/WorkHistory';
+import MyReport from './pages/employee/MyReport';
 import Layout from './components/Layout';
 
 function App() {
@@ -62,6 +63,7 @@ function App() {
         >
           <Route index element={<EmployeeDashboard />} />
           <Route path="history" element={<WorkHistory />} />
+          <Route path="my-report" element={<MyReport />} />
 
           {/* Add more employee routes here */}
         </Route>

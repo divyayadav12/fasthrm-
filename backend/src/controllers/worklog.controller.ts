@@ -6,13 +6,20 @@ import { io } from '../index';
 /**
  * Ensures an employee has only ONE actively 'WORKING' task at a time,
  * accumulates accurate durations (in minutes), and auto-resumes pending tasks upon completion.
+ *
+ * IMPORTANT: This function does NOT call io.emit for the COMPLETED→auto-resume case.
+ * Instead it returns the auto-resumed task id so the CALLER can emit AFTER saving the
+ * main task — preventing a race condition where the frontend re-fetches before the
+ * completing task is persisted as COMPLETED in the DB.
+ *
+ * Returns { autoResumedTaskId } if a PENDING task was auto-resumed to WORKING.
  */
 export const syncTaskTimingOnStatusChange = async (
   task: any,
   newStatus: string,
   employeeId: any,
   manualDuration?: number
-) => {
+): Promise<{ autoResumedTaskId?: string }> => {
   const empId = employeeId?._id || employeeId || task.assignedTo;
 
   if (newStatus === 'WORKING') {
@@ -47,7 +54,7 @@ export const syncTaskTimingOnStatusChange = async (
         duration: elapsed,
       });
 
-      // Emit real-time notification
+      // Emit real-time notification for the paused task
       io.emit('worklog_updated', { _id: null, updatedTaskId: other._id });
     }
 
@@ -60,6 +67,8 @@ export const syncTaskTimingOnStatusChange = async (
     }
     task.status = 'WORKING';
     task.completedAt = undefined;
+
+    return {};
   } else if (newStatus === 'COMPLETED') {
     // 1. Calculate time spent on this completing task
     const elapsed = task.startedAt
@@ -72,7 +81,9 @@ export const syncTaskTimingOnStatusChange = async (
     task.completedAt = new Date();
     task.startedAt = undefined;
 
-    // 2. Auto-resume the most recently updated 'PENDING' task for this employee
+    // 2. Auto-resume the most recently updated 'PENDING' task for this employee.
+    //    We do NOT emit the socket event here — the caller must emit AFTER saving
+    //    the completing task so the frontend never sees it in an intermediate state.
     const nextPendingTask = await Task.findOne({
       assignedTo: empId,
       status: 'PENDING',
@@ -95,9 +106,11 @@ export const syncTaskTimingOnStatusChange = async (
         startTime: new Date(),
       });
 
-      // Real-time notification for auto-resumed task
-      io.emit('worklog_updated', { _id: null, updatedTaskId: nextPendingTask._id });
+      // Return the ID so the caller emits AFTER task.save()
+      return { autoResumedTaskId: nextPendingTask._id.toString() };
     }
+
+    return {};
   } else {
     // Status changed to PENDING, ON_HOLD, IN_REVIEW, NOT_STARTED, etc.
     if (task.status === 'WORKING' && task.startedAt) {
@@ -109,6 +122,8 @@ export const syncTaskTimingOnStatusChange = async (
     task.status = newStatus;
     task.startedAt = undefined;
     task.completedAt = undefined;
+
+    return {};
   }
 };
 
@@ -123,7 +138,16 @@ export const createWorkLog = async (req: Request, res: Response) => {
     let finalTaskId = taskId;
     let task = null;
 
-    if (customTaskTitle) {
+    // Priority: if taskId is provided (editing existing task), use exact DB lookup.
+    // This prevents a duplicate task from being created due to title mismatch.
+    if (taskId) {
+      task = await Task.findById(taskId);
+      // If title changed, update it
+      if (task && customTaskTitle && task.title !== customTaskTitle.trim()) {
+        task.title = customTaskTitle.trim();
+      }
+    } else if (customTaskTitle) {
+      // New task log: find by title or create fresh
       task = await Task.findOne({ title: customTaskTitle.trim(), assignedTo: employeeId });
       if (!task) {
         task = new Task({
@@ -135,8 +159,6 @@ export const createWorkLog = async (req: Request, res: Response) => {
           restartReason: restartReason || undefined,
         });
       }
-    } else if (taskId) {
-      task = await Task.findById(taskId);
     }
 
     if (task) {
@@ -144,9 +166,15 @@ export const createWorkLog = async (req: Request, res: Response) => {
       if (description !== undefined) task.description = description;
       if (restartReason) task.restartReason = restartReason;
 
-      await syncTaskTimingOnStatusChange(task, status, employeeId, duration);
+      const { autoResumedTaskId } = await syncTaskTimingOnStatusChange(task, status, employeeId, duration);
       await task.save();
       finalTaskId = task._id;
+
+      // Emit for auto-resumed task AFTER the completing task is saved as COMPLETED in DB.
+      // This prevents the frontend from seeing the completing task in an intermediate PENDING state.
+      if (autoResumedTaskId) {
+        io.emit('worklog_updated', { _id: null, updatedTaskId: autoResumedTaskId });
+      }
     }
 
     const calculatedDuration = duration ? Number(duration) : (task?.totalDuration || 0);
@@ -381,10 +409,17 @@ export const updateWorkLog = async (req: Request, res: Response) => {
       if (progress !== undefined) {
         task.progress = Number(progress);
       }
+      let autoResumedTaskId: string | undefined;
       if (status !== undefined) {
-        await syncTaskTimingOnStatusChange(task, status, workLog.employeeId);
+        const result = await syncTaskTimingOnStatusChange(task, status, workLog.employeeId);
+        autoResumedTaskId = result.autoResumedTaskId;
       }
       await task.save();
+
+      // Emit for auto-resumed task AFTER completing task is persisted
+      if (autoResumedTaskId) {
+        io.emit('worklog_updated', { _id: null, updatedTaskId: autoResumedTaskId });
+      }
 
       if (!workLog.taskId) {
         workLog.taskId = task._id;
@@ -399,8 +434,11 @@ export const updateWorkLog = async (req: Request, res: Response) => {
         description: description !== undefined ? description : workLog.description,
         restartReason: restartReason || undefined,
       });
-      await syncTaskTimingOnStatusChange(task, status || workLog.status, workLog.employeeId);
+      const result = await syncTaskTimingOnStatusChange(task, status || workLog.status, workLog.employeeId);
       await task.save();
+      if (result.autoResumedTaskId) {
+        io.emit('worklog_updated', { _id: null, updatedTaskId: result.autoResumedTaskId });
+      }
       workLog.taskId = task._id;
       await workLog.save();
     }

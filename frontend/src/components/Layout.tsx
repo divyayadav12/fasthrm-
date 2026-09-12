@@ -5,7 +5,7 @@ import { RootState, AppDispatch } from '../store';
 import { logout } from '../store/slices/authSlice';
 import { fetchNotifications, markAllAsRead } from '../store/slices/notificationSlice';
 import { socket } from '../utils/socket';
-import { LogOut, Activity, Users, Briefcase, FileText, Settings, Menu, Bell, CheckSquare, ChevronDown, X } from 'lucide-react';
+import { LogOut, Activity, Users, Briefcase, FileText, Settings, Menu, Bell, CheckSquare, ChevronDown, X, BarChart2 } from 'lucide-react';
 
 const Layout = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -102,10 +102,16 @@ const Layout = () => {
       )}
 
       {!isAdmin && (
-        <Link to={`${prefix}/history`} className={getLinkClass(`${prefix}/history`)}>
-          <FileText className="h-5 w-5 mr-3" />
-          My History
-        </Link>
+        <>
+          <Link to={`${prefix}/history`} className={getLinkClass(`${prefix}/history`)}>
+            <FileText className="h-5 w-5 mr-3" />
+            My History
+          </Link>
+          <Link to={`${prefix}/my-report`} className={getLinkClass(`${prefix}/my-report`)}>
+            <BarChart2 className="h-5 w-5 mr-3" />
+            My Report
+          </Link>
+        </>
       )}
     </>
   );
