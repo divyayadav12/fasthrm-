@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchTasks, deleteTask } from '../../store/slices/taskSlice';
-import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
+import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw, AlertCircle, ExternalLink } from 'lucide-react';
 import { socket } from '../../utils/socket';
 import { formatDuration, getTaskLiveMinutes } from '../../utils/timeFormat';
 import axios from 'axios';
+import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
 
@@ -35,6 +36,9 @@ const EmployeeDashboard = () => {
   // Delete task modal state
   const [taskToDelete, setTaskToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Task detail drawer state (same as admin Tasks page)
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
 
   const confirmDeleteTask = async () => {
     if (!taskToDelete) return;
@@ -232,6 +236,7 @@ const EmployeeDashboard = () => {
       : tasks;
 
   return (
+    <>
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
@@ -361,8 +366,20 @@ const EmployeeDashboard = () => {
                   const liveMins = getTaskLiveMinutes(task);
                   return (
                     <tr key={task._id} className="hover:bg-gray-50/60 transition-colors">
+                      {/* Task Name — clickable to open detail drawer */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">{task.title}</div>
+                        <button
+                          onClick={() => setSelectedTaskForDetail(task)}
+                          className="group text-left"
+                          title="View task details"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              {task.title}
+                            </span>
+                            <ExternalLink className="h-3 w-3 text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
+                          </div>
+                        </button>
                         {task.restartReason && (
                           <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md max-w-fit">
                             <span>🔄 Restart Reason: {task.restartReason}</span>
@@ -391,6 +408,15 @@ const EmployeeDashboard = () => {
                       </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        {/* Details button */}
+                        <button
+                          onClick={() => setSelectedTaskForDetail(task)}
+                          className="flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-700 transition-colors cursor-pointer"
+                          title="View task history & details"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                          Details
+                        </button>
                         {task.status === 'COMPLETED' && (
                           <button
                             onClick={() => openRestartModal(task)}
@@ -680,6 +706,24 @@ const EmployeeDashboard = () => {
         </div>
       )}
     </div>
+
+      {/* Task Detail / History Drawer — same as admin view */}
+      <TaskHistoryDrawer
+        isOpen={!!selectedTaskForDetail}
+        onClose={() => setSelectedTaskForDetail(null)}
+        task={selectedTaskForDetail
+          ? {
+              _id: selectedTaskForDetail._id,
+              taskId: selectedTaskForDetail._id,
+              title: selectedTaskForDetail.title,
+              status: selectedTaskForDetail.status,
+              totalDuration: selectedTaskForDetail.totalDuration,
+              startedAt: selectedTaskForDetail.startedAt,
+              employee: user,
+            }
+          : null}
+      />
+    </>
   );
 };
 
