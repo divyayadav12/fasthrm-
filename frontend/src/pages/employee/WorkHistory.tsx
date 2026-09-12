@@ -15,6 +15,8 @@ const WorkHistory = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -307,9 +309,31 @@ const WorkHistory = () => {
               placeholder="Search tasks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white w-full sm:w-64"
+              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white w-full sm:w-56"
             />
           </div>
+          
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 bg-white w-full sm:w-auto"
+            title="Filter by exact date"
+          />
+
+          <select
+            className="border border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 bg-white w-full sm:w-auto"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">All Status</option>
+            <option value="WORKING">Working</option>
+            <option value="PENDING">Pending</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="IN_REVIEW">In Review</option>
+            <option value="ON_HOLD">On Hold</option>
+          </select>
+
           <select 
             className="border border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 bg-white w-full sm:w-auto"
             value={filter}
@@ -320,10 +344,6 @@ const WorkHistory = () => {
             <option value="week">Last 7 Days</option>
             <option value="month">This Month</option>
           </select>
-          <button className="flex items-center justify-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 w-full sm:w-auto">
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </button>
         </div>
       </div>
 
@@ -352,10 +372,24 @@ const WorkHistory = () => {
               ) : (
                 workLogs
                   .filter((log) => {
+                    // Text search
                     const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
                     const desc = (log.description || '').toLowerCase();
                     const query = searchQuery.toLowerCase();
-                    return title.includes(query) || desc.includes(query);
+                    const matchesSearch = title.includes(query) || desc.includes(query);
+                    
+                    // Status filter
+                    const matchesStatus = statusFilter === 'ALL' || log.status === statusFilter;
+                    
+                    // Date filter (exact match on local date string YYYY-MM-DD)
+                    let matchesDate = true;
+                    if (dateFilter) {
+                      // log.createdAt or log.startTime is an ISO string, extract YYYY-MM-DD
+                      const logDateStr = new Date(log.createdAt).toISOString().split('T')[0];
+                      matchesDate = logDateStr === dateFilter;
+                    }
+                    
+                    return matchesSearch && matchesStatus && matchesDate;
                   })
                   .map((log) => (
                   <tr key={log._id} className="hover:bg-gray-50 transition-colors">
