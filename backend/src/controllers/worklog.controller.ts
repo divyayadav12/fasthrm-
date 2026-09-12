@@ -227,6 +227,10 @@ export const getWorkLogs = async (req: Request, res: Response) => {
       if (dateTo) query.createdAt.$lte = new Date(dateTo as string);
     }
 
+    const { getTaskScopeFilter } = require('../utils/scopeHelper');
+    const scopeFilter = await getTaskScopeFilter((req as any).user);
+    Object.assign(query, scopeFilter);
+
     const pageNumber = parseInt(page as string, 10);
     const limitNumber = parseInt(limit as string, 10);
     const startIndex = (pageNumber - 1) * limitNumber;

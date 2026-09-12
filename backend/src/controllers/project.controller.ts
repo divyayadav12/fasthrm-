@@ -1,12 +1,15 @@
 import { Request, Response } from 'express';
 import Project from '../models/Project';
+import { getProjectScopeFilter } from '../utils/scopeHelper';
 
 // @desc    Get all projects
 // @route   GET /api/projects
 // @access  Private
 export const getProjects = async (req: Request, res: Response) => {
   try {
-    const projects = await Project.find()
+    const scopeFilter = await getProjectScopeFilter((req as any).user);
+    
+    const projects = await Project.find(scopeFilter)
       .populate('projectManager', 'name email')
       .populate('members', 'name email')
       .sort({ createdAt: -1 });

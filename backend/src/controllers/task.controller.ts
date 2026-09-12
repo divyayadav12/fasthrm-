@@ -3,6 +3,7 @@ import Task from '../models/Task';
 import WorkLog from '../models/WorkLog';
 import { io } from '../index';
 import { syncTaskTimingOnStatusChange } from './worklog.controller';
+import { getTaskScopeFilter } from '../utils/scopeHelper';
 
 // @desc    Get all tasks
 // @route   GET /api/tasks
@@ -15,6 +16,9 @@ export const getTasks = async (req: Request, res: Response) => {
     if (projectId) query.projectId = projectId;
     if (assignedTo) query.assignedTo = assignedTo;
     if (status) query.status = status;
+
+    const scopeFilter = await getTaskScopeFilter((req as any).user);
+    Object.assign(query, scopeFilter);
 
     const tasks = await Task.find(query)
       .populate('projectId', 'name status')

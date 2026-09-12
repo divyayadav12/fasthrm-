@@ -12,6 +12,7 @@ export interface IUser extends Document {
   isActive: boolean;
   resetPasswordOtp?: string;
   resetPasswordExpires?: Date;
+  adminScope?: 'ALL' | 'ONLY_FAST_CAREERS' | 'EXCLUDE_FAST_CAREERS';
   matchPassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -31,6 +32,11 @@ const userSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String },
     resetPasswordExpires: { type: Date },
+    adminScope: {
+      type: String,
+      enum: ['ALL', 'ONLY_FAST_CAREERS', 'EXCLUDE_FAST_CAREERS'],
+      default: 'ALL'
+    },
   },
   { timestamps: true }
 );

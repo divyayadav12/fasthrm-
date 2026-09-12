@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import WorkLog from '../models/WorkLog';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import { getProjectScopeFilter, getTaskScopeFilter } from '../utils/scopeHelper';
 
 // @desc    Get employee productivity report
 // @route   GET /api/reports/employee
@@ -16,6 +17,11 @@ export const getEmployeeReport = async (req: Request, res: Response) => {
       match.createdAt = {};
       if (dateFrom) match.createdAt.$gte = new Date(dateFrom as string);
       if (dateTo) match.createdAt.$lte = new Date(dateTo as string);
+    }
+
+    const taskScopeFilter = await getTaskScopeFilter((req as any).user);
+    if (taskScopeFilter.projectId) {
+      match.projectId = taskScopeFilter.projectId;
     }
 
     const productivity = await WorkLog.aggregate([
@@ -60,7 +66,8 @@ export const getEmployeeReport = async (req: Request, res: Response) => {
 // @access  Private/Admin
 export const getProjectReport = async (req: Request, res: Response) => {
   try {
-    const projects = await Project.find().select('name status');
+    const projectScope = await getProjectScopeFilter((req as any).user);
+    const projects = await Project.find(projectScope).select('name status');
     
     const projectStats = await Promise.all(projects.map(async (project) => {
       const totalTasks = await Task.countDocuments({ projectId: project._id });
@@ -90,10 +97,14 @@ export const getProductivityStats = async (req: Request, res: Response) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const activeProjects = await Project.countDocuments({ status: 'ACTIVE' });
+    const projectScope = await getProjectScopeFilter((req as any).user);
+    const activeProjects = await Project.countDocuments({ ...projectScope, status: 'ACTIVE' });
     
+    const taskScope = await getTaskScopeFilter((req as any).user);
+
     // Check completed tasks today from both WorkLog and Task collections
     const completedWorkLogsToday = await WorkLog.find({
+      ...taskScope,
       status: 'COMPLETED',
       createdAt: { $gte: today }
     });
@@ -103,6 +114,7 @@ export const getProductivityStats = async (req: Request, res: Response) => {
     ).size;
 
     const completedFromTasks = await Task.countDocuments({
+      ...taskScope,
       status: 'COMPLETED',
       $or: [
         { completedAt: { $gte: today } },
@@ -112,10 +124,8 @@ export const getProductivityStats = async (req: Request, res: Response) => {
 
     const completedTasksToday = Math.max(uniqueCompletedFromLogs, completedFromTasks);
 
-    // Currently working employees can be determined by socket or by checking latest worklog per employee
-    // For simplicity, we can fetch from worklogs where status is 'WORKING' and date is today
     const currentlyWorking = await WorkLog.aggregate([
-      { $match: { createdAt: { $gte: today } } },
+      { $match: { createdAt: { $gte: today }, ...taskScope } },
       { $sort: { createdAt: -1 } },
       {
         $group: {
