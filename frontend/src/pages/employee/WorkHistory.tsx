@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
-import { Calendar, Filter, Edit2, RotateCcw, X, Check, ArrowRight, Activity, AlertCircle, HelpCircle } from 'lucide-react';
+import { Calendar, Filter, Edit2, RotateCcw, X, Check, ArrowRight, Activity, AlertCircle, HelpCircle, ExternalLink } from 'lucide-react';
 import axios from 'axios';
+import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
 
@@ -34,6 +35,9 @@ const WorkHistory = () => {
 
   // Toast feedback
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string; actionLabel?: string; actionHref?: string } | null>(null);
+
+  // Drawer state
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -247,7 +251,8 @@ const WorkHistory = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <>
+      <div className="max-w-6xl mx-auto space-y-6">
       {/* Toast notification */}
       {toast && (
         <div
@@ -340,9 +345,18 @@ const WorkHistory = () => {
                       <div className="text-xs text-gray-500">{new Date(log.startTime || log.createdAt).toLocaleTimeString()}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-gray-900 truncate max-w-[220px]">
-                        {log.taskId?.title || log.customTaskTitle || '-'}
-                      </div>
+                      <button
+                        onClick={() => setSelectedTaskForDetail(log.taskId || log)}
+                        className="group text-left"
+                        title="View task details"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate max-w-[200px]">
+                            {log.taskId?.title || log.customTaskTitle || '-'}
+                          </span>
+                          <ExternalLink className="h-3 w-3 text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
+                        </div>
+                      </button>
                       {log.restartReason && (
                         <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md max-w-fit">
                           <span>🔄 Restart Reason: {log.restartReason}</span>
@@ -357,6 +371,15 @@ const WorkHistory = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        {/* Details button */}
+                        <button
+                          onClick={() => setSelectedTaskForDetail(log.taskId || log)}
+                          className="flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-700 transition-colors cursor-pointer"
+                          title="View task history & details"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                          Details
+                        </button>
                         {log.status === 'COMPLETED' && (
                           <button
                             type="button"
@@ -364,7 +387,7 @@ const WorkHistory = () => {
                             className="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
                             title="Restart this completed task & resume work"
                           >
-                            <RotateCcw className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                            <RotateCcw className="w-3.5 h-3.5 mr-1" />
                             Restart
                           </button>
                         )}
@@ -661,6 +684,24 @@ const WorkHistory = () => {
         </div>
       )}
     </div>
+
+      {/* Task Detail / History Drawer */}
+      <TaskHistoryDrawer
+        isOpen={!!selectedTaskForDetail}
+        onClose={() => setSelectedTaskForDetail(null)}
+        task={selectedTaskForDetail
+          ? {
+              _id: selectedTaskForDetail._id,
+              taskId: selectedTaskForDetail._id,
+              title: selectedTaskForDetail.title,
+              status: selectedTaskForDetail.status,
+              totalDuration: selectedTaskForDetail.totalDuration,
+              startedAt: selectedTaskForDetail.startedAt,
+              employee: user,
+            }
+          : null}
+      />
+    </>
   );
 };
 
