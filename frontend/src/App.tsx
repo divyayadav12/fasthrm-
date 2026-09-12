@@ -15,6 +15,8 @@ import Reports from './pages/admin/Reports';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import WorkHistory from './pages/employee/WorkHistory';
 import MyReport from './pages/employee/MyReport';
+import AdminLeaves from './pages/admin/Leaves';
+import MyLeaves from './pages/employee/MyLeaves';
 import Layout from './components/Layout';
 
 function App() {
@@ -51,19 +53,21 @@ function App() {
 
           <Route path="tasks" element={<TasksList />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="leaves" element={<AdminLeaves />} />
         </Route>
 
         {/* Employee Routes */}
         <Route 
           path="/employee" 
           element={
-            user && user.role !== 'ADMIN' && user.role !== 'MANAGER' ? 
+            user && user.role === 'EMPLOYEE' ? 
             <Layout /> : <Navigate to="/login" />
           } 
         >
           <Route index element={<EmployeeDashboard />} />
           <Route path="history" element={<WorkHistory />} />
           <Route path="my-report" element={<MyReport />} />
+          <Route path="leaves" element={<MyLeaves />} />
 
           {/* Add more employee routes here */}
         </Route>

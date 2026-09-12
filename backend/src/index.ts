@@ -13,6 +13,7 @@ import taskRoutes from './routes/task.routes';
 import worklogRoutes from './routes/worklog.routes';
 import reportsRoutes from './routes/reports.routes';
 import notificationRoutes from './routes/notification.routes';
+import leaveRoutes from './routes/leave.routes';
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/work-logs', worklogRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/leaves', leaveRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
