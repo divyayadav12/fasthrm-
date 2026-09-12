@@ -327,14 +327,36 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
 
                           {/* Time Spent */}
                           <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
-                            {(log.duration || log.durationMinutes) > 0 ? (
-                              <div className="inline-flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 border border-gray-200/70 px-2 py-1 rounded-md font-semibold">
-                                <Clock className="w-3 h-3 text-gray-400" />
-                                {formatDuration(log.duration || log.durationMinutes)}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 font-normal">-</span>
-                            )}
+                            {(() => {
+                              const dur = log.duration || log.durationMinutes || 0;
+                              const isLive = index === 0 && log.status === 'WORKING';
+                              
+                              if (dur > 0) {
+                                return (
+                                  <div className="inline-flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 border border-gray-200/70 px-2 py-1 rounded-md font-semibold">
+                                    <Clock className="w-3 h-3 text-gray-400" />
+                                    {formatDuration(dur)}
+                                  </div>
+                                );
+                              }
+                              
+                              if (isLive) {
+                                const liveSessionMins = Math.max(0, Math.round((Date.now() - new Date(log.createdAt).getTime()) / 60000));
+                                return (
+                                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-200/80 rounded-md text-xs font-bold text-blue-700">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                                    {formatDuration(liveSessionMins)}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div className="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-md font-medium">
+                                  <Clock className="w-3 h-3 text-gray-300" />
+                                  0m
+                                </div>
+                              );
+                            })()}
                           </td>
 
                           {/* Employee */}
