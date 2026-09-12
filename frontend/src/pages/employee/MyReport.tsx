@@ -51,6 +51,8 @@ const MyReport: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -137,15 +139,38 @@ const MyReport: React.FC = () => {
             </span>
           </div>
           
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50/50 w-full"
+              />
+            </div>
+            
             <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50/50 w-full"
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50/50 w-full sm:w-auto"
+              title="Filter by exact date"
             />
+
+            <select
+              className="border border-gray-200 rounded-lg text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50/50 w-full sm:w-auto"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="ALL">All Status</option>
+              <option value="WORKING">Working</option>
+              <option value="PENDING">Pending</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="IN_REVIEW">In Review</option>
+              <option value="ON_HOLD">On Hold</option>
+            </select>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -182,7 +207,17 @@ const MyReport: React.FC = () => {
                     const title = (t.title || '').toLowerCase();
                     const desc = (t.description || '').toLowerCase();
                     const query = searchQuery.toLowerCase();
-                    return title.includes(query) || desc.includes(query);
+                    const matchesSearch = title.includes(query) || desc.includes(query);
+                    
+                    const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
+                    
+                    let matchesDate = true;
+                    if (dateFilter && t.lastActivity) {
+                      const logDateStr = new Date(t.lastActivity).toISOString().split('T')[0];
+                      matchesDate = logDateStr === dateFilter;
+                    }
+                    
+                    return matchesSearch && matchesStatus && matchesDate;
                   })
                   .map((task) => {
                   const barWidth = maxMinutes > 0 ? Math.round((task.totalMinutes / maxMinutes) * 100) : 0;
