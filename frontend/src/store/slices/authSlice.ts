@@ -8,6 +8,7 @@ export interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+  adminScope?: 'ALL' | 'ONLY_FAST_CAREERS' | 'EXCLUDE_FAST_CAREERS';
   department?: string;
   token?: string;
 }

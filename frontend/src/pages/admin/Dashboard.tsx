@@ -13,9 +13,23 @@ const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'Others', 'IOA', 'Care
 
 const AdminDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
   const { stats, liveActivity, isLoading } = useSelector((state: RootState) => state.dashboard);
   const { employees, total: totalEmployees } = useSelector((state: RootState) => state.employees);
   const [socketStatus, setSocketStatus] = useState<'Connecting' | 'Connected' | 'Reconnecting' | 'Offline'>('Connecting');
+
+  const getVisibleRoleTabs = () => {
+    if (!user) return ROLE_TABS;
+    if (user.adminScope === 'ONLY_FAST_CAREERS') {
+      return ['All', 'Career'];
+    }
+    if (user.adminScope === 'EXCLUDE_FAST_CAREERS') {
+      return ['All', 'Editor DTP', 'IT and support', 'Others', 'IOA'];
+    }
+    return ROLE_TABS;
+  };
+  
+  const visibleTabs = getVisibleRoleTabs();
 
   // History Drawer states
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
@@ -293,7 +307,7 @@ const AdminDashboard = () => {
 
             {/* Role Filter Tabs beside Filters */}
             <div className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
-              {ROLE_TABS.map((roleTab) => {
+              {visibleTabs.map((roleTab) => {
                 const isActive = selectedRoleTab === roleTab;
                 return (
                   <button
