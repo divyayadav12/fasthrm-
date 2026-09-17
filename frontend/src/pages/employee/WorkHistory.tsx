@@ -372,6 +372,9 @@ const WorkHistory = () => {
               ) : (
                 workLogs
                   .filter((log) => {
+                    // Hide WORKING logs from history to avoid confusion with active tasks on Dashboard
+                    if (log.status === 'WORKING') return false;
+
                     // Text search
                     const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
                     const desc = (log.description || '').toLowerCase();
@@ -395,7 +398,7 @@ const WorkHistory = () => {
                   <tr key={log._id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{new Date(log.createdAt).toLocaleDateString()}</div>
-                      <div className="text-xs text-gray-500">{new Date(log.startTime || log.createdAt).toLocaleTimeString()}</div>
+                      <div className="text-xs text-gray-500">{new Date(log.createdAt).toLocaleTimeString()}</div>
                     </td>
                     <td className="px-6 py-4">
                       <button

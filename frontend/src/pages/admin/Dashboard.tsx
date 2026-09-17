@@ -156,12 +156,22 @@ const AdminDashboard = () => {
   };
 
   const filteredActivity = useMemo(() => {
-    return liveActivity.filter((log) => {
+    const latestLogsPerEmployee = new Map();
+    liveActivity.forEach((log) => {
+      const empId = log.employeeId?._id || log.employeeId?.name || (typeof log.employeeId === 'string' ? log.employeeId : null);
+      if (empId && log.status && !latestLogsPerEmployee.has(empId)) {
+        latestLogsPerEmployee.set(empId, log);
+      }
+    });
+
+    const currentLiveActivity = Array.from(latestLogsPerEmployee.values());
+
+    return currentLiveActivity.filter((log) => {
       // Exclude invalid or unknown employee activity records
       if (!log || !log.employeeId || !log.employeeId.name || log.employeeId.name.trim().toLowerCase() === 'unknown') {
         return false;
       }
-
+      
       // Only show WORKING status
       if (log.status !== 'WORKING') {
         return false;
