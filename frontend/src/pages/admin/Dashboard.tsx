@@ -127,7 +127,11 @@ const AdminDashboard = () => {
     const onConnect = () => setSocketStatus('Connected');
     const onDisconnect = () => setSocketStatus('Offline');
     const onWorkLogUpdated = (data: any) => {
-      dispatch(addLiveActivity(data));
+      if (!data._id) {
+        dispatch(fetchRecentActivity());
+      } else {
+        dispatch(addLiveActivity(data));
+      }
       dispatch(fetchDashboardStats());
     };
 
