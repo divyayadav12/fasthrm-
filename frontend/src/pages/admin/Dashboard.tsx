@@ -163,8 +163,20 @@ const AdminDashboard = () => {
     const latestLogsPerEmployee = new Map();
     liveActivity.forEach((log) => {
       const empId = log.employeeId?._id || log.employeeId?.name || (typeof log.employeeId === 'string' ? log.employeeId : null);
-      if (empId && log.status && !latestLogsPerEmployee.has(empId)) {
-        latestLogsPerEmployee.set(empId, log);
+      if (empId && log.status) {
+        if (!latestLogsPerEmployee.has(empId)) {
+          latestLogsPerEmployee.set(empId, log);
+        } else {
+          // Fix for auto-resume race condition:
+          // The backend creates the auto-resumed WORKING log ~1ms before the COMPLETED log.
+          // Because of descending sort, the COMPLETED log appears first.
+          // If we see a WORKING log that happened at virtually the same time, it is the true current state.
+          const existingLog = latestLogsPerEmployee.get(empId);
+          const timeDiff = new Date(existingLog.createdAt).getTime() - new Date(log.createdAt).getTime();
+          if (timeDiff >= 0 && timeDiff <= 2000 && log.status === 'WORKING' && existingLog.status !== 'WORKING') {
+            latestLogsPerEmployee.set(empId, log);
+          }
+        }
       }
     });
 
