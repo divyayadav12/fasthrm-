@@ -162,6 +162,11 @@ const AdminDashboard = () => {
         return false;
       }
 
+      // Only show WORKING status
+      if (log.status !== 'WORKING') {
+        return false;
+      }
+
       // Role Filter Tab
       if (selectedRoleTab !== 'All') {
         const empId = log.employeeId?._id || log.employeeId;
