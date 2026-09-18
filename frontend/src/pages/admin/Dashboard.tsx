@@ -191,21 +191,33 @@ const AdminDashboard = () => {
       const latestLog = latestLogsPerEmployee.get(emp._id);
       const inOffice = isWithinOfficeHours(emp.officeStartTime || '10:05', emp.officeEndTime || '19:05');
       
-      let status = 'IDLE';
-      if (latestLog && latestLog.status === 'WORKING') {
-        status = 'WORKING';
-      } else if (!inOffice) {
-        // Not in office and not working, hide from live dashboard
-        return;
+      let status = 'NOT_STARTED';
+      if (latestLog) {
+        // If they have a log, always show their latest status (WORKING, COMPLETED, PENDING, etc.)
+        // But if their latest log is NOT from today, and they are currently in office, show IDLE.
+        const logDate = new Date(latestLog.createdAt).toDateString();
+        const todayStr = new Date().toDateString();
+        
+        if (logDate !== todayStr && inOffice) {
+          status = 'IDLE';
+        } else {
+          status = latestLog.status;
+        }
+      } else if (inOffice) {
+        status = 'IDLE';
+      } else {
+        status = 'NOT_STARTED';
       }
+
+      const isRealLog = latestLog && status === latestLog.status;
 
       currentLiveActivity.push({
         ...(latestLog || {}),
-        _id: latestLog?._id || `idle-${emp._id}`,
+        _id: latestLog?._id || `dummy-${emp._id}`,
         employeeId: emp,
         status: status,
-        taskId: status === 'IDLE' ? null : latestLog?.taskId,
-        customTaskTitle: status === 'IDLE' ? 'No active task' : (latestLog?.customTaskTitle || ''),
+        taskId: isRealLog ? latestLog.taskId : null,
+        customTaskTitle: isRealLog ? (latestLog.customTaskTitle || '') : 'No active task',
         createdAt: latestLog?.createdAt || new Date().toISOString(),
       });
     });
@@ -219,11 +231,6 @@ const AdminDashboard = () => {
 
     return currentLiveActivity.filter((log) => {
       if (!log || !log.employeeId || !log.employeeId.name || log.employeeId.name.trim().toLowerCase() === 'unknown') {
-        return false;
-      }
-      
-      // We no longer filter by log.status !== 'WORKING' because we want to see IDLE users too.
-      if (log.status !== 'WORKING' && log.status !== 'IDLE') {
         return false;
       }
 

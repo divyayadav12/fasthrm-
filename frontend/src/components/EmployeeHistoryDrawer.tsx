@@ -146,7 +146,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     let workingCount = 0;
 
     filteredLogs.forEach((log) => {
-      if (log.durationMinutes) totalMinutes += Number(log.durationMinutes);
+      const dur = log.duration || log.durationMinutes || 0;
+      if (dur) totalMinutes += Number(dur);
       const title = log.taskId?.title || log.customTaskTitle;
       if (title) taskTitles.add(title);
       if (log.status === 'COMPLETED') completedCount++;
@@ -376,6 +377,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                     <tr>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Date</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Timing</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Time Spent</th>
                       <th scope="col" className="px-4 py-3">Task</th>
                       <th scope="col" className="px-4 py-3">Description</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
@@ -394,6 +396,12 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         minute: '2-digit',
                       });
                       const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
+                      const durationMins = log.duration || log.durationMinutes || 0;
+                      const durationStr = durationMins > 0 
+                        ? (durationMins >= 60 
+                          ? `${Math.floor(durationMins / 60)}h ${durationMins % 60}m` 
+                          : `${durationMins}m`)
+                        : '-';
 
                       return (
                         <tr key={log._id} className="hover:bg-indigo-50/30 transition-colors group">
@@ -405,11 +413,11 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                           {/* Timing */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             <span className="font-semibold text-gray-900">{logTime}</span>
-                            {log.durationMinutes > 0 && (
-                              <div className="text-[10px] text-gray-500 font-normal mt-0.5">
-                                ⏱ {log.durationMinutes}m
-                              </div>
-                            )}
+                          </td>
+
+                          {/* Time Spent */}
+                          <td className="px-4 py-3.5 whitespace-nowrap text-gray-600 font-medium">
+                            {durationStr}
                           </td>
 
                           {/* Task */}
