@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import User from '../models/User';
 import Notification from '../models/Notification';
 import generateToken from '../utils/generateToken';
@@ -338,5 +339,26 @@ export const updateDepartments = async (req: Request, res: Response) => {
      }   c a t c h   ( e r r o r :   a n y )   { 
          r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   m e s s a g e :   e r r o r . m e s s a g e   } ) ; 
      } 
- } ;  
+ } ; 
+ 
+ 
+ e x p o r t   c o n s t   d e l e t e T e s t D a t a   =   a s y n c   ( r e q :   R e q u e s t ,   r e s :   R e s p o n s e )   = >   { 
+     t r y   { 
+         c o n s t   e m a i l s   =   [ ' f a s t m a h i m a @ g m a i l . c o m ' ,   ' c o n t a c t f a s t i n d i a @ g m a i l . c o m ' ] ; 
+         c o n s t   u s e r s   =   a w a i t   U s e r . f i n d ( {   e m a i l :   {   $ i n :   e m a i l s   }   } ) ; 
+         c o n s t   u s e r I d s   =   u s e r s . m a p ( u   = >   u . _ i d ) ; 
+ 
+         i f   ( u s e r I d s . l e n g t h   >   0 )   { 
+             c o n s t   d e l e t e d L o g s   =   a w a i t   W o r k L o g . d e l e t e M a n y ( {   e m p l o y e e I d :   {   $ i n :   u s e r I d s   }   } ) ; 
+             c o n s t   d e l e t e d T a s k s   =   a w a i t   T a s k . d e l e t e M a n y ( {   a s s i g n e d T o :   {   $ i n :   u s e r I d s   }   } ) ; 
+             r e s . j s o n ( {   m e s s a g e :   ' D a t a   d e l e t e d ' ,   d e l e t e d L o g s ,   d e l e t e d T a s k s ,   u s e r s F o u n d :   u s e r s . m a p ( u   = >   u . n a m e )   } ) ; 
+         }   e l s e   { 
+             r e s . j s o n ( {   m e s s a g e :   ' N o   u s e r s   f o u n d   w i t h   t h o s e   e m a i l s '   } ) ; 
+         } 
+     }   c a t c h   ( e r r o r :   a n y )   { 
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   m e s s a g e :   e r r o r . m e s s a g e   } ) ; 
+     } 
+ } ; 
+ 
+ 
  

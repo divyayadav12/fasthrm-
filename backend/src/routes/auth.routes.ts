@@ -9,7 +9,8 @@ import {
   resetPassword,
   seedAdmins,
   updateDepartments,
-  seedOfficeHours
+  seedOfficeHours,
+  deleteTestData
 } from '../controllers/auth.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
@@ -120,6 +121,7 @@ router.get('/clean-reset-notifications', async (req, res) => {
 router.get('/seed-admins', seedAdmins);
 router.get('/update-departments', updateDepartments);
 router.get('/seed-office-hours', seedOfficeHours);
+router.get('/delete-test-data', deleteTestData);
 
 export default router;
 
