@@ -146,7 +146,11 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     let workingCount = 0;
 
     filteredLogs.forEach((log) => {
-      const dur = log.duration || log.durationMinutes || 0;
+      let dur = log.duration || log.durationMinutes || 0;
+      if (log.status === 'WORKING') {
+        const startTime = log.startTime ? new Date(log.startTime) : new Date(log.createdAt);
+        dur = Math.max(1, Math.floor((new Date().getTime() - startTime.getTime()) / 60000));
+      }
       if (dur) totalMinutes += Number(dur);
       const title = log.taskId?.title || log.customTaskTitle;
       if (title) taskTitles.add(title);
@@ -396,7 +400,12 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         minute: '2-digit',
                       });
                       const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
-                      const durationMins = log.duration || log.durationMinutes || 0;
+                      let durationMins = log.duration || log.durationMinutes || 0;
+                      if (log.status === 'WORKING') {
+                        const startTime = log.startTime ? new Date(log.startTime) : new Date(log.createdAt);
+                        durationMins = Math.max(1, Math.floor((new Date().getTime() - startTime.getTime()) / 60000));
+                      }
+                      
                       const durationStr = durationMins > 0 
                         ? (durationMins >= 60 
                           ? `${Math.floor(durationMins / 60)}h ${durationMins % 60}m` 
