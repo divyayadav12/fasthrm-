@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchEmployees } from '../../store/slices/employeeSlice';
+import { fetchEmployees, deleteEmployee } from '../../store/slices/employeeSlice';
 import { RootState, AppDispatch } from '../../store';
-import { Search, Filter, Eye, Edit, X, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Eye, Edit, Trash2, X, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EmployeesList = () => {
@@ -24,6 +24,17 @@ const EmployeesList = () => {
   }, [dispatch]);
 
   const activeFilterCount = [filterRole, filterStatus, filterDateFrom, filterDateTo, filterEmail].filter(Boolean).length;
+
+  const handleDelete = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+      try {
+        await dispatch(deleteEmployee(id)).unwrap();
+        alert(`${name} has been deleted.`);
+      } catch (err: any) {
+        alert(`Failed to delete: ${err}`);
+      }
+    }
+  };
 
   const clearFilters = () => {
     setFilterRole('');
@@ -245,13 +256,20 @@ const EmployeesList = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                       {new Date(employee.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end">
-                        <Link to={`/admin/employees/${employee._id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-xl transition-colors" title="View Details">
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </div>
-                    </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          <Link to={`/admin/employees/${employee._id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-xl transition-colors" title="View Details">
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(employee._id, employee.name)}
+                            className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-xl transition-colors"
+                            title="Delete Employee"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                   </tr>
                 ))
               )}

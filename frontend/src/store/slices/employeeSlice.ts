@@ -69,6 +69,19 @@ export const fetchEmployeeById = createAsyncThunk('employees/fetchById', async (
   }
 });
 
+export const deleteEmployee = createAsyncThunk('employees/delete', async (id: string, thunkAPI) => {
+  try {
+    const state = thunkAPI.getState() as RootState;
+    const token = state.auth.user?.token;
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    
+    await axios.delete(`${API_URL}/employees/${id}`, config);
+    return id;
+  } catch (error: any) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+  }
+});
+
 export const employeeSlice = createSlice({
   name: 'employees',
   initialState,
@@ -96,6 +109,10 @@ export const employeeSlice = createSlice({
       .addCase(fetchEmployeeById.fulfilled, (state, action) => {
         state.isLoading = false;
         state.currentEmployee = action.payload;
+      })
+      .addCase(deleteEmployee.fulfilled, (state, action) => {
+        state.employees = state.employees.filter(emp => emp._id !== action.payload);
+        state.total -= 1;
       });
   },
 });

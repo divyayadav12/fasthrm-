@@ -138,8 +138,14 @@ export const deleteEmployee = async (req: Request, res: Response) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    // Optional: Delete associated tasks and worklogs to avoid orphans
+    const WorkLog = (await import('../models/WorkLog')).default;
+    const Task = (await import('../models/Task')).default;
+    await WorkLog.deleteMany({ employeeId: user._id });
+    await Task.deleteMany({ assignedTo: user._id });
+
     await User.deleteOne({ _id: user._id });
-    res.json({ message: 'User removed' });
+    res.json({ message: 'User removed completely' });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
