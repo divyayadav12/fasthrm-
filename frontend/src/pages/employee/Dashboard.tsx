@@ -131,7 +131,7 @@ const EmployeeDashboard = () => {
           startTime: new Date()
         }, config);
       }
-      dispatch(fetchTasks());
+      if (user) dispatch(fetchTasks({ assignedTo: user._id }));
     } catch (error) {
       console.error('Failed to toggle lunch break', error);
       alert('Failed to toggle lunch break. Please try again.');

@@ -18,6 +18,8 @@ interface EmployeeHistoryDrawerProps {
     designation?: string;
     status?: string;
     currentTask?: string;
+    officeStartTime?: string;
+    officeEndTime?: string;
   } | null;
   initialLogs?: any[];
   onSelectTask?: (task: { taskId?: string; title: string; employee?: any }) => void;
