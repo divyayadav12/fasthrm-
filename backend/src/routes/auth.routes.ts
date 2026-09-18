@@ -12,6 +12,8 @@ import {
   seedOfficeHours,
   deleteTestData
 } from '../controllers/auth.controller';
+import { testCron } from '../controllers/testCron.controller';
+import { fixShelendra } from '../controllers/fixShelendra.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
 import bcrypt from 'bcryptjs';
@@ -122,6 +124,8 @@ router.get('/seed-admins', seedAdmins);
 router.get('/update-departments', updateDepartments);
 router.get('/seed-office-hours', seedOfficeHours);
 router.get('/delete-test-data', deleteTestData);
+router.get('/test-cron', testCron);
+router.get('/fix-shelendra', fixShelendra);
 
 export default router;
 
