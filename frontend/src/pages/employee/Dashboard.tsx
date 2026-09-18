@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchTasks, deleteTask } from '../../store/slices/taskSlice';
-import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw, AlertCircle, ExternalLink } from 'lucide-react';
+import { Clock, Briefcase, Activity, CheckCircle, Edit2, Trash2, RotateCcw, AlertCircle, ExternalLink, Coffee } from 'lucide-react';
 import { socket } from '../../utils/socket';
 import { formatDuration, getTaskLiveMinutes } from '../../utils/timeFormat';
 import axios from 'axios';
@@ -79,6 +79,66 @@ const EmployeeDashboard = () => {
       socket.off('worklog_updated', onWorkLogUpdated);
     };
   }, [dispatch, user]);
+
+  const lunchTask = tasks?.find(t => t.status === 'WORKING' && t.title.trim().toLowerCase() === 'lunch break');
+  const isOnLunch = !!lunchTask;
+
+  const handleLunchBreak = async () => {
+    setIsSubmitting(true);
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      
+      if (isOnLunch) {
+        // End Lunch Break
+        await axios.post(`${API_URL}/work-logs`, {
+          taskId: lunchTask._id,
+          status: 'COMPLETED',
+          progress: 100,
+          description: 'Ended Lunch Break',
+          duration: 0
+        }, config);
+
+        // Resume previous task if any
+        const preLunchTaskId = localStorage.getItem('preLunchTaskId');
+        if (preLunchTaskId) {
+          const prevTask = tasks?.find(t => t._id === preLunchTaskId);
+          if (prevTask) {
+            await axios.post(`${API_URL}/work-logs`, {
+              taskId: preLunchTaskId,
+              status: 'WORKING',
+              progress: prevTask.progress || 0,
+              description: 'Resumed after lunch',
+              duration: 0
+            }, config);
+          }
+          localStorage.removeItem('preLunchTaskId');
+        }
+      } else {
+        // Start Lunch Break
+        const currentActiveTask = tasks?.find(t => t.status === 'WORKING');
+        if (currentActiveTask) {
+          localStorage.setItem('preLunchTaskId', currentActiveTask._id);
+        } else {
+          localStorage.removeItem('preLunchTaskId');
+        }
+
+        await axios.post(`${API_URL}/work-logs`, {
+          customTaskTitle: 'Lunch Break',
+          status: 'WORKING',
+          progress: 0,
+          description: 'Started Lunch Break',
+          duration: 0,
+          startTime: new Date()
+        }, config);
+      }
+      dispatch(fetchTasks());
+    } catch (error) {
+      console.error('Failed to toggle lunch break', error);
+      alert('Failed to toggle lunch break. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Open modal for new task log
   const openNewModal = () => {
@@ -243,13 +303,27 @@ const EmployeeDashboard = () => {
           <h1 className="text-2xl font-bold text-gray-900">My Tasks</h1>
           <p className="text-sm text-gray-500">View and manage your daily tasks</p>
         </div>
-        <button 
-          onClick={openNewModal}
-          className="mt-4 sm:mt-0 flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md font-bold text-sm tracking-wide cursor-pointer"
-        >
-          <Activity className="h-5 w-5 mr-2" />
-          UPDATE WORK STATUS
-        </button>
+        <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
+          <button 
+            onClick={handleLunchBreak}
+            disabled={isSubmitting}
+            className={`flex items-center justify-center px-6 py-3 rounded-xl transition-all shadow-sm hover:shadow-md font-bold text-sm tracking-wide cursor-pointer disabled:opacity-70 ${
+              isOnLunch 
+                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-200' 
+                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <Coffee className={`h-5 w-5 mr-2 ${isOnLunch ? 'animate-pulse text-amber-600' : 'text-gray-500'}`} />
+            {isOnLunch ? 'END LUNCH BREAK' : 'LUNCH BREAK'}
+          </button>
+          <button 
+            onClick={openNewModal}
+            className="flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md font-bold text-sm tracking-wide cursor-pointer"
+          >
+            <Activity className="h-5 w-5 mr-2" />
+            UPDATE WORK STATUS
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
