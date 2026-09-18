@@ -100,7 +100,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     }
   }, [employee, isOpen, user?.token]);
 
-  // Quick Date Filter Calculation
+  // Quick Date Filter Calculation + IDLE Gaps
   const filteredLogs = useMemo(() => {
     const now = new Date();
     const todayStr = now.toDateString();
@@ -113,18 +113,12 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    return logs.filter((log) => {
+    const baseFiltered = logs.filter((log) => {
       const logDate = new Date(log.createdAt);
 
-      if (dateFilter === 'today') {
-        return logDate.toDateString() === todayStr;
-      }
-      if (dateFilter === 'yesterday') {
-        return logDate.toDateString() === yesterdayStr;
-      }
-      if (dateFilter === '7days') {
-        return logDate >= sevenDaysAgo;
-      }
+      if (dateFilter === 'today') return logDate.toDateString() === todayStr;
+      if (dateFilter === 'yesterday') return logDate.toDateString() === yesterdayStr;
+      if (dateFilter === '7days') return logDate >= sevenDaysAgo;
       if (dateFilter === 'custom') {
         if (customFrom && logDate < new Date(customFrom)) return false;
         if (customTo) {
@@ -136,7 +130,93 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       }
       return true;
     });
-  }, [logs, dateFilter, customFrom, customTo]);
+
+    const daysToProcess = new Set<string>();
+    
+    // Always include today if it passes the filter
+    let includeToday = false;
+    if (dateFilter === 'all' || dateFilter === 'today') includeToday = true;
+    if (dateFilter === '7days' && now >= sevenDaysAgo) includeToday = true;
+    if (dateFilter === 'custom') {
+      const logDate = now;
+      let valid = true;
+      if (customFrom && logDate < new Date(customFrom)) valid = false;
+      if (customTo) {
+        const to = new Date(customTo);
+        to.setHours(23, 59, 59, 999);
+        if (logDate > to) valid = false;
+      }
+      if (valid) includeToday = true;
+    }
+    if (includeToday) daysToProcess.add(todayStr);
+
+    baseFiltered.forEach((log) => {
+      daysToProcess.add(new Date(log.startTime || log.createdAt).toDateString());
+    });
+
+    const finalLogs: any[] = [];
+    const officeStart = employee?.officeStartTime || '10:05';
+    const officeEnd = employee?.officeEndTime || '19:05';
+    const [startH, startM] = officeStart.split(':').map(Number);
+    const [endH, endM] = officeEnd.split(':').map(Number);
+
+    daysToProcess.forEach((dayStr) => {
+      const dayLogs = baseFiltered.filter((l) => new Date(l.startTime || l.createdAt).toDateString() === dayStr);
+      // Sort ascending to find gaps
+      dayLogs.sort((a, b) => new Date(a.startTime || a.createdAt).getTime() - new Date(b.startTime || b.createdAt).getTime());
+
+      const baseDate = new Date(dayStr);
+      const shiftStart = new Date(baseDate);
+      shiftStart.setHours(startH, startM, 0, 0);
+
+      const shiftEnd = new Date(baseDate);
+      shiftEnd.setHours(endH, endM, 0, 0);
+
+      let cursor = shiftStart.getTime();
+      const isToday = dayStr === todayStr;
+      const limit = isToday ? Math.min(shiftEnd.getTime(), Date.now()) : shiftEnd.getTime();
+
+      dayLogs.forEach((log) => {
+        const st = new Date(log.startTime || log.createdAt).getTime();
+        let durMins = log.duration || log.durationMinutes || 0;
+        if (log.status === 'WORKING') {
+          durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
+        }
+        const et = st + durMins * 60000;
+
+        if (st > cursor + 60000 && st <= limit) {
+           finalLogs.push({
+             _id: `idle-${cursor}`,
+             isVirtual: true,
+             createdAt: new Date(cursor).toISOString(),
+             startTime: new Date(cursor).toISOString(),
+             duration: Math.floor((Math.min(st, limit) - cursor) / 60000),
+             status: 'IDLE',
+             customTaskTitle: 'IDLE',
+             description: 'No active task'
+           });
+        }
+        finalLogs.push(log);
+        cursor = Math.max(cursor, et);
+      });
+
+      if (cursor + 60000 < limit) {
+         finalLogs.push({
+             _id: `idle-${cursor}-end`,
+             isVirtual: true,
+             createdAt: new Date(cursor).toISOString(),
+             startTime: new Date(cursor).toISOString(),
+             duration: Math.floor((limit - cursor) / 60000),
+             status: 'IDLE',
+             customTaskTitle: 'IDLE',
+             description: 'No active task'
+         });
+      }
+    });
+
+    finalLogs.sort((a, b) => new Date(b.startTime || b.createdAt).getTime() - new Date(a.startTime || a.createdAt).getTime());
+    return finalLogs;
+  }, [logs, dateFilter, customFrom, customTo, employee]);
 
   // Derived Stats
   const stats = useMemo(() => {
@@ -146,6 +226,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     let workingCount = 0;
 
     filteredLogs.forEach((log) => {
+      if (log.status === 'IDLE') return; // Ignore IDLE for stats
+      
       let dur = log.duration || log.durationMinutes || 0;
       if (log.status === 'WORKING') {
         const startTime = log.startTime ? new Date(log.startTime) : new Date(log.createdAt);
@@ -215,6 +297,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       PENDING: 'bg-orange-50 text-orange-700 border-orange-200',
       BLOCKED: 'bg-red-50 text-red-700 border-red-200',
       NOT_STARTED: 'bg-gray-100 text-gray-700 border-gray-200',
+      IDLE: 'bg-gray-50 text-gray-500 border-gray-200 border-dashed',
     };
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
@@ -413,7 +496,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         : '-';
 
                       return (
-                        <tr key={log._id} className="hover:bg-indigo-50/30 transition-colors group">
+                        <tr key={log._id} className={`transition-colors group ${log.isVirtual ? 'bg-gray-50/50 hover:bg-gray-50' : 'hover:bg-indigo-50/30'}`}>
                           {/* Date */}
                           <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
                             {formattedDate}

@@ -193,12 +193,13 @@ const AdminDashboard = () => {
       
       let status = 'NOT_STARTED';
       if (latestLog) {
-        // If they have a log, always show their latest status (WORKING, COMPLETED, PENDING, etc.)
-        // But if their latest log is NOT from today, and they are currently in office, show IDLE.
         const logDate = new Date(latestLog.createdAt).toDateString();
         const todayStr = new Date().toDateString();
         
-        if (logDate !== todayStr && inOffice) {
+        if (logDate !== todayStr) {
+          status = inOffice ? 'IDLE' : 'NOT_STARTED';
+        } else if (latestLog.status !== 'WORKING' && inOffice) {
+          // Finished previous task today, haven't started a new one yet
           status = 'IDLE';
         } else {
           status = latestLog.status;
