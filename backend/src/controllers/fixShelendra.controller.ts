@@ -6,7 +6,7 @@ export const fixShelendra = async (req: Request, res: Response) => {
   try {
     const user = await User.findOneAndUpdate(
       { name: { $regex: /elendra/i } },
-      { $set: { officeStartTime: '09:05', officeEndTime: '18:05' } },
+      { $set: { officeStartTime: '09:15', officeEndTime: '18:15' } },
       { new: true }
     );
     res.json({ message: 'Fixed', user });
