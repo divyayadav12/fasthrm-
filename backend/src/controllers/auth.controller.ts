@@ -325,3 +325,18 @@ export const updateDepartments = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+ e x p o r t   c o n s t   s e e d O f f i c e H o u r s   =   a s y n c   ( r e q :   R e q u e s t ,   r e s :   R e s p o n s e )   = >   { 
+     t r y   { 
+         c o n s t   a l l U s e r s   =   a w a i t   U s e r . u p d a t e M a n y ( { } ,   {   $ s e t :   {   o f f i c e S t a r t T i m e :   ' 1 0 : 0 5 ' ,   o f f i c e E n d T i m e :   ' 1 9 : 0 5 '   }   } ) ; 
+         c o n s t   s h a i l e n d r a   =   a w a i t   U s e r . f i n d O n e A n d U p d a t e ( 
+             {   n a m e :   {   $ r e g e x :   / s h a i l e n d r a / i   }   } , 
+             {   $ s e t :   {   o f f i c e S t a r t T i m e :   ' 0 9 : 0 5 ' ,   o f f i c e E n d T i m e :   ' 1 8 : 0 5 '   }   } , 
+             {   n e w :   t r u e   } 
+         ) ; 
+         r e s . j s o n ( {   m e s s a g e :   ' O f f i c e   h o u r s   u p d a t e d ' ,   a l l U s e r s ,   s h a i l e n d r a   } ) ; 
+     }   c a t c h   ( e r r o r :   a n y )   { 
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   m e s s a g e :   e r r o r . m e s s a g e   } ) ; 
+     } 
+ } ;  
+ 

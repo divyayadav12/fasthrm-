@@ -167,10 +167,6 @@ const AdminDashboard = () => {
         if (!latestLogsPerEmployee.has(empId)) {
           latestLogsPerEmployee.set(empId, log);
         } else {
-          // Fix for auto-resume race condition:
-          // The backend creates the auto-resumed WORKING log ~1ms before the COMPLETED log.
-          // Because of descending sort, the COMPLETED log appears first.
-          // If we see a WORKING log that happened at virtually the same time, it is the true current state.
           const existingLog = latestLogsPerEmployee.get(empId);
           const timeDiff = new Date(existingLog.createdAt).getTime() - new Date(log.createdAt).getTime();
           if (timeDiff >= 0 && timeDiff <= 2000 && log.status === 'WORKING' && existingLog.status !== 'WORKING') {
@@ -180,16 +176,54 @@ const AdminDashboard = () => {
       }
     });
 
-    const currentLiveActivity = Array.from(latestLogsPerEmployee.values());
+    const isWithinOfficeHours = (startTime = '10:05', endTime = '19:05') => {
+      const now = new Date();
+      const istOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false };
+      const istTime = new Intl.DateTimeFormat('en-US', istOptions as any).format(now);
+      return istTime >= startTime && istTime < endTime;
+    };
+
+    const currentLiveActivity: any[] = [];
+    const processedEmpIds = new Set();
+
+    employees.forEach(emp => {
+      processedEmpIds.add(emp._id);
+      const latestLog = latestLogsPerEmployee.get(emp._id);
+      const inOffice = isWithinOfficeHours(emp.officeStartTime || '10:05', emp.officeEndTime || '19:05');
+      
+      let status = 'IDLE';
+      if (latestLog && latestLog.status === 'WORKING') {
+        status = 'WORKING';
+      } else if (!inOffice) {
+        // Not in office and not working, hide from live dashboard
+        return;
+      }
+
+      currentLiveActivity.push({
+        ...(latestLog || {}),
+        _id: latestLog?._id || `idle-${emp._id}`,
+        employeeId: emp,
+        status: status,
+        taskId: status === 'IDLE' ? null : latestLog?.taskId,
+        customTaskTitle: status === 'IDLE' ? 'No active task' : (latestLog?.customTaskTitle || ''),
+        createdAt: latestLog?.createdAt || new Date().toISOString(),
+      });
+    });
+
+    // Add any others who are WORKING but weren't in the employees array
+    latestLogsPerEmployee.forEach((log, empId) => {
+      if (!processedEmpIds.has(empId) && log.status === 'WORKING') {
+        currentLiveActivity.push(log);
+      }
+    });
 
     return currentLiveActivity.filter((log) => {
-      // Exclude invalid or unknown employee activity records
       if (!log || !log.employeeId || !log.employeeId.name || log.employeeId.name.trim().toLowerCase() === 'unknown') {
         return false;
       }
       
-      // Only show WORKING status
-      if (log.status !== 'WORKING') {
+      // We no longer filter by log.status !== 'WORKING' because we want to see IDLE users too.
+      if (log.status !== 'WORKING' && log.status !== 'IDLE') {
         return false;
       }
 
@@ -299,6 +333,7 @@ const AdminDashboard = () => {
   const getStatusBadge = (status: string) => {
     const styles: any = {
       WORKING: 'bg-blue-50 text-blue-600',
+      IDLE: 'bg-gray-100 text-gray-500 border border-gray-200',
       NOT_STARTED: 'bg-gray-100 text-gray-600',
       IN_REVIEW: 'bg-purple-50 text-purple-600',
       ON_HOLD: 'bg-yellow-50 text-yellow-700',

@@ -13,6 +13,8 @@ export interface IUser extends Document {
   resetPasswordOtp?: string;
   resetPasswordExpires?: Date;
   adminScope?: 'ALL' | 'ONLY_FAST_CAREERS' | 'EXCLUDE_FAST_CAREERS';
+  officeStartTime?: string;
+  officeEndTime?: string;
   matchPassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -28,6 +30,8 @@ const userSchema = new Schema<IUser>(
     },
     department: { type: String },
     designation: { type: String },
+    officeStartTime: { type: String, default: '10:05' },
+    officeEndTime: { type: String, default: '19:05' },
     profileImage: { type: String },
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String },

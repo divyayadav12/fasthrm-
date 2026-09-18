@@ -60,7 +60,7 @@ export const getEmployeeById = async (req: Request, res: Response) => {
 // @access  Private/Admin
 export const createEmployee = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, role, department, designation } = req.body;
+    const { name, email, password, role, department, designation, officeStartTime, officeEndTime } = req.body;
 
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -74,6 +74,8 @@ export const createEmployee = async (req: Request, res: Response) => {
       role,
       department,
       designation,
+      officeStartTime: officeStartTime || '10:05',
+      officeEndTime: officeEndTime || '19:05',
     });
 
     if (user) {
@@ -103,6 +105,8 @@ export const updateEmployee = async (req: Request, res: Response) => {
       user.role = req.body.role || user.role;
       user.department = req.body.department || user.department;
       user.designation = req.body.designation || user.designation;
+      if (req.body.officeStartTime !== undefined) user.officeStartTime = req.body.officeStartTime;
+      if (req.body.officeEndTime !== undefined) user.officeEndTime = req.body.officeEndTime;
       if (req.body.isActive !== undefined) user.isActive = req.body.isActive;
 
       if (req.body.password) {

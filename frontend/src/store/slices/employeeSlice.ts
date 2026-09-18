@@ -12,6 +12,8 @@ export interface Employee {
   department?: string;
   designation?: string;
   isActive: boolean;
+  officeStartTime?: string;
+  officeEndTime?: string;
   createdAt: string;
 }
 

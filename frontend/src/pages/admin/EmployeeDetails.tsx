@@ -90,6 +90,11 @@ const EmployeeDetails = () => {
                   <Calendar className="h-4 w-4 mr-2" />
                   Joined {new Date(currentEmployee.createdAt).toLocaleDateString()}
                 </div>
+
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Office Hours: {currentEmployee.officeStartTime || '10:05'} - {currentEmployee.officeEndTime || '19:05'}
+                </div>
               </div>
             </div>
           </div>
