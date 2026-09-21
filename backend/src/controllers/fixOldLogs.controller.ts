@@ -1,33 +1,48 @@
 import { Request, Response } from 'express';
 import WorkLog from '../models/WorkLog';
 
-export const fixOldLogs = async (req: Request, res: Response) => {
+export const fixAllLogs = async (req: Request, res: Response) => {
   try {
+    const logs = await WorkLog.find({}).sort({ createdAt: 1 });
     let fixedCount = 0;
-    
-    // Fix "Started Lunch Break" with wrong duration
-    const startedLogs = await WorkLog.find({ customTaskTitle: /Lunch Break/i, status: 'WORKING' });
-    for (const log of startedLogs) {
-       if (log.duration && log.duration > 0) {
-          log.duration = 0;
-          await log.save();
-          fixedCount++;
-       }
+
+    // Group logs by employee + task
+    const groups: { [key: string]: any[] } = {};
+    for (const log of logs) {
+      const key = `${log.employeeId}_${log.taskId || log.customTaskTitle}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(log);
     }
 
-    // Fix "Ended Lunch Break" (the one on Sep 21) which is currently 0 or 52
-    const endedLogs = await WorkLog.find({ customTaskTitle: /Lunch Break/i, status: 'COMPLETED' });
-    for (const log of endedLogs) {
-       // Only the one on Sep 21 which has duration 0 (from my previous script wipe)
-       // Or if it somehow still has 52
-       if (log.duration === 0 || log.duration === 52) {
-          log.duration = 23; // Hardcode the actual elapsed time for that specific session
-          await log.save();
-          fixedCount++;
-       }
+    for (const key in groups) {
+      const taskLogs = groups[key];
+      let lastWorkingTime: Date | null = null;
+
+      for (const log of taskLogs) {
+        let expectedDuration = 0;
+
+        if (log.status === 'WORKING') {
+           lastWorkingTime = new Date(log.startTime || log.createdAt);
+           expectedDuration = 0;
+        } else {
+           if (lastWorkingTime) {
+              const endTime = new Date(log.createdAt);
+              expectedDuration = Math.max(1, Math.round((endTime.getTime() - lastWorkingTime.getTime()) / 60000));
+           } else {
+              expectedDuration = 0;
+           }
+           lastWorkingTime = null; // Reset until they start working again
+        }
+
+        if (log.duration !== expectedDuration) {
+           log.duration = expectedDuration;
+           await log.save();
+           fixedCount++;
+        }
+      }
     }
 
-    res.json({ message: `Fixed ${fixedCount} logs duration exactly as requested` });
+    res.json({ message: `Successfully recalculated and fixed ${fixedCount} logs based on timeline history!` });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
