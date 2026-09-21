@@ -9,7 +9,7 @@ import { EmployeeHistoryDrawer } from '../../components/EmployeeHistoryDrawer';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const ITEMS_PER_PAGE = 10;
-const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'Others', 'Career', 'HR', 'Education Department', 'Admin', 'IOA'] as const;
+const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'Others', 'Career', 'HR', 'Faculty', 'Admin', 'IOA'] as const;
 
 const AdminDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -24,7 +24,7 @@ const AdminDashboard = () => {
       return ['All', 'Career'];
     }
     if (user.adminScope === 'EXCLUDE_FAST_CAREERS') {
-      return ['All', 'Editor DTP', 'IT and support', 'Others', 'HR', 'Education Department', 'Admin', 'IOA'];
+      return ['All', 'Editor DTP', 'IT and support', 'Others', 'HR', 'Faculty', 'Admin', 'IOA'];
     }
     return ROLE_TABS;
   };
@@ -82,9 +82,9 @@ const AdminDashboard = () => {
       return dept === 'hr' || /\b(hr)\b/i.test(dept);
     }
 
-    // Education Department
-    if (target === 'education department') {
-      return dept.includes('education');
+    // Faculty
+    if (target === 'faculty') {
+      return dept.includes('faculty') || dept.includes('education');
     }
 
     // Admin
@@ -105,6 +105,7 @@ const AdminDashboard = () => {
         dept.includes('careear') ||
         dept.includes('hr') ||
         /\b(hr)\b/i.test(dept) ||
+        dept.includes('faculty') ||
         dept.includes('education') ||
         dept.includes('admin') ||
         /\b(admin)\b/i.test(dept);
