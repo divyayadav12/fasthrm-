@@ -19,7 +19,7 @@ export const syncTaskTimingOnStatusChange = async (
   newStatus: string,
   employeeId: any,
   manualDuration?: number
-): Promise<{ autoResumedTaskId?: string }> => {
+  ): Promise<{ autoResumedTaskId?: string; elapsed?: number }> => {
   const empId = employeeId?._id || employeeId || task.assignedTo;
 
   if (newStatus === 'WORKING') {
@@ -107,17 +107,19 @@ export const syncTaskTimingOnStatusChange = async (
       });
 
       // Return the ID so the caller emits AFTER task.save()
-      return { autoResumedTaskId: nextPendingTask._id.toString() };
+      return { autoResumedTaskId: nextPendingTask._id.toString(), elapsed };
     }
 
-    return {};
+    return { elapsed };
   } else {
     // Status changed to PENDING, ON_HOLD, IN_REVIEW, NOT_STARTED, etc.
+    let elapsed = 0;
     if (task.status === 'WORKING' && task.startedAt) {
-      const elapsed = Math.max(1, Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000));
+      elapsed = Math.max(1, Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000));
       task.totalDuration = (task.totalDuration || 0) + elapsed;
     } else if (manualDuration && Number(manualDuration) > 0) {
-      task.totalDuration = (task.totalDuration || 0) + Number(manualDuration);
+      elapsed = Number(manualDuration);
+      task.totalDuration = (task.totalDuration || 0) + elapsed;
     }
     task.status = newStatus;
     task.startedAt = undefined;
@@ -161,12 +163,14 @@ export const createWorkLog = async (req: Request, res: Response) => {
       }
     }
 
+    let calculatedDuration = duration ? Number(duration) : (task?.totalDuration || 0);
+
     if (task) {
       if (progress !== undefined) task.progress = Number(progress);
       if (description !== undefined) task.description = description;
       if (restartReason) task.restartReason = restartReason;
 
-      const { autoResumedTaskId } = await syncTaskTimingOnStatusChange(task, status, employeeId, duration);
+      const { autoResumedTaskId, elapsed } = await syncTaskTimingOnStatusChange(task, status, employeeId, duration);
       await task.save();
       finalTaskId = task._id;
 
@@ -175,9 +179,13 @@ export const createWorkLog = async (req: Request, res: Response) => {
       if (autoResumedTaskId) {
         io.emit('worklog_updated', { _id: null, updatedTaskId: autoResumedTaskId });
       }
+
+      calculatedDuration = elapsed !== undefined && elapsed > 0 ? elapsed : calculatedDuration;
     }
 
-    const calculatedDuration = duration ? Number(duration) : (task?.totalDuration || 0);
+    if (calculatedDuration === undefined || calculatedDuration === null) {
+       calculatedDuration = task?.totalDuration || 0;
+    }
 
     const workLog = await WorkLog.create({
       employeeId,
