@@ -15,6 +15,7 @@ import {
 import { testCron } from '../controllers/testCron.controller';
 import { fixShelendra } from '../controllers/fixShelendra.controller';
 import { triggerPause } from '../controllers/triggerPause.controller';
+import { fixMahimaDept } from '../controllers/fixMahima.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
 import bcrypt from 'bcryptjs';
@@ -128,6 +129,7 @@ router.get('/delete-test-data', deleteTestData);
 router.get('/test-cron', testCron);
 router.get('/fix-shelendra', fixShelendra);
 router.get('/trigger-pause', triggerPause);
+router.get('/fix-mahima', fixMahimaDept);
 
 export default router;
 
