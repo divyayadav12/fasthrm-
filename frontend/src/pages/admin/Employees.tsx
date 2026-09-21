@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 
 const EmployeesList = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { employees, total, isLoading } = useSelector((state: RootState) => state.employees);
+  const { employees, total, isLoading, isError, message } = useSelector((state: RootState) => state.employees);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -227,6 +227,8 @@ const EmployeesList = () => {
             <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
                 <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Loading employees...</td></tr>
+              ) : isError ? (
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-red-500">Error: {message}</td></tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">No employees found.</td></tr>
               ) : (
