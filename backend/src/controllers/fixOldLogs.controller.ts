@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import WorkLog from '../models/WorkLog';
 
-export const fixAllLogs = async (req: Request, res: Response) => {
+export const fixOldLogs = async (req: Request, res: Response) => {
   try {
     const logs = await WorkLog.find({}).sort({ createdAt: 1 });
     let fixedCount = 0;
