@@ -81,9 +81,9 @@ export const syncTaskTimingOnStatusChange = async (
     task.completedAt = new Date();
     task.startedAt = undefined;
 
-    // 2. Auto-resume the most recently updated 'PENDING' task for this employee.
-    //    We do NOT emit the socket event here — the caller must emit AFTER saving
-    //    the completing task so the frontend never sees it in an intermediate state.
+    // 2. Auto-resume logic disabled: Employees should manually start their next task
+    // so it doesn't accidentally start ticking when they leave for the day.
+    /*
     const nextPendingTask = await Task.findOne({
       assignedTo: empId,
       status: 'PENDING',
@@ -109,6 +109,7 @@ export const syncTaskTimingOnStatusChange = async (
       // Return the ID so the caller emits AFTER task.save()
       return { autoResumedTaskId: nextPendingTask._id.toString(), elapsed };
     }
+    */
 
     return { elapsed };
   } else {

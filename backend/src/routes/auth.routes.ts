@@ -22,6 +22,7 @@ import { fixOldLogs } from '../controllers/fixOldLogs.controller';
 import { fixFaculty } from '../controllers/fixFaculty.controller';
 import { debugEmployees } from '../controllers/debug.controller';
 import { debugEmployeesEndpoint } from '../controllers/debugEmployeesEndpoint';
+import { fixAmishaTask } from '../controllers/fixAmishaTask';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
 import bcrypt from 'bcryptjs';
@@ -142,6 +143,7 @@ router.get('/fix-old-logs', fixOldLogs);
 router.get('/fix-faculty', fixFaculty);
 router.get('/debug-employees', debugEmployees);
 router.get('/debug-employees-query', debugEmployeesEndpoint);
+router.get('/fix-amisha-task', fixAmishaTask);
 
 export default router;
 
