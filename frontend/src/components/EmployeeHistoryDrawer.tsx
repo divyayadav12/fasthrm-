@@ -157,67 +157,72 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     });
 
     const finalLogs: any[] = [];
-    const officeStart = employee?.officeStartTime || '10:05';
-    const officeEnd = employee?.officeEndTime || '19:05';
-    const [startH, startM] = officeStart.split(':').map(Number);
-    const [endH, endM] = officeEnd.split(':').map(Number);
-
-    daysToProcess.forEach((dayStr) => {
-      const dayLogs = baseFiltered.filter((l) => new Date(l.startTime || l.createdAt).toDateString() === dayStr);
-      // Sort ascending to find gaps
+    const getVirtualGaps = (dayLogs: any[]) => {
+      // Sort chronologically for gap analysis
       dayLogs.sort((a, b) => new Date(a.startTime || a.createdAt).getTime() - new Date(b.startTime || b.createdAt).getTime());
+      
+      const finalLogs: any[] = [];
+      const [startH, startM] = (employee?.officeStartTime || '10:05').split(':').map(Number);
+      const [endH, endM] = (employee?.officeEndTime || '19:05').split(':').map(Number);
+      
+      // Group by distinct days to handle shifts properly
+      const days = new Set(dayLogs.map(l => new Date(l.startTime || l.createdAt).toDateString()));
+      
+      days.forEach(dateStr => {
+        const d = new Date(dateStr);
+        const shiftStart = new Date(d); shiftStart.setHours(startH, startM, 0, 0);
+        const shiftEnd = new Date(d); shiftEnd.setHours(endH, endM, 0, 0);
+        const now = new Date();
+        const limit = Math.min(shiftEnd.getTime(), now.getTime());
+        
+        let cursor = shiftStart.getTime();
 
-      const baseDate = new Date(dayStr);
-      const shiftStart = new Date(baseDate);
-      shiftStart.setHours(startH, startM, 0, 0);
+        const logsForDay = dayLogs.filter(l => new Date(l.startTime || l.createdAt).toDateString() === dateStr);
+        
+        logsForDay.forEach((log) => {
+          const st = new Date(log.startTime || log.createdAt).getTime();
+          let durMins = log.duration || log.durationMinutes || 0;
+          const isLatestOverall = log._id === logs[0]?._id;
+          if (log.status === 'WORKING' && isLatestOverall) {
+            durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
+          }
+          const et = st + durMins * 60000;
 
-      const shiftEnd = new Date(baseDate);
-      shiftEnd.setHours(endH, endM, 0, 0);
+          if (st > cursor + 60000 && st <= limit) {
+             finalLogs.push({
+               _id: `idle-${cursor}`,
+               isVirtual: true,
+               createdAt: new Date(cursor).toISOString(),
+               startTime: new Date(cursor).toISOString(),
+               duration: Math.floor((Math.min(st, limit) - cursor) / 60000),
+               status: 'IDLE',
+               customTaskTitle: 'IDLE',
+               description: 'No active task'
+             });
+          }
+          finalLogs.push(log);
+          cursor = Math.max(cursor, et);
+        });
 
-      let cursor = shiftStart.getTime();
-      const isToday = dayStr === todayStr;
-      const limit = isToday ? Math.min(shiftEnd.getTime(), Date.now()) : shiftEnd.getTime();
-
-      dayLogs.forEach((log) => {
-        const st = new Date(log.startTime || log.createdAt).getTime();
-        let durMins = log.duration || log.durationMinutes || 0;
-        if (log.status === 'WORKING') {
-          durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
-        }
-        const et = st + durMins * 60000;
-
-        if (st > cursor + 60000 && st <= limit) {
+        if (cursor + 60000 < limit) {
            finalLogs.push({
-             _id: `idle-${cursor}`,
-             isVirtual: true,
-             createdAt: new Date(cursor).toISOString(),
-             startTime: new Date(cursor).toISOString(),
-             duration: Math.floor((Math.min(st, limit) - cursor) / 60000),
-             status: 'IDLE',
-             customTaskTitle: 'IDLE',
-             description: 'No active task'
+               _id: `idle-${cursor}-end`,
+               isVirtual: true,
+               createdAt: new Date(cursor).toISOString(),
+               startTime: new Date(cursor).toISOString(),
+               duration: Math.floor((limit - cursor) / 60000),
+               status: 'IDLE',
+               customTaskTitle: 'IDLE',
+               description: 'No active task'
            });
         }
-        finalLogs.push(log);
-        cursor = Math.max(cursor, et);
       });
 
-      if (cursor + 60000 < limit) {
-         finalLogs.push({
-             _id: `idle-${cursor}-end`,
-             isVirtual: true,
-             createdAt: new Date(cursor).toISOString(),
-             startTime: new Date(cursor).toISOString(),
-             duration: Math.floor((limit - cursor) / 60000),
-             status: 'IDLE',
-             customTaskTitle: 'IDLE',
-             description: 'No active task'
-         });
-      }
-    });
+      finalLogs.sort((a, b) => new Date(b.startTime || b.createdAt).getTime() - new Date(a.startTime || a.createdAt).getTime());
+      return finalLogs;
+    };
 
-    finalLogs.sort((a, b) => new Date(b.startTime || b.createdAt).getTime() - new Date(a.startTime || a.createdAt).getTime());
-    return finalLogs;
+    return getVirtualGaps(baseFiltered);
   }, [logs, dateFilter, customFrom, customTo, employee]);
 
   // Derived Stats
@@ -231,7 +236,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       if (log.status === 'IDLE') return; // Ignore IDLE for stats
       
       let dur = log.duration || log.durationMinutes || 0;
-      if (log.status === 'WORKING') {
+      const isLatestOverall = log._id === logs[0]?._id;
+      if (log.status === 'WORKING' && isLatestOverall) {
         const startTime = log.startTime ? new Date(log.startTime) : new Date(log.createdAt);
         dur = Math.max(1, Math.floor((new Date().getTime() - startTime.getTime()) / 60000));
       }
@@ -484,12 +490,13 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         hour: '2-digit',
                         minute: '2-digit',
                       });
-                      const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
-                      let durationMins = log.duration || log.durationMinutes || 0;
-                      if (log.status === 'WORKING') {
-                        const startTime = log.startTime ? new Date(log.startTime) : new Date(log.createdAt);
-                        durationMins = Math.max(1, Math.floor((new Date().getTime() - startTime.getTime()) / 60000));
-                      }
+                        const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
+                        let durationMins = log.duration || log.durationMinutes || 0;
+                        const isLatestOverall = log._id === logs[0]?._id;
+                        if (log.status === 'WORKING' && isLatestOverall) {
+                          const startTime = log.startTime ? new Date(log.startTime) : new Date(log.createdAt);
+                          durationMins = Math.max(1, Math.floor((new Date().getTime() - startTime.getTime()) / 60000));
+                        }
                       
                       const durationStr = durationMins > 0 
                         ? (durationMins >= 60 
