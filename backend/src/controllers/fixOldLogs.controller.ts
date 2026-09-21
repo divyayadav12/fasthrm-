@@ -8,7 +8,7 @@ export const fixOldLogs = async (req: Request, res: Response) => {
     // Fix "Started Lunch Break" with wrong duration
     const startedLogs = await WorkLog.find({ customTaskTitle: /Lunch Break/i, status: 'WORKING' });
     for (const log of startedLogs) {
-       if (log.duration > 0) {
+       if (log.duration && log.duration > 0) {
           log.duration = 0;
           await log.save();
           fixedCount++;
