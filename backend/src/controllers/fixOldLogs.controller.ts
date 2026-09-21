@@ -18,7 +18,7 @@ export const fixOldLogs = async (req: Request, res: Response) => {
          // If it's a "Started Lunch Break" log, it has no endTime, and status is WORKING.
          // Wait, the 1:12 PM log is "WORKING" but has duration 30m. It should be duration 0m or live.
          // Actually, if it's WORKING, it should have 0 duration in the DB because it's live!
-         if (log.duration > 0) {
+         if (log.duration && log.duration > 0) {
             log.duration = 0;
             await log.save();
             fixedCount++;
