@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import User from '../models/User';
 import Notification from '../models/Notification';
+import WorkLog from '../models/WorkLog';
+import Task from '../models/Task';
 import generateToken from '../utils/generateToken';
 import { sendEmail } from '../utils/sendEmail';
 import { io } from '../index';
@@ -327,38 +329,38 @@ export const updateDepartments = async (req: Request, res: Response) => {
   }
 };
 
- e x p o r t   c o n s t   s e e d O f f i c e H o u r s   =   a s y n c   ( r e q :   R e q u e s t ,   r e s :   R e s p o n s e )   = >   { 
-     t r y   { 
-         c o n s t   a l l U s e r s   =   a w a i t   U s e r . u p d a t e M a n y ( { } ,   {   $ s e t :   {   o f f i c e S t a r t T i m e :   ' 1 0 : 0 5 ' ,   o f f i c e E n d T i m e :   ' 1 9 : 0 5 '   }   } ) ; 
-         c o n s t   s h a i l e n d r a   =   a w a i t   U s e r . f i n d O n e A n d U p d a t e ( 
-             {   n a m e :   {   $ r e g e x :   / s h a i l e n d r a / i   }   } , 
-             {   $ s e t :   {   o f f i c e S t a r t T i m e :   ' 0 9 : 0 5 ' ,   o f f i c e E n d T i m e :   ' 1 8 : 0 5 '   }   } , 
-             {   n e w :   t r u e   } 
-         ) ; 
-         r e s . j s o n ( {   m e s s a g e :   ' O f f i c e   h o u r s   u p d a t e d ' ,   a l l U s e r s ,   s h a i l e n d r a   } ) ; 
-     }   c a t c h   ( e r r o r :   a n y )   { 
-         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   m e s s a g e :   e r r o r . m e s s a g e   } ) ; 
-     } 
- } ; 
- 
- 
- e x p o r t   c o n s t   d e l e t e T e s t D a t a   =   a s y n c   ( r e q :   R e q u e s t ,   r e s :   R e s p o n s e )   = >   { 
-     t r y   { 
-         c o n s t   e m a i l s   =   [ ' f a s t m a h i m a @ g m a i l . c o m ' ,   ' c o n t a c t f a s t i n d i a @ g m a i l . c o m ' ] ; 
-         c o n s t   u s e r s   =   a w a i t   U s e r . f i n d ( {   e m a i l :   {   $ i n :   e m a i l s   }   } ) ; 
-         c o n s t   u s e r I d s   =   u s e r s . m a p ( u   = >   u . _ i d ) ; 
- 
-         i f   ( u s e r I d s . l e n g t h   >   0 )   { 
-             c o n s t   d e l e t e d L o g s   =   a w a i t   W o r k L o g . d e l e t e M a n y ( {   e m p l o y e e I d :   {   $ i n :   u s e r I d s   }   } ) ; 
-             c o n s t   d e l e t e d T a s k s   =   a w a i t   T a s k . d e l e t e M a n y ( {   a s s i g n e d T o :   {   $ i n :   u s e r I d s   }   } ) ; 
-             r e s . j s o n ( {   m e s s a g e :   ' D a t a   d e l e t e d ' ,   d e l e t e d L o g s ,   d e l e t e d T a s k s ,   u s e r s F o u n d :   u s e r s . m a p ( u   = >   u . n a m e )   } ) ; 
-         }   e l s e   { 
-             r e s . j s o n ( {   m e s s a g e :   ' N o   u s e r s   f o u n d   w i t h   t h o s e   e m a i l s '   } ) ; 
-         } 
-     }   c a t c h   ( e r r o r :   a n y )   { 
-         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   m e s s a g e :   e r r o r . m e s s a g e   } ) ; 
-     } 
- } ; 
- 
- 
- 
+export const seedOfficeHours = async (req: Request, res: Response) => {
+  try {
+    const allUsers = await User.updateMany({}, { $set: { officeStartTime: '10:05', officeEndTime: '19:05' } });
+    const shailendra = await User.findOneAndUpdate(
+      { name: { $regex: /shailendra/i } },
+      { $set: { officeStartTime: '09:05', officeEndTime: '18:05' } },
+      { new: true }
+    );
+    res.json({ message: 'Office hours updated', allUsers, shailendra });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const deleteTestData = async (req: Request, res: Response) => {
+  try {
+    const emails = ['fastmahima@gmail.com', 'contactfastindia@gmail.com'];
+    const users = await User.find({ email: { $in: emails } });
+    const userIds = users.map(u => u._id);
+
+    if (userIds.length > 0) {
+      const deletedLogs = await WorkLog.deleteMany({ employeeId: { $in: userIds } });
+      const deletedTasks = await Task.deleteMany({ assignedTo: { $in: userIds } });
+      res.json({ message: 'Data deleted', deletedLogs, deletedTasks, usersFound: users.map(u => u.name) });
+    } else {
+      res.json({ message: 'No users found with those emails' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+

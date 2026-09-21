@@ -1,6 +1,6 @@
 export const checkOfficeHours = () => {
   const now = new Date();
-  const options = { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false };
+  const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false };
   const formatter = new Intl.DateTimeFormat('en-US', options);
   const hour = parseInt(formatter.format(now));
   

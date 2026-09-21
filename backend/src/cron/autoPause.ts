@@ -13,7 +13,7 @@ export const setupAutoPauseCron = () => {
         const workingTasks = await Task.find({ status: 'WORKING' });
         if (workingTasks.length === 0) return;
 
-        console.log(\[CRON] Outside office hours. Auto-pausing \ running tasks...\);
+        console.log('[CRON] Outside office hours. Auto-pausing running tasks...');
 
         for (const task of workingTasks) {
           const elapsed = task.startedAt
