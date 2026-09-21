@@ -18,6 +18,7 @@ import { triggerPause } from '../controllers/triggerPause.controller';
 import { fixMahimaDept } from '../controllers/fixMahima.controller';
 import { fixRadhikaDept } from '../controllers/fixRadhika.controller';
 import { fixTimes } from '../controllers/fixTimes.controller';
+import { fixOldLogs } from '../controllers/fixOldLogs.controller';
 import { protect, adminOnly } from '../middleware/auth.middleware';
 import User from '../models/User';
 import bcrypt from 'bcryptjs';
@@ -134,6 +135,7 @@ router.get('/trigger-pause', triggerPause);
 router.get('/fix-mahima', fixMahimaDept);
 router.get('/fix-radhika', fixRadhikaDept);
 router.get('/fix-times', fixTimes);
+router.get('/fix-old-logs', fixOldLogs);
 
 export default router;
 
