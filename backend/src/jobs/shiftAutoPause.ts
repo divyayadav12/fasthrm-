@@ -15,7 +15,7 @@ export const startShiftCronJob = () => {
       const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
       const istTime = `${hours}:${minutes}`;
       
-      const users = await User.find({ officeEndTime: { $exists: true, $ne: '' } });
+      const users = await User.find({ isActive: true });
 
       for (const user of users) {
         const workingTasks = await Task.find({ assignedTo: user._id, status: 'WORKING' });
@@ -30,7 +30,8 @@ export const startShiftCronJob = () => {
           const taskStartTimeStr = `${startHours}:${startMins}`;
 
           const isDifferentDay = istDate.toDateString() !== taskStartIST.toDateString();
-          const missedToday = istTime >= user.officeEndTime! && taskStartTimeStr <= user.officeEndTime!;
+          const endTime = user.officeEndTime || '19:05';
+          const missedToday = istTime >= endTime && taskStartTimeStr <= endTime;
 
           if (isDifferentDay || missedToday) {
             const elapsed = Math.max(1, Math.round((Date.now() - taskStart.getTime()) / 60000));
