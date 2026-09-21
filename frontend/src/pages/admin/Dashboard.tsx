@@ -9,7 +9,7 @@ import { EmployeeHistoryDrawer } from '../../components/EmployeeHistoryDrawer';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
 const ITEMS_PER_PAGE = 10;
-const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'Others', 'IOA', 'Career', 'HR', 'Education Department', 'Admin'] as const;
+const ROLE_TABS = ['All', 'Editor DTP', 'IT and support', 'Others', 'Career', 'HR', 'Education Department', 'Admin', 'IOA'] as const;
 
 const AdminDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -24,7 +24,7 @@ const AdminDashboard = () => {
       return ['All', 'Career'];
     }
     if (user.adminScope === 'EXCLUDE_FAST_CAREERS') {
-      return ['All', 'Editor DTP', 'IT and support', 'Others', 'IOA', 'HR', 'Education Department', 'Admin'];
+      return ['All', 'Editor DTP', 'IT and support', 'Others', 'HR', 'Education Department', 'Admin', 'IOA'];
     }
     return ROLE_TABS;
   };
