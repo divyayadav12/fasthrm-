@@ -63,11 +63,11 @@ export const loginUser = async (req: Request, res: Response) => {
         return res.status(401).json({ message: 'Account is deactivated' });
       }
 
-      // If a role was selected on login and user is not an ADMIN, update department & designation
+      // If a role was selected on login and user is not an ADMIN, ensure it matches
       if (role && user.role !== 'ADMIN') {
-        user.department = role;
-        user.designation = role;
-        await user.save();
+        if (user.department !== role && user.designation !== role) {
+          return res.status(401).json({ message: 'Aap is role se login nahi kar sakte, please select correct role.' });
+        }
       }
 
       res.json({
