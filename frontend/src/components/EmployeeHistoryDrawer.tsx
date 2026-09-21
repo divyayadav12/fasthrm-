@@ -502,7 +502,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         ? (durationMins >= 60 
                           ? `${Math.floor(durationMins / 60)}h ${durationMins % 60}m` 
                           : `${durationMins}m`)
-                        : '-';
+                        : '0m';
 
                       return (
                         <tr key={log._id} className={`transition-colors group ${log.isVirtual ? 'bg-gray-50/50 hover:bg-gray-50' : 'hover:bg-indigo-50/30'}`}>
