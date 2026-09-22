@@ -232,7 +232,9 @@ const MyReport: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${getStatusStyle(task.status)}`}>
-                          {task.status}
+                          {task.title.toLowerCase().includes('lunch break') && task.status === 'WORKING' ? 'LUNCH START' :
+                           task.title.toLowerCase().includes('lunch break') && task.status === 'COMPLETED' ? 'LUNCH END' :
+                           task.status.replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

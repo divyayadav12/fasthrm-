@@ -296,7 +296,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
   if (!isOpen || !employee) return null;
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, taskTitle?: string) => {
     const styles: Record<string, string> = {
       WORKING: 'bg-blue-50 text-blue-700 border-blue-200',
       COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -307,11 +307,18 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       NOT_STARTED: 'bg-gray-100 text-gray-700 border-gray-200',
       IDLE: 'bg-gray-50 text-gray-500 border-gray-200 border-dashed',
     };
+    
+    let displayStatus = status;
+    if (taskTitle && taskTitle.trim().toLowerCase() === 'lunch break') {
+      if (status === 'WORKING') displayStatus = 'LUNCH START';
+      if (status === 'COMPLETED') displayStatus = 'LUNCH END';
+    }
+
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
         {status === 'WORKING' && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 animate-pulse" />}
         {status === 'COMPLETED' && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5" />}
-        {status}
+        {displayStatus}
       </span>
     );
   };
@@ -351,11 +358,11 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                 <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-indigo-50 text-indigo-700 font-bold text-base sm:text-lg flex items-center justify-center border border-indigo-100 shadow-xs flex-shrink-0">
                   {employee.name.charAt(0).toUpperCase()}
                 </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">{employee.name}</h2>
-                    {getStatusBadge(currentStatus)}
-                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">{employee.name}</h2>
+                      {getStatusBadge(currentStatus, currentTaskTitle)}
+                    </div>
                   <p className="text-xs text-gray-500 mt-0.5 truncate">
                     {employee.designation || employee.department || 'Team Member'} {employee.email ? `· ${employee.email}` : ''}
                   </p>
@@ -554,7 +561,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
                           {/* Status */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            {getStatusBadge(log.status)}
+                            {getStatusBadge(log.status, log.taskId?.title || log.customTaskTitle)}
                           </td>
                         </tr>
                       );
