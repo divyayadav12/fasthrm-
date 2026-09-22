@@ -200,7 +200,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                description: 'No active task'
              });
           }
-          finalLogs.push(log);
+          finalLogs.push({ ...log });
           cursor = Math.max(cursor, et);
         });
 
