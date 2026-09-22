@@ -150,18 +150,16 @@ export const createWorkLog = async (req: Request, res: Response) => {
         task.title = customTaskTitle.trim();
       }
     } else if (customTaskTitle) {
-      // New task log: find by title or create fresh
-      task = await Task.findOne({ title: customTaskTitle.trim(), assignedTo: employeeId });
-      if (!task) {
-        task = new Task({
-          title: customTaskTitle.trim(),
-          assignedTo: employeeId,
-          projectId,
-          progress: progress !== undefined ? Number(progress) : 0,
-          description,
-          restartReason: restartReason || undefined,
-        });
-      }
+      // Option 1 Logic: Always create a fresh task if customTaskTitle is provided (no taskId)
+      // We removed the Task.findOne() check so it never resumes an old task by name.
+      task = new Task({
+        title: customTaskTitle.trim(),
+        assignedTo: employeeId,
+        projectId,
+        progress: progress !== undefined ? Number(progress) : 0,
+        description,
+        restartReason: restartReason || undefined,
+      });
     }
 
     let calculatedDuration = duration ? Number(duration) : 0;
