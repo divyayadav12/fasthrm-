@@ -9,6 +9,7 @@ import { notFound, errorHandler } from './middleware/error.middleware';
 import { startShiftCronJob } from './jobs/shiftAutoPause';
 startShiftCronJob();
 
+import debugRoutes from './routes/debug.routes';
 import authRoutes from './routes/auth.routes';
 import employeeRoutes from './routes/employee.routes';
 import projectRoutes from './routes/project.routes';
@@ -48,6 +49,7 @@ app.get('/', (req, res) => {
   res.send('WorkPulse API is running...');
 });
 
+app.use('/api/debug', debugRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/projects', projectRoutes);
