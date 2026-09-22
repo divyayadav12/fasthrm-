@@ -167,6 +167,7 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
     const tasks = await Task.find({ assignedTo: employeeId }).sort({ updatedAt: -1 });
 
     // Aggregate latest worklog date per task
+    const hasDateFilter = !!(dateFrom || dateTo);
     const taskIds = tasks.map((t) => t._id);
     const latestLogPerTask = await WorkLog.aggregate([
       {
@@ -182,28 +183,43 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
           _id: '$taskId',
           lastActivity: { $first: '$createdAt' },
           logCount: { $sum: 1 },
+          filteredDuration: { $sum: { $ifNull: ['$duration', 0] } }
         },
       },
     ]);
 
-    const logMap: Record<string, { lastActivity: Date; logCount: number }> = {};
+    const logMap: Record<string, { lastActivity: Date; logCount: number; filteredDuration: number }> = {};
     for (const entry of latestLogPerTask) {
       logMap[entry._id.toString()] = {
         lastActivity: entry.lastActivity,
         logCount: entry.logCount,
+        filteredDuration: entry.filteredDuration || 0
       };
     }
 
-    // Build report — include live elapsed time for WORKING tasks
+    // Build report - include live elapsed time for WORKING tasks
     const now = Date.now();
-    const report = tasks.map((task) => {
-      let totalMinutes = task.totalDuration || 0;
-      if (task.status === 'WORKING' && task.startedAt) {
-        const liveElapsed = Math.max(0, Math.round((now - new Date(task.startedAt).getTime()) / 60000));
-        totalMinutes += liveElapsed;
-      }
+    const report = tasks
+      .filter((task) => !hasDateFilter || logMap[task._id.toString()] || (task.status === 'WORKING' && task.startedAt && (!dateFrom || new Date(task.startedAt) >= new Date(dateFrom as string))))
+      .map((task) => {
       const logInfo = logMap[task._id.toString()];
-      const taskAny = task as any; // Mongoose timestamps not typed in ITask
+      let totalMinutes = hasDateFilter ? (logInfo?.filteredDuration || 0) : (task.totalDuration || 0);
+
+      if (task.status === 'WORKING' && task.startedAt) {
+        const startedAtDate = new Date(task.startedAt);
+        let includeLive = true;
+        if (hasDateFilter) {
+          if (dateFrom && startedAtDate < new Date(dateFrom as string)) includeLive = false;
+          if (dateTo && startedAtDate > new Date(dateTo as string)) includeLive = false;
+        }
+        
+        if (includeLive) {
+          const liveElapsed = Math.max(0, Math.round((now - startedAtDate.getTime()) / 60000));
+          totalMinutes += liveElapsed;
+        }
+      }
+      
+      const taskAny = task as any;
       return {
         _id: task._id,
         title: task.title,
