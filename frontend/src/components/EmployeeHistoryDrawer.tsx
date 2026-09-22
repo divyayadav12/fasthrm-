@@ -218,6 +218,32 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
         }
       });
 
+      // Pass 2: Shift durations from WORKING to their corresponding end logs visually for the table
+      for (let i = 0; i < finalLogs.length; i++) {
+         const log = finalLogs[i];
+         if (log.status === 'WORKING' && !log.isVirtual) {
+            const dur = log.duration || log.durationMinutes || 0;
+            // Only shift if it's not the live active task (which has a dynamic duration)
+            if (dur > 0 && log._id !== logs[0]?._id) {
+               // Find the next non-virtual log for the same task
+               for (let j = i + 1; j < finalLogs.length; j++) {
+                  const nextLog = finalLogs[j];
+                  if (nextLog.isVirtual) continue;
+                  // Check if it's the same task (by ID or Title)
+                  const sameTask = (nextLog.taskId && log.taskId && nextLog.taskId._id === log.taskId._id) || 
+                                   (nextLog.customTaskTitle === log.customTaskTitle);
+                  if (sameTask) {
+                     if (nextLog.status !== 'WORKING') {
+                        nextLog.displayDuration = dur;
+                        log.displayDuration = 0;
+                     }
+                     break; // Found the end of this session
+                  }
+               }
+            }
+         }
+      }
+
       finalLogs.sort((a, b) => new Date(b.startTime || b.createdAt).getTime() - new Date(a.startTime || a.createdAt).getTime());
       return finalLogs;
     };
@@ -498,7 +524,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         minute: '2-digit',
                       });
                         const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
-                        let durationMins = log.duration || log.durationMinutes || 0;
+                        let durationMins = log.displayDuration !== undefined ? log.displayDuration : (log.duration || log.durationMinutes || 0);
                         const isLatestOverall = log._id === logs[0]?._id;
                         if (log.status === 'WORKING' && isLatestOverall) {
                           const startTime = log.startTime ? new Date(log.startTime) : new Date(log.createdAt);
