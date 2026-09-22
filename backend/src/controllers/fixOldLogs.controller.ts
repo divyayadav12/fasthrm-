@@ -16,28 +16,31 @@ export const fixOldLogs = async (req: Request, res: Response) => {
 
     for (const key in groups) {
       const taskLogs = groups[key];
-      let lastWorkingTime: Date | null = null;
+      let lastWorkingLog: any = null;
 
       for (const log of taskLogs) {
-        let expectedDuration = 0;
-
         if (log.status === 'WORKING') {
-           lastWorkingTime = new Date(log.startTime || log.createdAt);
-           expectedDuration = 0;
-        } else {
-           if (lastWorkingTime) {
-              const endTime = new Date(log.createdAt);
-              expectedDuration = Math.max(1, Math.round((endTime.getTime() - lastWorkingTime.getTime()) / 60000));
-           } else {
-              expectedDuration = 0;
-           }
-           lastWorkingTime = null; // Reset until they start working again
-        }
-
-        if (log.duration !== expectedDuration) {
-           log.duration = expectedDuration;
+           lastWorkingLog = log;
+           log.duration = 0; // Temporary until we find the end
            await log.save();
-           fixedCount++;
+        } else {
+           if (lastWorkingLog) {
+              const startTime = new Date(lastWorkingLog.startTime || lastWorkingLog.createdAt);
+              const endTime = new Date(log.createdAt);
+              const gap = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
+              
+              lastWorkingLog.duration = gap;
+              lastWorkingLog.endTime = endTime;
+              await lastWorkingLog.save();
+              fixedCount++;
+           }
+           lastWorkingLog = null;
+           
+           if (log.duration !== 0) {
+              log.duration = 0;
+              await log.save();
+              fixedCount++;
+           }
         }
       }
     }

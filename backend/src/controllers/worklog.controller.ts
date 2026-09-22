@@ -164,7 +164,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
       }
     }
 
-    let calculatedDuration = duration ? Number(duration) : (task?.totalDuration || 0);
+    let calculatedDuration = duration ? Number(duration) : 0;
 
     if (task) {
       if (progress !== undefined) task.progress = Number(progress);
@@ -176,16 +176,28 @@ export const createWorkLog = async (req: Request, res: Response) => {
       finalTaskId = task._id;
 
       // Emit for auto-resumed task AFTER the completing task is saved as COMPLETED in DB.
-      // This prevents the frontend from seeing the completing task in an intermediate PENDING state.
       if (autoResumedTaskId) {
         io.emit('worklog_updated', { _id: null, updatedTaskId: autoResumedTaskId });
       }
 
-      calculatedDuration = elapsed !== undefined && elapsed > 0 ? elapsed : calculatedDuration;
-    }
+      calculatedDuration = elapsed !== undefined ? elapsed : calculatedDuration;
 
-    if (calculatedDuration === undefined || calculatedDuration === null) {
-       calculatedDuration = task?.totalDuration || 0;
+      // If completing/pausing, assign the duration to the original WORKING log
+      // and set this status-change log duration to 0 to prevent double counting.
+      if (status !== 'WORKING' && elapsed !== undefined && elapsed > 0) {
+        const lastWorkingLog = await WorkLog.findOne({
+          employeeId,
+          taskId: finalTaskId,
+          status: 'WORKING'
+        }).sort({ createdAt: -1 });
+
+        if (lastWorkingLog) {
+          lastWorkingLog.duration = elapsed;
+          lastWorkingLog.endTime = new Date();
+          await lastWorkingLog.save();
+        }
+        calculatedDuration = 0;
+      }
     }
 
     const workLog = await WorkLog.create({
