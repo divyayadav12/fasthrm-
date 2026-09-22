@@ -1,20 +1,21 @@
 import express from 'express';
-import WorkLog from '../models/WorkLog';
 import Task from '../models/Task';
+import WorkLog from '../models/WorkLog';
 
 const router = express.Router();
 
-router.get('/debug-report', async (req, res) => {
-  const d = new Date(); d.setHours(0, 0, 0, 0);
-  const logs = await WorkLog.aggregate([
-    { $match: { createdAt: { $gte: d } } },
-    { $group: { _id: '$taskId', dur: { $sum: { $ifNull: ['$duration', 0] } }, count: { $sum: 1 }, items: { $push: { status: '$status', duration: '$duration' } } } }
-  ]);
-  const result = [];
-  for (const l of logs) {
-    const t = await Task.findById(l._id);
-    result.push({ title: t?.title, dur: l.dur, items: l.items });
+router.get('/reset-lunch', async (req, res) => {
+  const tasks = await Task.find({ title: /Lunch Break/i });
+  let fixed = 0;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  for (const t of tasks) {
+    const logs = await WorkLog.find({ taskId: t._id, createdAt: { $gte: today } });
+    let dur = 0;
+    for (const l of logs) dur += (l.duration || 0);
+    t.totalDuration = dur;
+    await t.save();
+    fixed++;
   }
-  res.json(result);
+  res.json({ message: 'Fixed ' + fixed + ' lunch breaks' });
 });
 export default router;
