@@ -107,7 +107,7 @@ const EmployeeDashboard = () => {
               taskId: preLunchTaskId,
               status: 'WORKING',
               progress: prevTask.progress || 0,
-              description: 'Resumed after lunch',
+              description: prevTask.description || '',
               duration: 0
             }, config);
           }

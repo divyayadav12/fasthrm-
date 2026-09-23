@@ -59,7 +59,12 @@ export const syncTaskTimingOnStatusChange = async (
     }
 
     // 2. Set this task as actively working with startedAt now
-    if (task.status !== 'WORKING' || !task.startedAt) {
+    let elapsed = 0;
+    if (task.status === 'WORKING' && task.startedAt) {
+      elapsed = Math.max(1, Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000));
+      task.totalDuration = (task.totalDuration || 0) + elapsed;
+      task.startedAt = new Date();
+    } else if (task.status !== 'WORKING' || !task.startedAt) {
       task.startedAt = new Date();
     }
     if (manualDuration && Number(manualDuration) > 0) {
@@ -68,7 +73,7 @@ export const syncTaskTimingOnStatusChange = async (
     task.status = 'WORKING';
     task.completedAt = undefined;
 
-    return {};
+    return elapsed > 0 ? { elapsed } : {};
   } else if (newStatus === 'COMPLETED') {
     // 1. Calculate time spent on this completing task
     const elapsed = task.startedAt
@@ -126,7 +131,7 @@ export const syncTaskTimingOnStatusChange = async (
     task.startedAt = undefined;
     task.completedAt = undefined;
 
-    return {};
+    return { elapsed };
   }
 };
 
@@ -182,7 +187,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
 
       // If completing/pausing, assign the duration to the original WORKING log
       // and set this status-change log duration to 0 to prevent double counting.
-      if (status !== 'WORKING' && elapsed !== undefined && elapsed > 0) {
+      if (elapsed !== undefined && elapsed > 0) {
         const lastWorkingLog = await WorkLog.findOne({
           employeeId,
           taskId: finalTaskId,
