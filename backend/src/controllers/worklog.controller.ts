@@ -333,9 +333,11 @@ export const getTaskWorkLogs = async (req: Request, res: Response) => {
   try {
     const taskId = String(req.params.taskId || '');
     let query: any = {};
+    let foundTask = null;
 
     const isValidId = /^[0-9a-fA-F]{24}$/.test(taskId);
     if (isValidId) {
+      foundTask = await Task.findById(taskId).populate('assignedTo', 'name email department designation profileImage');
       query = {
         $or: [
           { taskId },
@@ -343,8 +345,10 @@ export const getTaskWorkLogs = async (req: Request, res: Response) => {
         ]
       };
     } else {
+      const decodedTitle = decodeURIComponent(taskId);
+      foundTask = await Task.findOne({ title: new RegExp(`^${decodedTitle}$`, 'i') }).populate('assignedTo', 'name email department designation profileImage');
       query = {
-        customTaskTitle: decodeURIComponent(taskId)
+        customTaskTitle: new RegExp(`^${decodedTitle}$`, 'i')
       };
     }
 
@@ -356,6 +360,7 @@ export const getTaskWorkLogs = async (req: Request, res: Response) => {
 
     res.json({
       workLogs,
+      task: foundTask,
       total: workLogs.length,
     });
   } catch (error: any) {

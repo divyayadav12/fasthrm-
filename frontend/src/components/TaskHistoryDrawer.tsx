@@ -127,8 +127,12 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
       }
     });
 
-    if (task) {
-      const liveMinutes = getTaskLiveMinutes(task);
+    const activeTaskObj = taskDetails || task;
+    if (activeTaskObj?.totalDuration) {
+      totalMinutes = Math.max(totalMinutes, activeTaskObj.totalDuration);
+    }
+    if (activeTaskObj) {
+      const liveMinutes = getTaskLiveMinutes(activeTaskObj);
       if (liveMinutes > totalMinutes) {
         totalMinutes = liveMinutes;
       }

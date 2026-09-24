@@ -152,7 +152,16 @@ export const getProductivityStats = async (req: Request, res: Response) => {
 // @access  Private (Employee + Admin)
 export const getMyTaskReport = async (req: Request, res: Response) => {
   try {
-    const employeeId = (req as any).user._id;
+    const userRole = (req as any).user?.role;
+    let employeeId = (req as any).user._id;
+    if ((userRole === 'ADMIN' || userRole === 'HR' || userRole === 'SUPER_ADMIN') && req.query.employeeId) {
+      const mongoose = require('mongoose');
+      try {
+        employeeId = new mongoose.Types.ObjectId(req.query.employeeId as string);
+      } catch {
+        employeeId = req.query.employeeId;
+      }
+    }
     const { dateFrom, dateTo } = req.query;
 
     // Date filter for WorkLog lookups
