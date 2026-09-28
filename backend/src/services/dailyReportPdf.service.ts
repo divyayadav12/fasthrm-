@@ -65,10 +65,8 @@ export const collectDailyWorkData = async (targetDate?: Date): Promise<DailyRepo
   });
   const dateStr = date.toISOString().split('T')[0];
 
-  // Fetch all employees (excluding raw ADMIN if needed, or all registered staff)
-  const employees = await User.find({ role: { $ne: 'ADMIN' } }).sort({ name: 1 });
-  // If no employees found with role != 'ADMIN', fetch all users
-  const staffList = employees.length > 0 ? employees : await User.find().sort({ name: 1 });
+  // Fetch all registered staff / users across all roles (so NO employee is missed)
+  const staffList = await User.find({}).sort({ name: 1 });
 
   const employeeData: EmployeeDailyData[] = [];
   let totalTeamMinutes = 0;
@@ -78,7 +76,11 @@ export const collectDailyWorkData = async (targetDate?: Date): Promise<DailyRepo
   for (const emp of staffList) {
     const logs = await WorkLog.find({
       employeeId: emp._id,
-      createdAt: { $gte: startOfDay, $lte: endOfDay },
+      $or: [
+        { createdAt: { $gte: startOfDay, $lte: endOfDay } },
+        { startTime: { $gte: startOfDay, $lte: endOfDay } },
+        { updatedAt: { $gte: startOfDay, $lte: endOfDay } },
+      ],
     })
       .populate('taskId', 'title description status')
       .sort({ createdAt: 1 });
