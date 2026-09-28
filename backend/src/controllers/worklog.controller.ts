@@ -199,7 +199,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
           lastWorkingLog.endTime = new Date();
           await lastWorkingLog.save();
         }
-        calculatedDuration = 0;
+        calculatedDuration = elapsed;
       }
     }
 
@@ -221,7 +221,7 @@ export const createWorkLog = async (req: Request, res: Response) => {
     const populatedLog = await WorkLog.findById(workLog._id)
       .populate('employeeId', 'name email department designation role profileImage')
       .populate('projectId', 'name')
-      .populate('taskId', 'title');
+      .populate('taskId', 'title description status totalDuration startedAt completedAt');
 
     // Emit socket event for real-time dashboard update
     io.emit('worklog_updated', populatedLog);
@@ -263,13 +263,36 @@ export const getWorkLogs = async (req: Request, res: Response) => {
     const workLogs = await WorkLog.find(query)
       .populate('employeeId', 'name email department designation role profileImage')
       .populate('projectId', 'name')
-      .populate('taskId', 'title')
+      .populate('taskId', 'title description status totalDuration startedAt completedAt')
       .skip(startIndex)
       .limit(limitNumber)
       .sort({ createdAt: -1 });
 
+    const enrichedLogs = await Promise.all(
+      workLogs.map(async (logDoc) => {
+        const log: any = logDoc.toObject();
+        if (!log.duration || log.duration === 0) {
+          const taskObj = log.taskId;
+          if (taskObj && typeof taskObj === 'object' && taskObj.totalDuration) {
+            log.duration = taskObj.totalDuration;
+          } else if (log.taskId) {
+            const rawTaskId = taskObj?._id || log.taskId;
+            const priorLog = await WorkLog.findOne({
+              employeeId: log.employeeId?._id || log.employeeId,
+              taskId: rawTaskId,
+              duration: { $gt: 0 }
+            }).sort({ createdAt: -1 });
+            if (priorLog && priorLog.duration) {
+              log.duration = priorLog.duration;
+            }
+          }
+        }
+        return log;
+      })
+    );
+
     res.json({
-      workLogs,
+      workLogs: enrichedLogs,
       page: pageNumber,
       pages: Math.ceil(total / limitNumber),
       total,
@@ -310,13 +333,37 @@ export const getEmployeeWorkLogs = async (req: Request, res: Response) => {
     const workLogs = await WorkLog.find(query)
       .populate('employeeId', 'name email department designation profileImage')
       .populate('projectId', 'name')
-      .populate('taskId', 'title description status')
+      .populate('taskId', 'title description status totalDuration startedAt completedAt')
       .skip(startIndex)
       .limit(limitNumber)
       .sort({ createdAt: -1 });
 
+    // Enrich logs with accurate durations so ON_HOLD, COMPLETED, and PENDING logs never show 0m
+    const enrichedLogs = await Promise.all(
+      workLogs.map(async (logDoc) => {
+        const log: any = logDoc.toObject();
+        if (!log.duration || log.duration === 0) {
+          const taskObj = log.taskId;
+          if (taskObj && typeof taskObj === 'object' && taskObj.totalDuration) {
+            log.duration = taskObj.totalDuration;
+          } else if (log.taskId) {
+            const rawTaskId = taskObj?._id || log.taskId;
+            const priorLog = await WorkLog.findOne({
+              employeeId: log.employeeId?._id || log.employeeId,
+              taskId: rawTaskId,
+              duration: { $gt: 0 }
+            }).sort({ createdAt: -1 });
+            if (priorLog && priorLog.duration) {
+              log.duration = priorLog.duration;
+            }
+          }
+        }
+        return log;
+      })
+    );
+
     res.json({
-      workLogs,
+      workLogs: enrichedLogs,
       page: pageNumber,
       pages: Math.ceil(total / limitNumber),
       total,
@@ -355,13 +402,36 @@ export const getTaskWorkLogs = async (req: Request, res: Response) => {
     const workLogs = await WorkLog.find(query)
       .populate('employeeId', 'name email department designation profileImage')
       .populate('projectId', 'name')
-      .populate('taskId', 'title description status assignedTo')
+      .populate('taskId', 'title description status totalDuration startedAt completedAt assignedTo')
       .sort({ createdAt: -1 });
 
+    const enrichedLogs = await Promise.all(
+      workLogs.map(async (logDoc) => {
+        const log: any = logDoc.toObject();
+        if (!log.duration || log.duration === 0) {
+          const taskObj = log.taskId || foundTask;
+          if (taskObj && typeof taskObj === 'object' && taskObj.totalDuration) {
+            log.duration = taskObj.totalDuration;
+          } else if (log.taskId) {
+            const rawTaskId = (taskObj as any)?._id || log.taskId;
+            const priorLog = await WorkLog.findOne({
+              employeeId: log.employeeId?._id || log.employeeId,
+              taskId: rawTaskId,
+              duration: { $gt: 0 }
+            }).sort({ createdAt: -1 });
+            if (priorLog && priorLog.duration) {
+              log.duration = priorLog.duration;
+            }
+          }
+        }
+        return log;
+      })
+    );
+
     res.json({
-      workLogs,
+      workLogs: enrichedLogs,
       task: foundTask,
-      total: workLogs.length,
+      total: enrichedLogs.length,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
