@@ -25,17 +25,20 @@ export const sendEmail = async (options: {
   for (const recipient of recipientsList) {
     let sent = false;
 
-    // Strategy 1: Nodemailer with Gmail service
+    // Strategy 1: Direct Port 465 SSL with Gmail SMTP (most reliable from cloud & local)
     try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
+      const transporter465 = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: { user: user.trim(), pass: cleanPass },
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 5000,
-        greetingTimeout: 5000,
-        socketTimeout: 8000,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 25000,
       });
-      await transporter.sendMail({
+
+      const info = await transporter465.sendMail({
         from,
         to: recipient,
         subject: options.subject,
@@ -43,13 +46,39 @@ export const sendEmail = async (options: {
         html: options.html || options.text,
         attachments: options.attachments,
       });
-      console.log(`[Email Service - Gmail SMTP] Successfully sent to ${recipient}`);
+      console.log(`[Email Service - Port 465 SSL] Successfully sent to ${recipient}: ${info.messageId || 'OK'}`);
       sent = true;
     } catch (err1: any) {
-      console.warn(`[Email Service - Gmail SMTP failed for ${recipient}]:`, err1?.message);
+      console.warn(`[Email Service - Port 465 SSL failed for ${recipient}]:`, err1?.message);
     }
 
-    // Strategy 2: Nodemailer with port 587 STARTTLS if Strategy 1 failed
+    // Strategy 2: Gmail Service transporter
+    if (!sent) {
+      try {
+        const transporterGmail = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user: user.trim(), pass: cleanPass },
+          tls: { rejectUnauthorized: false },
+          connectionTimeout: 15000,
+          greetingTimeout: 15000,
+          socketTimeout: 25000,
+        });
+        const info = await transporterGmail.sendMail({
+          from,
+          to: recipient,
+          subject: options.subject,
+          text: options.text,
+          html: options.html || options.text,
+          attachments: options.attachments,
+        });
+        console.log(`[Email Service - Gmail Service] Successfully sent to ${recipient}: ${info.messageId || 'OK'}`);
+        sent = true;
+      } catch (err2: any) {
+        console.warn(`[Email Service - Gmail Service failed for ${recipient}]:`, err2?.message);
+      }
+    }
+
+    // Strategy 3: Port 587 STARTTLS
     if (!sent) {
       try {
         const transporter587 = nodemailer.createTransport({
@@ -58,11 +87,11 @@ export const sendEmail = async (options: {
           secure: false,
           auth: { user: user.trim(), pass: cleanPass },
           tls: { rejectUnauthorized: false },
-          connectionTimeout: 5000,
-          greetingTimeout: 5000,
-          socketTimeout: 8000,
+          connectionTimeout: 15000,
+          greetingTimeout: 15000,
+          socketTimeout: 25000,
         });
-        await transporter587.sendMail({
+        const info = await transporter587.sendMail({
           from,
           to: recipient,
           subject: options.subject,
@@ -70,14 +99,14 @@ export const sendEmail = async (options: {
           html: options.html || options.text,
           attachments: options.attachments,
         });
-        console.log(`[Email Service - SMTP 587] Successfully sent to ${recipient}`);
+        console.log(`[Email Service - SMTP 587] Successfully sent to ${recipient}: ${info.messageId || 'OK'}`);
         sent = true;
-      } catch (err2: any) {
-        console.warn(`[Email Service - SMTP 587 failed for ${recipient}]:`, err2?.message);
+      } catch (err3: any) {
+        console.warn(`[Email Service - SMTP 587 failed for ${recipient}]:`, err3?.message);
       }
     }
 
-    // Strategy 3: Google Apps Script Web App fallback (HTTPS 443 - handles large HTML and base64 attachments)
+    // Strategy 4: Google Apps Script Web App fallback
     if (!sent) {
       const scriptUrl =
         process.env.GMAIL_SCRIPT_URL ||
