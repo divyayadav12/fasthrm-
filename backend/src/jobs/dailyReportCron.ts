@@ -1,0 +1,97 @@
+import cron from 'node-cron';
+import { sendEmail } from '../utils/sendEmail';
+import {
+  collectDailyWorkData,
+  generateDailyReportPdfBuffer,
+  generateDailyReportHtml,
+  DailyReportSummary,
+} from '../services/dailyReportPdf.service';
+
+export const getReportRecipients = (): string[] => {
+  const envEmails = process.env.DAILY_REPORT_EMAILS || process.env.DAILY_REPORT_EMAIL;
+  if (envEmails) {
+    return envEmails
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+  }
+  return ['esarthak@gmail.com', 'divyayadav141203@gmail.com'];
+};
+
+/**
+ * Dispatch Daily Report Email with PDF Attachment to all configured recipients
+ */
+export const dispatchDailyWorkReport = async (targetDate?: Date): Promise<{
+  success: boolean;
+  recipients: string[];
+  summary: DailyReportSummary;
+  message: string;
+}> => {
+  const recipients = getReportRecipients();
+  console.log(`[Daily Report] Starting daily report generation for ${recipients.join(', ')}...`);
+
+  const summary = await collectDailyWorkData(targetDate);
+  const pdfBuffer = await generateDailyReportPdfBuffer(summary);
+  const htmlContent = generateDailyReportHtml(summary);
+
+  const subject = `📊 FAST HRM: Daily Staff Work Report - ${summary.formattedDate}`;
+  const filename = `Daily_Staff_Work_Report_${summary.dateStr}.pdf`;
+
+  const isSent = await sendEmail({
+    to: recipients,
+    subject,
+    text: `Respected Sir, please find attached the Daily Staff Work Report for ${summary.formattedDate}. Total Hours Logged: ${summary.totalTeamDurationStr}.`,
+    html: htmlContent,
+    attachments: [
+      {
+        filename,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+    ],
+  });
+
+  if (isSent) {
+    console.log(`[Daily Report] Successfully sent daily PDF work report to ${recipients.join(', ')}`);
+    return {
+      success: true,
+      recipients,
+      summary,
+      message: `Daily work report with PDF successfully emailed to ${recipients.join(', ')}!`,
+    };
+  } else {
+    console.error(`[Daily Report] Failed to dispatch daily report email to ${recipients.join(', ')}`);
+    return {
+      success: false,
+      recipients,
+      summary,
+      message: `Failed to send email. Please check SMTP credentials.`,
+    };
+  }
+};
+
+/**
+ * Starts the automated 10:00 PM (22:00 IST) Cron Job
+ */
+export const startDailyReportCronJob = () => {
+  // 10:00 PM Indian Standard Time (22:00 IST)
+  // Standard cron for 22:00 every day
+  const cronExpression = '0 22 * * *';
+
+  cron.schedule(
+    cronExpression,
+    async () => {
+      console.log(`[Daily Report Cron] Triggering 10:00 PM automated daily work report...`);
+      try {
+        await dispatchDailyWorkReport();
+      } catch (err: any) {
+        console.error('[Daily Report Cron Error]:', err?.message || err);
+      }
+    },
+    {
+      timezone: 'Asia/Kolkata',
+    }
+  );
+
+  console.log('✅ Daily Report Cron Job initialized (Scheduled for 10:00 PM IST every day).');
+};

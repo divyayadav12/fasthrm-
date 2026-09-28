@@ -260,3 +260,19 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Trigger and send daily work report email with PDF attachment
+// @route   POST /api/reports/send-daily-email
+// @access  Private/Admin
+export const sendDailyReportEmailHandler = async (req: Request, res: Response) => {
+  try {
+    const { date } = req.body || req.query;
+    const targetDate = date ? new Date(date as string) : new Date();
+
+    const { dispatchDailyWorkReport } = await import('../jobs/dailyReportCron');
+    const result = await dispatchDailyWorkReport(targetDate);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

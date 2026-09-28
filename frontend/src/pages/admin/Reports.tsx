@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Download, FileText, Users, CheckCircle, Clock, AlertCircle, Search, History } from 'lucide-react';
+import { Download, FileText, Users, CheckCircle, Clock, AlertCircle, Search, History, Mail, Send, Check } from 'lucide-react';
 import axios from 'axios';
 import { formatDuration, getTaskLiveMinutes } from '../../utils/timeFormat';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
@@ -27,6 +27,8 @@ const Reports = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [taskSearchTerm, setTaskSearchTerm] = useState('');
   const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<any>(null);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailStatusMessage, setEmailStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const fetchRealReports = async () => {
@@ -188,6 +190,33 @@ const Reports = () => {
     window.print();
   };
 
+  const handleSendDailyEmail = async () => {
+    try {
+      setIsSendingEmail(true);
+      setEmailStatusMessage(null);
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      const res = await axios.post(`${API_URL}/reports/send-daily-email`, {}, config);
+      if (res.data?.success) {
+        setEmailStatusMessage({
+          type: 'success',
+          text: `Daily work report with PDF successfully emailed to ${res.data?.recipients?.join(', ')}!`,
+        });
+      } else {
+        setEmailStatusMessage({
+          type: 'error',
+          text: res.data?.message || 'Failed to send email. Please verify SMTP settings.',
+        });
+      }
+    } catch (err: any) {
+      setEmailStatusMessage({
+        type: 'error',
+        text: err.response?.data?.message || err.message || 'Error triggering daily report email.',
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
@@ -195,7 +224,27 @@ const Reports = () => {
           <h1 className="text-2xl font-bold text-gray-900">Analytics & Reports</h1>
           <p className="text-sm text-gray-500">Real-time team productivity and task distribution</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button 
+            onClick={handleSendDailyEmail}
+            disabled={isSendingEmail}
+            className={`flex items-center px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-sm text-sm font-semibold cursor-pointer ${
+              isSendingEmail ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+            title="Send daily employee work report with PDF attachment to esarthak@gmail.com & divyayadav141203@gmail.com"
+          >
+            {isSendingEmail ? (
+              <>
+                <Send className="h-4 w-4 mr-2 animate-spin" />
+                Sending PDF Email...
+              </>
+            ) : (
+              <>
+                <Mail className="h-4 w-4 mr-2" />
+                Email Daily Report (PDF)
+              </>
+            )}
+          </button>
           <button 
             onClick={handleExportCSV}
             className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors shadow-xs text-sm font-medium"
@@ -212,6 +261,32 @@ const Reports = () => {
           </button>
         </div>
       </div>
+
+      {/* Email Status Banner */}
+      {emailStatusMessage && (
+        <div
+          className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm ${
+            emailStatusMessage.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {emailStatusMessage.type === 'success' ? (
+              <Check className="h-4 w-4 text-emerald-600" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-rose-600" />
+            )}
+            <span>{emailStatusMessage.text}</span>
+          </div>
+          <button
+            onClick={() => setEmailStatusMessage(null)}
+            className="text-xs font-bold underline hover:opacity-80"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Overview Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

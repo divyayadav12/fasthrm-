@@ -7,7 +7,9 @@ import connectDB from './config/db';
 import { notFound, errorHandler } from './middleware/error.middleware';
 
 import { startShiftCronJob } from './jobs/shiftAutoPause';
+import { startDailyReportCronJob } from './jobs/dailyReportCron';
 startShiftCronJob();
+startDailyReportCronJob();
 
 import debugRoutes from './routes/debug.routes';
 import authRoutes from './routes/auth.routes';

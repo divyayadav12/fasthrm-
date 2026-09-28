@@ -21,6 +21,7 @@
     "mongoose": "^9.9.4",
     "node-cron": "^4.6.0",
     "nodemailer": "^10.0.3",
+    "pdfkit": "^0.20.2",
     "socket.io": "^4.8.3",
     "zod": "^4.5.4"
   },
@@ -32,6 +33,7 @@
     "@types/node": "^26.4.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.1",
+    "@types/pdfkit": "^0.17.6",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^7.0.2"
