@@ -11,76 +11,90 @@ export const sendEmail = async (options: {
     contentType?: string;
   }>;
 }): Promise<boolean> => {
-  const recipients = Array.isArray(options.to) ? options.to.join(', ') : options.to;
-  const hasAttachments = options.attachments && options.attachments.length > 0;
+  const recipientsList = Array.isArray(options.to)
+    ? options.to
+    : options.to.split(',').map((e) => e.trim()).filter(Boolean);
 
-  // 1. If NO attachments, try Google Apps Script Web App first
-  if (!hasAttachments) {
-    const scriptUrl =
-      process.env.GMAIL_SCRIPT_URL ||
-      'https://script.google.com/macros/s/AKfycbySSRoh5lgjv5ieQFFJ-_3IH4RJ0NNAcmUyotN2iB5xfnGqjxd_EEVH5eLcgITmWJvdNg/exec';
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'divyayadav141203@gmail.com';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'nhvdndiomfuwotyl';
+  const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || `"FAST HRM - Work Reports" <${user}>`;
+  const cleanPass = pass.replace(/\s+/g, '');
 
-    if (scriptUrl) {
+  let overallSuccess = true;
+
+  for (const recipient of recipientsList) {
+    let sent = false;
+
+    // Strategy A: Port 465 (Gmail SSL)
+    try {
+      const transporter465 = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: user.trim(), pass: cleanPass },
+        tls: { rejectUnauthorized: false },
+      });
+      await transporter465.sendMail({
+        from,
+        to: recipient,
+        subject: options.subject,
+        text: options.text,
+        html: options.html || options.text,
+        attachments: options.attachments,
+      });
+      console.log(`[Email Service - SMTP 465] Successfully sent to ${recipient}`);
+      sent = true;
+    } catch (err465: any) {
+      console.warn(`[Email Service - SMTP 465 failed for ${recipient}]:`, err465?.message);
+    }
+
+    // Strategy B: Port 587 (Gmail STARTTLS) if 465 failed
+    if (!sent) {
       try {
-        const getUrl = `${scriptUrl}?to=${encodeURIComponent(recipients)}&subject=${encodeURIComponent(options.subject)}&html=${encodeURIComponent(options.html || options.text)}`;
-        const response = await fetch(getUrl, {
-          method: 'GET',
-          redirect: 'follow',
+        const transporter587 = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: { user: user.trim(), pass: cleanPass },
+          tls: { rejectUnauthorized: false },
         });
-        console.log(`[Email Service - WebApp] Dispatched email to ${recipients}, Status: ${response.status}`);
-        if (response.ok || response.status === 200 || response.status === 302) {
-          return true;
-        }
-      } catch (scriptError: any) {
-        console.warn('[Email Service - WebApp Error]:', scriptError?.message);
+        await transporter587.sendMail({
+          from,
+          to: recipient,
+          subject: options.subject,
+          text: options.text,
+          html: options.html || options.text,
+          attachments: options.attachments,
+        });
+        console.log(`[Email Service - SMTP 587] Successfully sent to ${recipient}`);
+        sent = true;
+      } catch (err587: any) {
+        console.warn(`[Email Service - SMTP 587 failed for ${recipient}]:`, err587?.message);
       }
     }
-  }
 
-  // 2. Nodemailer SMTP (Handles attachments, direct delivery)
-  try {
-    const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'divyayadav141203@gmail.com';
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'nhvdndiomfuwotyl';
-    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const port = Number(process.env.SMTP_PORT) || 465;
-    const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || `"FAST HRM - Work Reports" <${user}>`;
+    // Strategy C: Google Apps Script Web App fallback
+    if (!sent) {
+      const scriptUrl =
+        process.env.GMAIL_SCRIPT_URL ||
+        'https://script.google.com/macros/s/AKfycbySSRoh5lgjv5ieQFFJ-_3IH4RJ0NNAcmUyotN2iB5xfnGqjxd_EEVH5eLcgITmWJvdNg/exec';
 
-    if (!user || !pass) {
-      console.warn(`[Email Service] SMTP credentials missing. Email to ${recipients} was not sent.`);
-      return false;
+      if (scriptUrl) {
+        try {
+          const getUrl = `${scriptUrl}?to=${encodeURIComponent(recipient)}&subject=${encodeURIComponent(options.subject)}&html=${encodeURIComponent(options.html || options.text)}`;
+          const response = await fetch(getUrl, { method: 'GET', redirect: 'follow' });
+          if (response.ok || response.status === 200 || response.status === 302) {
+            console.log(`[Email Service - WebApp] Successfully sent to ${recipient}`);
+            sent = true;
+          }
+        } catch (scriptError: any) {
+          console.warn(`[Email Service - WebApp failed for ${recipient}]:`, scriptError?.message);
+        }
+      }
     }
 
-    const cleanPass = pass.replace(/\s+/g, '');
-
-    const transporter = nodemailer.createTransport(
-      host === 'smtp.gmail.com' || user.endsWith('@gmail.com')
-        ? {
-            service: 'gmail',
-            auth: { user: user.trim(), pass: cleanPass },
-            tls: { rejectUnauthorized: false },
-          }
-        : {
-            host,
-            port,
-            secure: port === 465,
-            auth: { user: user.trim(), pass: cleanPass },
-            tls: { rejectUnauthorized: false },
-          }
-    );
-
-    await transporter.sendMail({
-      from,
-      to: recipients,
-      subject: options.subject,
-      text: options.text,
-      html: options.html || options.text,
-      attachments: options.attachments,
-    });
-
-    console.log(`[Email Service - SMTP] Successfully sent email to ${recipients}`);
-    return true;
-  } catch (error: any) {
-    console.error('[Email Service - SMTP Error]:', error?.message || error);
-    return false;
+    if (!sent) {
+      overallSuccess = false;
+    }
   }
+
+  return overallSuccess;
 };
