@@ -16,7 +16,7 @@ export const sendEmail = async (options: {
     : options.to.split(',').map((e) => e.trim()).filter(Boolean);
 
   const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'divyayadav141203@gmail.com';
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'nhvdndiomfuwotyl';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'yzjxbbseybwhjiuo';
   const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || `"FAST HRM - Work Reports" <${user}>`;
   const cleanPass = pass.replace(/\s+/g, '');
 
