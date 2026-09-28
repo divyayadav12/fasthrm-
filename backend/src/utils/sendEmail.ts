@@ -25,17 +25,17 @@ export const sendEmail = async (options: {
   for (const recipient of recipientsList) {
     let sent = false;
 
-    // Strategy A: Port 465 (Gmail SSL with short timeout)
+    // Strategy 1: Nodemailer with Gmail service
     try {
-      const transporter465 = nodemailer.createTransport({
+      const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: user.trim(), pass: cleanPass },
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 4000,
-        greetingTimeout: 3000,
-        socketTimeout: 5000,
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
-      await transporter465.sendMail({
+      await transporter.sendMail({
         from,
         to: recipient,
         subject: options.subject,
@@ -43,13 +43,13 @@ export const sendEmail = async (options: {
         html: options.html || options.text,
         attachments: options.attachments,
       });
-      console.log(`[Email Service - SMTP 465] Successfully sent to ${recipient}`);
+      console.log(`[Email Service - Gmail SMTP] Successfully sent to ${recipient}`);
       sent = true;
-    } catch (err465: any) {
-      console.warn(`[Email Service - SMTP 465 failed for ${recipient}]:`, err465?.message);
+    } catch (err1: any) {
+      console.warn(`[Email Service - Gmail SMTP failed for ${recipient}]:`, err1?.message);
     }
 
-    // Strategy B: Port 587 (Gmail STARTTLS with short timeout) if 465 failed
+    // Strategy 2: Nodemailer with port 587 STARTTLS if Strategy 1 failed
     if (!sent) {
       try {
         const transporter587 = nodemailer.createTransport({
@@ -58,9 +58,9 @@ export const sendEmail = async (options: {
           secure: false,
           auth: { user: user.trim(), pass: cleanPass },
           tls: { rejectUnauthorized: false },
-          connectionTimeout: 4000,
-          greetingTimeout: 3000,
-          socketTimeout: 5000,
+          connectionTimeout: 5000,
+          greetingTimeout: 5000,
+          socketTimeout: 8000,
         });
         await transporter587.sendMail({
           from,
@@ -72,12 +72,12 @@ export const sendEmail = async (options: {
         });
         console.log(`[Email Service - SMTP 587] Successfully sent to ${recipient}`);
         sent = true;
-      } catch (err587: any) {
-        console.warn(`[Email Service - SMTP 587 failed for ${recipient}]:`, err587?.message);
+      } catch (err2: any) {
+        console.warn(`[Email Service - SMTP 587 failed for ${recipient}]:`, err2?.message);
       }
     }
 
-    // Strategy C: Google Apps Script Web App fallback (HTTPS 443 - never blocked by cloud hosts)
+    // Strategy 3: Google Apps Script Web App fallback (HTTPS 443 - handles large HTML and base64 attachments)
     if (!sent) {
       const scriptUrl =
         process.env.GMAIL_SCRIPT_URL ||
@@ -85,10 +85,31 @@ export const sendEmail = async (options: {
 
       if (scriptUrl) {
         try {
-          const getUrl = `${scriptUrl}?to=${encodeURIComponent(recipient)}&subject=${encodeURIComponent(options.subject)}&html=${encodeURIComponent(options.html || options.text)}`;
-          const response = await fetch(getUrl, { method: 'GET', redirect: 'follow' });
-          if (response.ok || response.status === 200 || response.status === 302) {
-            console.log(`[Email Service - WebApp] Successfully sent to ${recipient}`);
+          const payload: any = {
+            to: recipient,
+            subject: options.subject,
+            html: options.html || options.text,
+            text: options.text,
+          };
+          if (options.attachments && options.attachments.length > 0) {
+            payload.attachments = options.attachments.map((a) => ({
+              filename: a.filename,
+              content: typeof a.content === 'string' ? a.content : (a.content as Buffer).toString('base64'),
+              contentType: a.contentType || 'application/pdf',
+            }));
+          }
+
+          const response = await fetch(scriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            redirect: 'follow',
+          });
+
+          const resText = await response.text();
+          console.log(`[Email Service - WebApp POST] Status: ${response.status}, Response: ${resText.substring(0, 100)}`);
+          if (response.ok || response.status === 200 || response.status === 302 || resText.includes('success') || resText.includes('ok')) {
+            console.log(`[Email Service - WebApp] Successfully dispatched to ${recipient}`);
             sent = true;
           }
         } catch (scriptError: any) {
