@@ -34,7 +34,15 @@ export const dispatchDailyWorkReport = async (targetDate?: Date): Promise<{
   const pdfBuffer = await generateDailyReportPdfBuffer(summary);
   const htmlContent = generateDailyReportHtml(summary);
 
-  const subject = `📊 FAST HRM: Daily Staff Work Report - ${summary.formattedDate}`;
+  const nowIst = new Date();
+  const timeStr = nowIst.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
+  });
+
+  const subject = `📊 FAST HRM: Daily Staff Work Report - ${summary.formattedDate} [${timeStr}]`;
   const filename = `Daily_Staff_Work_Report_${summary.dateStr}.pdf`;
 
   const isSent = await sendEmail({
