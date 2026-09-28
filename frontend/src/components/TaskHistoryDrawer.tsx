@@ -232,31 +232,55 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
               </button>
             </div>
 
-            {/* Assigned / Active Employee Card */}
-            {assignedEmployee && (
-              <div className="mt-3.5 p-3 rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-between gap-2">
-                <div className="flex items-center space-x-3 min-w-0">
-                  <div className="h-9 w-9 rounded-xl bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
-                    {(typeof assignedEmployee === 'object' ? assignedEmployee.name : String(assignedEmployee)).charAt(0).toUpperCase()}
+            {/* Assigned Employee & Total Time Header Card */}
+            <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Total Time Spent Card */}
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50/80 to-blue-50/80 border border-indigo-100 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-xs">
+                    <Clock className="h-5 w-5" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-400 font-medium">Assigned / Logged by</p>
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {typeof assignedEmployee === 'object' ? assignedEmployee.name : assignedEmployee}
+                  <div>
+                    <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Total Time Worked</p>
+                    <p className="text-base sm:text-lg font-extrabold text-gray-900">
+                      {metrics.totalDuration}
                     </p>
                   </div>
                 </div>
-                {onSelectEmployee && (
-                  <button
-                    onClick={() => onSelectEmployee(assignedEmployee)}
-                    className="flex-shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-white px-2.5 sm:px-3 py-1.5 rounded-lg border border-gray-200 shadow-2xs hover:bg-indigo-50/50 transition-colors flex items-center space-x-1"
-                  >
-                    <span>View Profile</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <div className="text-right">
+                  <span className="text-[11px] font-medium text-gray-500 block">Total Logs</span>
+                  <span className="text-xs font-bold text-indigo-700 bg-white/80 px-2 py-0.5 rounded-md border border-indigo-200">
+                    {metrics.updateCount} updates
+                  </span>
+                </div>
               </div>
-            )}
+
+              {/* Assigned / Logged By Card */}
+              {assignedEmployee && (
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                      {(typeof assignedEmployee === 'object' ? assignedEmployee.name : String(assignedEmployee)).charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Assigned / Logged by</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        {typeof assignedEmployee === 'object' ? assignedEmployee.name : assignedEmployee}
+                      </p>
+                    </div>
+                  </div>
+                  {onSelectEmployee && (
+                    <button
+                      onClick={() => onSelectEmployee(assignedEmployee)}
+                      className="flex-shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 shadow-2xs hover:bg-indigo-50/50 transition-colors flex items-center space-x-1"
+                    >
+                      <span>Profile</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Filter & Sort Bar */}
@@ -317,6 +341,25 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                       });
                       const employeeName = log.employeeId?.name || (typeof assignedEmployee === 'object' ? assignedEmployee?.name : assignedEmployee) || 'Team Member';
 
+                      // Smart calculation of effective duration for this step
+                      const ownDuration = log.duration || log.durationMinutes || 0;
+                      
+                      // Check if previous or next chronological working log has duration
+                      let resolvedDuration = ownDuration;
+                      if (resolvedDuration === 0) {
+                        // In newest first (sortAsc=false), the earlier WORKING log is at index + 1
+                        const priorLog = !sortAsc ? sortedLogs[index + 1] : sortedLogs[index - 1];
+                        if (priorLog && (priorLog.duration || priorLog.durationMinutes)) {
+                          resolvedDuration = priorLog.duration || priorLog.durationMinutes || 0;
+                        }
+                      }
+
+                      // If this is the current active WORKING session (newest log and task is WORKING)
+                      const isCurrentlyActive = index === 0 && log.status === 'WORKING';
+                      const activeElapsed = isCurrentlyActive 
+                        ? Math.max(1, Math.round((Date.now() - new Date(log.createdAt).getTime()) / 60000))
+                        : 0;
+
                       return (
                         <tr key={log._id || index} className="hover:bg-indigo-50/30 transition-colors group">
                           {/* Date */}
@@ -332,32 +375,41 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                           {/* Time Spent */}
                           <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
                             {(() => {
-                              const dur = log.duration || log.durationMinutes || 0;
-                              const isLive = index === 0 && log.status === 'WORKING';
-                              
-                              if (dur > 0) {
+                              if (isCurrentlyActive) {
                                 return (
-                                  <div className="inline-flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 border border-gray-200/70 px-2 py-1 rounded-md font-semibold">
-                                    <Clock className="w-3 h-3 text-gray-400" />
-                                    {formatDuration(dur)}
-                                  </div>
-                                );
-                              }
-                              
-                              if (isLive) {
-                                const liveSessionMins = Math.max(0, Math.round((Date.now() - new Date(log.createdAt).getTime()) / 60000));
-                                return (
-                                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-200/80 rounded-md text-xs font-bold text-blue-700">
+                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200/80 rounded-lg text-xs font-bold text-blue-700">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-                                    {formatDuration(liveSessionMins)}
+                                    <span>{formatDuration(activeElapsed)}</span>
+                                    <span className="text-[10px] text-blue-500 font-semibold">(Active)</span>
                                   </div>
                                 );
                               }
 
+                              if (resolvedDuration > 0) {
+                                return (
+                                  <div className="inline-flex items-center gap-1.5 text-xs text-gray-800 bg-gray-50 border border-gray-200/80 px-2.5 py-1 rounded-lg font-bold">
+                                    <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                                    {formatDuration(resolvedDuration)}
+                                  </div>
+                                );
+                              }
+
+                              // If it's a starting log with 0 recorded duration
+                              if (log.status === 'WORKING') {
+                                return (
+                                  <div className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md font-medium">
+                                    <Clock className="w-3 h-3 text-gray-300" />
+                                    <span>Session Start</span>
+                                  </div>
+                                );
+                              }
+
+                              // Default fallback
+                              const totalTaskMin = taskDetails?.totalDuration || task?.totalDuration || 0;
                               return (
-                                <div className="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-md font-medium">
+                                <div className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md font-medium">
                                   <Clock className="w-3 h-3 text-gray-300" />
-                                  0m
+                                  <span>{totalTaskMin > 0 ? formatDuration(totalTaskMin) : '0m'}</span>
                                 </div>
                               );
                             })()}

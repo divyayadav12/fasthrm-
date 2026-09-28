@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
-import { Calendar, Filter, Edit2, RotateCcw, X, Check, ArrowRight, Activity, AlertCircle, HelpCircle, ExternalLink, Search } from 'lucide-react';
+import { Calendar, Filter, Edit2, RotateCcw, X, Check, ArrowRight, Activity, AlertCircle, HelpCircle, ExternalLink, Search, Clock } from 'lucide-react';
 import axios from 'axios';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
+import { formatDuration } from '../../utils/timeFormat';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
 
@@ -352,19 +353,20 @@ const WorkHistory = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Name</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Spent</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Loading history...</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading history...</td></tr>
               ) : workLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
                     <Calendar className="h-12 w-12 text-gray-300 mb-3" />
                     <p>No work history recorded for this period.</p>
                   </td>
@@ -387,20 +389,21 @@ const WorkHistory = () => {
                     // Date filter (exact match on local date string YYYY-MM-DD)
                     let matchesDate = true;
                     if (dateFilter) {
-                      // log.createdAt or log.startTime is an ISO string, extract YYYY-MM-DD
                       const logDateStr = new Date(log.createdAt).toISOString().split('T')[0];
                       matchesDate = logDateStr === dateFilter;
                     }
                     
                     return matchesSearch && matchesStatus && matchesDate;
                   })
-                  .map((log) => (
+                  .map((log) => {
+                    const dur = log.duration || log.durationMinutes || log.taskId?.totalDuration || 0;
+                    return (
                   <tr key={log._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-5 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{new Date(log.createdAt).toLocaleDateString()}</div>
                       <div className="text-xs text-gray-500">{new Date(log.createdAt).toLocaleTimeString()}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <button
                         onClick={() => setSelectedTaskForDetail(log.taskId || log)}
                         className="group text-left"
@@ -419,10 +422,16 @@ const WorkHistory = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-5 py-4 whitespace-nowrap">
                       {getStatusBadge(log.status)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-gray-800 bg-gray-50 border border-gray-200/70">
+                        <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>{formatDuration(dur)}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-500 max-w-xs">
                       <p className="line-clamp-2">{log.description || 'No description provided.'}</p>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -459,8 +468,9 @@ const WorkHistory = () => {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })
+            )}
             </tbody>
           </table>
         </div>
