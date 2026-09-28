@@ -184,7 +184,7 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
     try {
       const doc = new PDFDocument({
         bufferPages: true,
-        margin: 36,
+        margin: 32,
         size: 'A4',
         info: {
           Title: `FAST HRM Daily Work Report - ${summary.formattedDate}`,
@@ -202,116 +202,141 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
 
       const primaryColor = '#1E3A8A'; // Deep Blue
       const secondaryColor = '#4F46E5'; // Indigo
-      const textColor = '#1F2937';
-      const grayColor = '#6B7280';
-      const lightBg = '#F3F4F6';
-      const borderGray = '#E5E7EB';
+      const textColor = '#1E293B';
+      const grayColor = '#64748B';
+      const lightBg = '#F8FAFC';
+      const borderGray = '#CBD5E1';
+      const pageWidth = 531; // 595 - 64
+      const leftMargin = 32;
 
-      // --- HEADER ---
-      doc.rect(36, 36, 523, 62).fill('#1E293B');
+      const drawHeader = (isFirstPage: boolean) => {
+        if (isFirstPage) {
+          // --- MAIN HEADER ---
+          doc.rect(leftMargin, 32, pageWidth, 58).fill('#1E293B');
 
-      doc.fillColor('#FFFFFF').fontSize(16).font('Helvetica-Bold').text('F.A.S.T. - FIRST ATTEMPT SUCCESS TUTORIALS', 50, 48);
-      doc.fontSize(10).font('Helvetica').fillColor('#94A3B8').text('WorkPulse HRM • Daily Staff Work & Productivity Report', 50, 70);
+          doc.fillColor('#FFFFFF').fontSize(14).font('Helvetica-Bold').text('F.A.S.T. - FIRST ATTEMPT SUCCESS TUTORIALS', leftMargin + 14, 44);
+          doc.fontSize(9).font('Helvetica').fillColor('#94A3B8').text('WorkPulse HRM • Daily Staff Work & Productivity Report', leftMargin + 14, 64);
 
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#38BDF8').text(summary.formattedDate, 380, 56, { align: 'right', width: 165 });
-      doc.fontSize(8).font('Helvetica').fillColor('#94A3B8').text(`Generated at 10:00 PM IST`, 380, 72, { align: 'right', width: 165 });
+          doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#38BDF8').text(summary.formattedDate, leftMargin + pageWidth - 180, 46, { align: 'right', width: 166 });
+          doc.fontSize(8).font('Helvetica').fillColor('#94A3B8').text(`End-of-Day Report • 10:00 PM IST`, leftMargin + pageWidth - 180, 62, { align: 'right', width: 166 });
+        } else {
+          // Compact header on subsequent pages
+          doc.rect(leftMargin, 32, pageWidth, 24).fill('#1E293B');
+          doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold').text('FAST HRM WorkPulse • Daily Work Report', leftMargin + 10, 39);
+          doc.fillColor('#38BDF8').fontSize(8.5).font('Helvetica').text(summary.formattedDate, leftMargin + pageWidth - 180, 39, { align: 'right', width: 170 });
+        }
+      };
 
-      doc.moveDown(2);
+      // Draw initial page header
+      drawHeader(true);
 
-      // --- SUMMARY CARDS ---
-      let startY = 110;
-      doc.rect(36, startY, 523, 48).fill('#F8FAFC');
-      doc.rect(36, startY, 523, 48).stroke(borderGray);
+      // --- SUMMARY METRIC CARDS ---
+      let startY = 100;
+      doc.rect(leftMargin, startY, pageWidth, 46).fill('#F8FAFC');
+      doc.rect(leftMargin, startY, pageWidth, 46).stroke(borderGray);
 
-      const colW = 523 / 4;
+      const colW = pageWidth / 4;
       
       // Card 1: Total Staff
-      doc.fillColor(grayColor).fontSize(8).font('Helvetica-Bold').text('REGISTERED STAFF', 36 + 10, startY + 10);
-      doc.fillColor(textColor).fontSize(14).font('Helvetica-Bold').text(`${summary.totalEmployees}`, 36 + 10, startY + 24);
+      doc.fillColor(grayColor).fontSize(7.5).font('Helvetica-Bold').text('TOTAL STAFF', leftMargin + 8, startY + 8);
+      doc.fillColor(textColor).fontSize(13).font('Helvetica-Bold').text(`${summary.totalEmployees}`, leftMargin + 8, startY + 22);
 
       // Card 2: Active Today
-      doc.fillColor(grayColor).fontSize(8).font('Helvetica-Bold').text('ACTIVE TODAY', 36 + colW + 10, startY + 10);
-      doc.fillColor('#059669').fontSize(14).font('Helvetica-Bold').text(`${summary.activeEmployeesCount}`, 36 + colW + 10, startY + 24);
+      doc.fillColor(grayColor).fontSize(7.5).font('Helvetica-Bold').text('ACTIVE TODAY', leftMargin + colW + 8, startY + 8);
+      doc.fillColor('#059669').fontSize(13).font('Helvetica-Bold').text(`${summary.activeEmployeesCount}`, leftMargin + colW + 8, startY + 22);
 
       // Card 3: Total Hours Logged
-      doc.fillColor(grayColor).fontSize(8).font('Helvetica-Bold').text('TOTAL HOURS LOGGED', 36 + colW * 2 + 10, startY + 10);
-      doc.fillColor(secondaryColor).fontSize(14).font('Helvetica-Bold').text(summary.totalTeamDurationStr, 36 + colW * 2 + 10, startY + 24);
+      doc.fillColor(grayColor).fontSize(7.5).font('Helvetica-Bold').text('HOURS LOGGED', leftMargin + colW * 2 + 8, startY + 8);
+      doc.fillColor(secondaryColor).fontSize(13).font('Helvetica-Bold').text(summary.totalTeamDurationStr, leftMargin + colW * 2 + 8, startY + 22);
 
       // Card 4: Completed Tasks
-      doc.fillColor(grayColor).fontSize(8).font('Helvetica-Bold').text('COMPLETED TASKS', 36 + colW * 3 + 10, startY + 10);
-      doc.fillColor('#D97706').fontSize(14).font('Helvetica-Bold').text(`${summary.totalCompletedTasks}`, 36 + colW * 3 + 10, startY + 24);
+      doc.fillColor(grayColor).fontSize(7.5).font('Helvetica-Bold').text('COMPLETED TASKS', leftMargin + colW * 3 + 8, startY + 8);
+      doc.fillColor('#D97706').fontSize(13).font('Helvetica-Bold').text(`${summary.totalCompletedTasks}`, leftMargin + colW * 3 + 8, startY + 22);
 
-      startY += 62;
+      startY += 58;
+
+      const drawTableHeader = (y: number) => {
+        doc.rect(leftMargin, y, pageWidth, 18).fill('#F1F5F9');
+        doc.rect(leftMargin, y, pageWidth, 18).stroke(borderGray);
+
+        doc.fillColor('#475569').fontSize(7.5).font('Helvetica-Bold');
+        doc.text('TIMING', leftMargin + 8, y + 5, { width: 80 });
+        doc.text('TASK NAME', leftMargin + 92, y + 5, { width: 135 });
+        doc.text('DESCRIPTION / WORK DONE', leftMargin + 232, y + 5, { width: 160 });
+        doc.text('DURATION', leftMargin + 396, y + 5, { width: 55 });
+        doc.text('STATUS', leftMargin + 455, y + 5, { width: 68, align: 'right' });
+        return y + 18;
+      };
 
       // --- EMPLOYEE SECTIONS ---
       for (let i = 0; i < summary.employeeData.length; i++) {
         const emp = summary.employeeData[i];
 
-        // Check page overflow
-        if (startY > 680) {
+        // Check if employee block will fit on page (need at least 60pt)
+        if (startY > 720) {
           doc.addPage();
-          startY = 40;
+          drawHeader(false);
+          startY = 66;
         }
 
         // Employee Header Bar
-        doc.rect(36, startY, 523, 26).fill('#EEF2FF');
-        doc.rect(36, startY, 523, 26).stroke('#C7D2FE');
+        doc.rect(leftMargin, startY, pageWidth, 24).fill('#EEF2FF');
+        doc.rect(leftMargin, startY, pageWidth, 24).stroke('#C7D2FE');
 
         const empName = emp.employee.name.toUpperCase();
-        const role = emp.employee.designation || emp.employee.department || 'Team Member';
+        const role = emp.employee.designation || emp.employee.department || 'Staff';
         const totalDur = formatMinutesToDuration(emp.totalMinutes);
 
-        doc.fillColor('#312E81').fontSize(10).font('Helvetica-Bold').text(`👤  ${empName} (${role})`, 44, startY + 8);
-        doc.fillColor('#4338CA').fontSize(9).font('Helvetica-Bold').text(`Total Worked Today: ${totalDur}`, 380, startY + 8, { align: 'right', width: 170 });
+        doc.fillColor('#312E81').fontSize(9).font('Helvetica-Bold').text(`👤  ${empName} (${role})`, leftMargin + 10, startY + 7);
+        doc.fillColor('#4338CA').fontSize(8.5).font('Helvetica-Bold').text(`Total Worked Today: ${totalDur}`, leftMargin + pageWidth - 180, startY + 7, { align: 'right', width: 170 });
 
-        startY += 30;
+        startY += 26;
 
         if (emp.logs.length === 0) {
-          doc.rect(36, startY, 523, 20).fill('#FFFFFF');
-          doc.rect(36, startY, 523, 20).stroke(borderGray);
-          doc.fillColor(grayColor).fontSize(8).font('Helvetica-Oblique').text('No activity recorded for this employee today.', 44, startY + 6);
-          startY += 26;
+          doc.rect(leftMargin, startY, pageWidth, 18).fill('#FFFFFF');
+          doc.rect(leftMargin, startY, pageWidth, 18).stroke(borderGray);
+          doc.fillColor(grayColor).fontSize(7.5).font('Helvetica-Oblique').text('No activity recorded for this employee today.', leftMargin + 10, startY + 5);
+          startY += 24;
         } else {
-          // Table Header
-          doc.rect(36, startY, 523, 18).fill('#F1F5F9');
-          doc.rect(36, startY, 523, 18).stroke(borderGray);
-
-          doc.fillColor('#475569').fontSize(7.5).font('Helvetica-Bold');
-          doc.text('TIMING', 42, startY + 5, { width: 85 });
-          doc.text('TASK NAME', 130, startY + 5, { width: 140 });
-          doc.text('DESCRIPTION / WORK DONE', 275, startY + 5, { width: 145 });
-          doc.text('DURATION', 425, startY + 5, { width: 60 });
-          doc.text('STATUS', 490, startY + 5, { width: 60, align: 'right' });
-
-          startY += 18;
+          startY = drawTableHeader(startY);
 
           // Table Rows
           for (const log of emp.logs) {
-            if (startY > 740) {
+            // Calculate accurate dynamic row height based on text content
+            doc.fontSize(7.5).font('Helvetica');
+            const titleH = doc.heightOfString(log.taskTitle || '', { width: 135 });
+            const descH = doc.heightOfString(log.description || '-', { width: 160 });
+            const contentHeight = Math.max(titleH, descH);
+            const rowHeight = Math.max(20, contentHeight + 8);
+
+            if (startY + rowHeight > 780) {
               doc.addPage();
-              startY = 40;
+              drawHeader(false);
+              startY = drawTableHeader(66);
             }
 
-            const rowHeight = Math.max(18, Math.min(38, Math.ceil((log.description?.length || 0) / 38) * 10 + 10));
+            doc.rect(leftMargin, startY, pageWidth, rowHeight).fill(startY % 2 === 0 ? '#FFFFFF' : '#FAFAFA');
+            doc.rect(leftMargin, startY, pageWidth, rowHeight).stroke(borderGray);
 
-            doc.rect(36, startY, 523, rowHeight).fill(startY % 2 === 0 ? '#FFFFFF' : '#FAFAFA');
-            doc.rect(36, startY, 523, rowHeight).stroke(borderGray);
+            // 1. Timing
+            doc.fillColor(textColor).fontSize(7).font('Helvetica').text(log.timing, leftMargin + 8, startY + 5, { width: 80 });
 
-            doc.fillColor(textColor).fontSize(7.5).font('Helvetica');
-            doc.text(log.timing, 42, startY + 5, { width: 85 });
-
-            doc.font('Helvetica-Bold').fillColor('#0F172A').text(log.taskTitle, 130, startY + 5, { width: 140, lineBreak: true });
+            // 2. Task Name
+            doc.font('Helvetica-Bold').fillColor('#0F172A').fontSize(7.5).text(log.taskTitle, leftMargin + 92, startY + 5, { width: 135, lineBreak: true });
             
-            doc.font('Helvetica').fillColor('#475569').text(log.description, 275, startY + 5, { width: 145, lineBreak: true });
+            // 3. Description
+            doc.font('Helvetica').fillColor('#475569').fontSize(7.5).text(log.description || '-', leftMargin + 232, startY + 5, { width: 160, lineBreak: true });
 
-            doc.font('Helvetica-Bold').fillColor('#1E293B').text(log.durationStr, 425, startY + 5, { width: 60 });
+            // 4. Duration
+            doc.font('Helvetica-Bold').fillColor('#1E293B').fontSize(7.5).text(log.durationStr, leftMargin + 396, startY + 5, { width: 55 });
 
+            // 5. Status
             let statusColor = '#059669';
             if (log.status === 'WORKING') statusColor = '#2563EB';
             else if (log.status === 'ON_HOLD') statusColor = '#D97706';
             else if (log.status === 'PENDING') statusColor = '#EA580C';
 
-            doc.fillColor(statusColor).font('Helvetica-Bold').text(log.status, 490, startY + 5, { width: 60, align: 'right' });
+            doc.fillColor(statusColor).font('Helvetica-Bold').fontSize(7).text(log.status, leftMargin + 455, startY + 5, { width: 68, align: 'right' });
 
             startY += rowHeight;
           }
@@ -319,17 +344,17 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
         }
       }
 
-      // Final Footer
+      // --- PAGE NUMBERING FOOTER ---
       const range = doc.bufferedPageRange();
       const totalPages = (range && range.count) ? range.count : 1;
       for (let p = 0; p < totalPages; p++) {
         try {
           doc.switchToPage(p);
-          doc.fillColor(grayColor).fontSize(7.5).font('Helvetica').text(
-            `FAST HRM WorkPulse • Automated End-of-Day Report • Page ${p + 1} of ${totalPages}`,
-            36,
-            795,
-            { align: 'center', width: 523 }
+          doc.fillColor(grayColor).fontSize(7).font('Helvetica').text(
+            `FAST HRM WorkPulse • Daily Staff Work & Productivity Report • Page ${p + 1} of ${totalPages}`,
+            leftMargin,
+            804,
+            { align: 'center', width: pageWidth }
           );
         } catch (pageErr) {}
       }
@@ -342,57 +367,94 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
 };
 
 /**
- * Generate professional HTML body email
+ * Generate fully responsive, high quality HTML email body (mobile & desktop optimized)
  */
 export const generateDailyReportHtml = (summary: DailyReportSummary): string => {
-  const employeeRowsHtml = summary.employeeData
+  const employeeSectionsHtml = summary.employeeData
     .map((emp) => {
       const totalDur = formatMinutesToDuration(emp.totalMinutes);
-      const logRows = emp.logs.length === 0
-        ? `<tr><td colspan="5" style="padding: 10px; text-align: center; color: #9ca3af; font-style: italic;">No activity logged today</td></tr>`
+
+      const desktopRows = emp.logs.length === 0
+        ? `<tr><td colspan="5" style="padding: 12px; text-align: center; color: #94a3b8; font-style: italic; font-size: 12px;">No activity recorded for this employee today</td></tr>`
         : emp.logs
-            .map((l) => `
-              <tr style="border-bottom: 1px solid #f3f4f6;">
-                <td style="padding: 8px 10px; font-size: 12px; color: #4b5563; white-space: nowrap;">${l.timing}</td>
-                <td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #1f2937;">${l.taskTitle}</td>
-                <td style="padding: 8px 10px; font-size: 12px; color: #4b5563;">${l.description}</td>
-                <td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #111827;">${l.durationStr}</td>
-                <td style="padding: 8px 10px; font-size: 11px; font-weight: 700;">
-                  <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; background-color: ${
-                    l.status === 'COMPLETED' ? '#d1fae5; color: #065f46;' :
-                    l.status === 'WORKING' ? '#dbeafe; color: #1e40af;' :
-                    l.status === 'ON_HOLD' ? '#fef3c7; color: #92400e;' :
-                    '#ffedd5; color: #9a3412;'
-                  }">${l.status}</span>
-                </td>
-              </tr>
-            `)
+            .map((l) => {
+              const statusBg = l.status === 'COMPLETED' ? '#dcfce7' : l.status === 'WORKING' ? '#dbeafe' : l.status === 'ON_HOLD' ? '#fef3c7' : '#ffedd5';
+              const statusColor = l.status === 'COMPLETED' ? '#166534' : l.status === 'WORKING' ? '#1e40af' : l.status === 'ON_HOLD' ? '#92400e' : '#9a3412';
+              return `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 8px 10px; font-size: 11px; color: #475569; white-space: nowrap;">${l.timing}</td>
+                  <td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #0f172a;">${l.taskTitle}</td>
+                  <td style="padding: 8px 10px; font-size: 11.5px; color: #475569; word-break: break-word;">${l.description}</td>
+                  <td style="padding: 8px 10px; font-size: 11.5px; font-weight: 700; color: #1e293b;">${l.durationStr}</td>
+                  <td style="padding: 8px 10px; font-size: 10px; font-weight: 700; text-align: right;">
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; background-color: ${statusBg}; color: ${statusColor};">${l.status}</span>
+                  </td>
+                </tr>
+              `;
+            })
+            .join('');
+
+      const mobileCards = emp.logs.length === 0
+        ? `<div style="padding: 12px; text-align: center; color: #94a3b8; font-style: italic; font-size: 12px;">No activity recorded today</div>`
+        : emp.logs
+            .map((l) => {
+              const statusBg = l.status === 'COMPLETED' ? '#dcfce7' : l.status === 'WORKING' ? '#dbeafe' : l.status === 'ON_HOLD' ? '#fef3c7' : '#ffedd5';
+              const statusColor = l.status === 'COMPLETED' ? '#166534' : l.status === 'WORKING' ? '#1e40af' : l.status === 'ON_HOLD' ? '#92400e' : '#9a3412';
+              return `
+                <div style="border-top: 1px solid #e2e8f0; padding: 12px; background-color: #ffffff;">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a; flex: 1;">${l.taskTitle}</div>
+                    <span style="display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 9999px; background-color: ${statusBg}; color: ${statusColor}; white-space: nowrap;">${l.status}</span>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: #64748b; margin-bottom: 6px;">
+                    <div>⏱ <strong>Timing:</strong> ${l.timing}</div>
+                    <div>⏳ <strong>Time Spent:</strong> <span style="color: #1e293b; font-weight: 700;">${l.durationStr}</span></div>
+                  </div>
+                  <div style="font-size: 12px; color: #334155; background-color: #f8fafc; padding: 8px 10px; border-radius: 6px; border: 1px solid #e2e8f0; word-break: break-word;">
+                    ${l.description}
+                  </div>
+                </div>
+              `;
+            })
             .join('');
 
       return `
-        <div style="margin-bottom: 24px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
-          <div style="background-color: #eef2ff; border-bottom: 1px solid #c7d2fe; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-weight: 700; color: #312e81; font-size: 14px;">
-              👤 ${emp.employee.name} <span style="font-weight: 400; color: #6366f1; font-size: 12px;">(${emp.employee.designation || emp.employee.department || 'Staff'})</span>
-            </div>
-            <div style="font-weight: 700; color: #4338ca; font-size: 13px;">
-              Total Worked: <span style="background: #ffffff; padding: 3px 8px; border-radius: 6px; border: 1px solid #c7d2fe;">${totalDur}</span>
-            </div>
+        <div class="emp-container" style="margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background-color: #ffffff;">
+          <!-- Employee Card Header -->
+          <div style="background-color: #eef2ff; border-bottom: 1px solid #c7d2fe; padding: 10px 14px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="vertical-align: middle; text-align: left;">
+                  <span style="font-weight: 700; color: #312e81; font-size: 14px;">👤 ${emp.employee.name}</span>
+                  <span style="font-weight: 500; color: #6366f1; font-size: 12px; margin-left: 4px;">(${emp.employee.designation || emp.employee.department || 'Staff'})</span>
+                </td>
+                <td style="vertical-align: middle; text-align: right; white-space: nowrap;">
+                  <span style="font-size: 12px; color: #4338ca; font-weight: 700; background: #ffffff; padding: 3px 8px; border-radius: 6px; border: 1px solid #c7d2fe;">Total: ${totalDur}</span>
+                </td>
+              </tr>
+            </table>
           </div>
-          <table style="width: 100%; border-collapse: collapse; text-align: left;">
+
+          <!-- Desktop Table View -->
+          <table class="desktop-table" style="width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
               <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                <th style="padding: 8px 10px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Timing</th>
-                <th style="padding: 8px 10px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Task Name</th>
-                <th style="padding: 8px 10px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Description</th>
-                <th style="padding: 8px 10px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Time Spent</th>
-                <th style="padding: 8px 10px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Status</th>
+                <th style="padding: 7px 10px; font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 18%;">Timing</th>
+                <th style="padding: 7px 10px; font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 28%;">Task Name</th>
+                <th style="padding: 7px 10px; font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 34%;">Description</th>
+                <th style="padding: 7px 10px; font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 10%;">Time</th>
+                <th style="padding: 7px 10px; font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 10%; text-align: right;">Status</th>
               </tr>
             </thead>
             <tbody>
-              ${logRows}
+              ${desktopRows}
             </tbody>
           </table>
+
+          <!-- Mobile Card View -->
+          <div class="mobile-only-cards" style="display: none;">
+            ${mobileCards}
+          </div>
         </div>
       `;
     })
@@ -400,61 +462,70 @@ export const generateDailyReportHtml = (summary: DailyReportSummary): string => 
 
   return `
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
       <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>FAST HRM Daily Work Report</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; color: #1f2937; }
-        .container { max-width: 720px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; }
-        .header { background-color: #1e293b; color: #ffffff; padding: 24px; text-align: left; }
-        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 16px 20px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-        .card { background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
-        .content { padding: 20px; }
+        body { margin: 0; padding: 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; }
+        .wrapper { max-width: 760px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .header { background-color: #1e293b; color: #ffffff; padding: 18px 20px; }
+        .stat-box { padding: 12px 8px; text-align: center; }
+
+        @media only screen and (max-width: 600px) {
+          body { padding: 6px !important; }
+          .wrapper { border-radius: 8px !important; }
+          .desktop-table { display: none !important; }
+          .mobile-only-cards { display: block !important; }
+          .header h1 { font-size: 15px !important; }
+          .stat-num { font-size: 16px !important; }
+        }
       </style>
     </head>
     <body>
-      <div class="container">
+      <div class="wrapper">
         <!-- Header -->
         <div class="header">
-          <h1 style="margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">F.A.S.T. - FIRST ATTEMPT SUCCESS TUTORIALS</h1>
-          <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8;">Daily Staff Work & Productivity Report • <strong>${summary.formattedDate}</strong></p>
+          <h1 style="margin: 0; font-size: 17px; font-weight: 800; letter-spacing: 0.3px; color: #ffffff;">F.A.S.T. - FIRST ATTEMPT SUCCESS TUTORIALS</h1>
+          <p style="margin: 4px 0 0 0; font-size: 12.5px; color: #94a3b8;">WorkPulse HRM • Daily Staff Work Report • <strong style="color: #38bdf8;">${summary.formattedDate}</strong></p>
         </div>
 
-        <!-- Metric Summary -->
-        <table style="width: 100%; border-collapse: collapse; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; text-align: center;">
+        <!-- Metric Summary Bar -->
+        <table style="width: 100%; border-collapse: collapse; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
           <tr>
-            <td style="padding: 14px 10px; border-right: 1px solid #e2e8f0; width: 25%;">
-              <div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Staff</div>
-              <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 2px;">${summary.totalEmployees}</div>
+            <td class="stat-box" style="width: 25%; border-right: 1px solid #e2e8f0;">
+              <div style="font-size: 9.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Staff</div>
+              <div class="stat-num" style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 2px;">${summary.totalEmployees}</div>
             </td>
-            <td style="padding: 14px 10px; border-right: 1px solid #e2e8f0; width: 25%;">
-              <div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Active Today</div>
-              <div style="font-size: 18px; font-weight: 800; color: #059669; margin-top: 2px;">${summary.activeEmployeesCount}</div>
+            <td class="stat-box" style="width: 25%; border-right: 1px solid #e2e8f0;">
+              <div style="font-size: 9.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active Today</div>
+              <div class="stat-num" style="font-size: 18px; font-weight: 800; color: #059669; margin-top: 2px;">${summary.activeEmployeesCount}</div>
             </td>
-            <td style="padding: 14px 10px; border-right: 1px solid #e2e8f0; width: 25%;">
-              <div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Hours Logged</div>
-              <div style="font-size: 18px; font-weight: 800; color: #4f46e5; margin-top: 2px;">${summary.totalTeamDurationStr}</div>
+            <td class="stat-box" style="width: 25%; border-right: 1px solid #e2e8f0;">
+              <div style="font-size: 9.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Team Hours</div>
+              <div class="stat-num" style="font-size: 18px; font-weight: 800; color: #4f46e5; margin-top: 2px;">${summary.totalTeamDurationStr}</div>
             </td>
-            <td style="padding: 14px 10px; width: 25%;">
-              <div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Completed Tasks</div>
-              <div style="font-size: 18px; font-weight: 800; color: #d97706; margin-top: 2px;">${summary.totalCompletedTasks}</div>
+            <td class="stat-box" style="width: 25%;">
+              <div style="font-size: 9.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Completed Tasks</div>
+              <div class="stat-num" style="font-size: 18px; font-weight: 800; color: #d97706; margin-top: 2px;">${summary.totalCompletedTasks}</div>
             </td>
           </tr>
         </table>
 
-        <!-- Body -->
-        <div class="content">
-          <p style="font-size: 13px; color: #475569; margin-bottom: 16px;">
-            Respected Sir, here is the consolidated daily work summary of all employees for <strong>${summary.formattedDate}</strong>. The complete formatted PDF report is also attached with this email for your reference.
+        <!-- Body Content -->
+        <div style="padding: 16px;">
+          <p style="font-size: 12.5px; color: #475569; margin: 0 0 16px 0; line-height: 1.5;">
+            Respected Sir, here is the consolidated staff work log summary for <strong>${summary.formattedDate}</strong>. The complete formatted PDF report is also attached with this email.
           </p>
 
-          ${employeeRowsHtml}
+          ${employeeSectionsHtml}
         </div>
 
         <!-- Footer -->
-        <div style="background-color: #f8fafc; border-top: 1px solid #e5e7eb; padding: 14px; text-align: center; font-size: 11px; color: #94a3b8;">
-          This is an automated report generated by FAST HRM WorkPulse at 10:00 PM IST.<br/>
-          Attached File: <strong>Daily_Staff_Work_Report_${summary.dateStr}.pdf</strong>
+        <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.5;">
+          FAST HRM WorkPulse • Automated Daily Report (10:00 PM IST)<br/>
+          Attached Document: <strong>Daily_Staff_Work_Report_${summary.dateStr}.pdf</strong>
         </div>
       </div>
     </body>
