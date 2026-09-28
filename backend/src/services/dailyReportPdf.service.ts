@@ -181,6 +181,7 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
+        bufferPages: true,
         margin: 36,
         size: 'A4',
         info: {
@@ -317,15 +318,18 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
       }
 
       // Final Footer
-      const totalPages = doc.bufferedPageRange().count || 1;
+      const range = doc.bufferedPageRange();
+      const totalPages = (range && range.count) ? range.count : 1;
       for (let p = 0; p < totalPages; p++) {
-        doc.switchToPage(p);
-        doc.fillColor(grayColor).fontSize(7.5).font('Helvetica').text(
-          `FAST HRM WorkPulse • Automated End-of-Day Report • Page ${p + 1} of ${totalPages}`,
-          36,
-          795,
-          { align: 'center', width: 523 }
-        );
+        try {
+          doc.switchToPage(p);
+          doc.fillColor(grayColor).fontSize(7.5).font('Helvetica').text(
+            `FAST HRM WorkPulse • Automated End-of-Day Report • Page ${p + 1} of ${totalPages}`,
+            36,
+            795,
+            { align: 'center', width: 523 }
+          );
+        } catch (pageErr) {}
       }
 
       doc.end();
