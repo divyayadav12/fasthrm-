@@ -25,12 +25,15 @@ export const sendEmail = async (options: {
   for (const recipient of recipientsList) {
     let sent = false;
 
-    // Strategy A: Port 465 (Gmail SSL)
+    // Strategy A: Port 465 (Gmail SSL with short timeout)
     try {
       const transporter465 = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: user.trim(), pass: cleanPass },
         tls: { rejectUnauthorized: false },
+        connectionTimeout: 4000,
+        greetingTimeout: 3000,
+        socketTimeout: 5000,
       });
       await transporter465.sendMail({
         from,
@@ -46,7 +49,7 @@ export const sendEmail = async (options: {
       console.warn(`[Email Service - SMTP 465 failed for ${recipient}]:`, err465?.message);
     }
 
-    // Strategy B: Port 587 (Gmail STARTTLS) if 465 failed
+    // Strategy B: Port 587 (Gmail STARTTLS with short timeout) if 465 failed
     if (!sent) {
       try {
         const transporter587 = nodemailer.createTransport({
@@ -55,6 +58,9 @@ export const sendEmail = async (options: {
           secure: false,
           auth: { user: user.trim(), pass: cleanPass },
           tls: { rejectUnauthorized: false },
+          connectionTimeout: 4000,
+          greetingTimeout: 3000,
+          socketTimeout: 5000,
         });
         await transporter587.sendMail({
           from,
@@ -71,7 +77,7 @@ export const sendEmail = async (options: {
       }
     }
 
-    // Strategy C: Google Apps Script Web App fallback
+    // Strategy C: Google Apps Script Web App fallback (HTTPS 443 - never blocked by cloud hosts)
     if (!sent) {
       const scriptUrl =
         process.env.GMAIL_SCRIPT_URL ||
