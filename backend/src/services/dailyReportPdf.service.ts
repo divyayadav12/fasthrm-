@@ -148,13 +148,14 @@ export const collectDailyWorkData = async (targetDate?: Date): Promise<DailyRepo
     totalTeamMinutes += empTotalMinutes;
 
     const empObj = emp as any;
+    const safeName = emp.name || empObj.fullName || (emp.email ? emp.email.split('@')[0] : 'Staff Member');
     employeeData.push({
       employee: {
-        _id: emp._id.toString(),
-        name: emp.name,
-        email: emp.email,
+        _id: emp._id ? emp._id.toString() : 'emp',
+        name: safeName,
+        email: emp.email || '',
         department: empObj.department || 'Staff',
-        designation: empObj.designation || emp.role,
+        designation: empObj.designation || emp.role || 'Staff Member',
         status: empObj.status || 'OFFLINE',
       },
       totalMinutes: empTotalMinutes,
@@ -283,8 +284,8 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
         doc.rect(leftMargin, startY, pageWidth, 24).fill('#EEF2FF');
         doc.rect(leftMargin, startY, pageWidth, 24).stroke('#C7D2FE');
 
-        const empName = emp.employee.name.toUpperCase();
-        const role = emp.employee.designation || emp.employee.department || 'Staff';
+        const empName = (emp.employee?.name || 'Staff Member').toUpperCase();
+        const role = emp.employee?.designation || emp.employee?.department || 'Staff';
         const totalDur = formatMinutesToDuration(emp.totalMinutes);
 
         doc.fillColor('#312E81').fontSize(9).font('Helvetica-Bold').text(`👤  ${empName} (${role})`, leftMargin + 10, startY + 7);
@@ -425,8 +426,8 @@ export const generateDailyReportHtml = (summary: DailyReportSummary): string => 
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="vertical-align: middle; text-align: left;">
-                  <span style="font-weight: 700; color: #312e81; font-size: 14px;">👤 ${emp.employee.name}</span>
-                  <span style="font-weight: 500; color: #6366f1; font-size: 12px; margin-left: 4px;">(${emp.employee.designation || emp.employee.department || 'Staff'})</span>
+                  <span style="font-weight: 700; color: #312e81; font-size: 14px;">👤 ${emp.employee?.name || 'Staff Member'}</span>
+                  <span style="font-weight: 500; color: #6366f1; font-size: 12px; margin-left: 4px;">(${emp.employee?.designation || emp.employee?.department || 'Staff'})</span>
                 </td>
                 <td style="vertical-align: middle; text-align: right; white-space: nowrap;">
                   <span style="font-size: 12px; color: #4338ca; font-weight: 700; background: #ffffff; padding: 3px 8px; border-radius: 6px; border: 1px solid #c7d2fe;">Total: ${totalDur}</span>

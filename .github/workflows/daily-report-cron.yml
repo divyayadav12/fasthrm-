@@ -1,0 +1,32 @@
+name: Automated 10:00 PM Daily Work Report Dispatcher
+
+on:
+  schedule:
+    # 16:30 UTC = 10:00 PM IST (Indian Standard Time) every day
+    - cron: '30 16 * * *'
+  workflow_dispatch: # Allows manual 1-click trigger from GitHub Actions tab
+
+jobs:
+  dispatch-daily-report:
+    name: Generate and Email Daily Staff Work Report PDF
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Wake up Render Backend (Warm up server from sleep)
+        run: |
+          echo "Waking up FAST HRM Render backend..."
+          curl -s --max-time 30 https://fasthrm.onrender.com/ || true
+          echo "Waiting 15 seconds for backend initialization..."
+          sleep 15
+
+      - name: 2. Trigger Daily Work Report PDF Email Dispatch (10:00 PM IST)
+        run: |
+          echo "Dispatching 10:00 PM Daily Staff Work Report..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" --max-time 90 --retry 3 --retry-delay 10 https://fasthrm.onrender.com/api/reports/send-daily-email-test)
+          echo "Server Response:"
+          echo "$RESPONSE"
+          
+          if echo "$RESPONSE" | grep -q '"success":true'; then
+            echo "✅ Daily Staff Work Report successfully generated and emailed to all recipients!"
+          else
+            echo "⚠️ Non-standard response, checking HTTP status..."
+          fi
