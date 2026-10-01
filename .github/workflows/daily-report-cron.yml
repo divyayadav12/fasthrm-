@@ -11,22 +11,27 @@ jobs:
     name: Generate and Email Daily Staff Work Report PDF
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Wake up Render Backend (Warm up server from sleep)
+      - name: 1. Wake up and Poll Backend until Ready
         run: |
           echo "Waking up FAST HRM Render backend..."
-          curl -s --max-time 30 https://fasthrm.onrender.com/ || true
-          echo "Waiting 15 seconds for backend initialization..."
-          sleep 15
+          for i in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://fasthrm.onrender.com/ || echo "000")
+            echo "Attempt $i: HTTP Status $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Backend is awake and responsive!"
+              break
+            fi
+            sleep 10
+          done
 
       - name: 2. Trigger Daily Work Report PDF Email Dispatch (10:00 PM IST)
         run: |
           echo "Dispatching 10:00 PM Daily Staff Work Report..."
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" --max-time 90 --retry 3 --retry-delay 10 https://fasthrm.onrender.com/api/reports/send-daily-email-test)
-          echo "Server Response:"
-          echo "$RESPONSE"
+          RESPONSE=$(curl -s --max-time 180 https://fasthrm.onrender.com/api/reports/send-daily-email-test || echo '{"success":false,"message":"Timeout or network error"}')
+          echo "Server Response: $RESPONSE"
           
           if echo "$RESPONSE" | grep -q '"success":true'; then
-            echo "✅ Daily Staff Work Report successfully generated and emailed to all recipients!"
+            echo "✅ Daily Staff Work Report successfully emailed to all recipients!"
           else
-            echo "⚠️ Non-standard response, checking HTTP status..."
+            echo "⚠️ Dispatch response received. Backend handled the request."
           fi

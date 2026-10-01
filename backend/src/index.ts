@@ -68,6 +68,23 @@ const PORT = process.env.PORT || 5000;
 
 httpServer.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+
+  // Self-ping to prevent Render Free tier from sleeping
+  const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || 'https://fasthrm.onrender.com';
+  setInterval(() => {
+    try {
+      const https = require('https');
+      const http = require('http');
+      const client = RENDER_EXTERNAL_URL.startsWith('https') ? https : http;
+      client.get(RENDER_EXTERNAL_URL, (res: any) => {
+        console.log(`[Keep-Alive Ping] Status: ${res.statusCode}`);
+      }).on('error', (err: any) => {
+        console.log('[Keep-Alive Ping Error]:', err.message);
+      });
+    } catch (e) {
+      // ignore
+    }
+  }, 10 * 60 * 1000); // Ping every 10 minutes
 });
 
 
