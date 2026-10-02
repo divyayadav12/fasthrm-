@@ -62,6 +62,26 @@ const connectDB = async () => {
         ]
       });
       console.log('Cleaned up unknown users and orphaned worklogs/tasks');
+
+      // Update specific users to "Others" department as requested
+      const othersResult = await User.updateMany(
+        {
+          $or: [
+            { name: { $regex: /abhiwak/i } },
+            { name: { $regex: /mahima/i } },
+            { name: { $regex: /harshu/i } },
+            { name: { $regex: /akansha|akanksha|aakanksha/i } },
+            { email: { $regex: /abhiwak|mahima|harshu|akansha|akanksha|aakanksha/i } }
+          ]
+        },
+        {
+          $set: {
+            department: 'Others',
+            designation: 'Others'
+          }
+        }
+      );
+      console.log(`Updated Abhiwak, Mahima, Harshu, Akansha to department Others (matched: ${othersResult.matchedCount}, modified: ${othersResult.modifiedCount})`);
     } catch (e) {
       console.error('Error during cleanup:', e);
     }

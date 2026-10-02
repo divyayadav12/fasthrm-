@@ -231,36 +231,69 @@ const AdminDashboard = () => {
       }
     });
 
-    return currentLiveActivity.filter((log) => {
-      if (!log || !log.employeeId || !log.employeeId.name || log.employeeId.name.trim().toLowerCase() === 'unknown') {
-        return false;
+    const getStatusPriority = (status: string) => {
+      switch (status?.toUpperCase()) {
+        case 'WORKING':
+          return 1;
+        case 'IN_PROGRESS':
+        case 'IN_REVIEW':
+          return 2;
+        case 'ON_HOLD':
+          return 3;
+        case 'PENDING':
+          return 4;
+        case 'COMPLETED':
+          return 5;
+        case 'IDLE':
+          return 6;
+        case 'NOT_STARTED':
+          return 7;
+        default:
+          return 8;
       }
+    };
 
-      // Role Filter Tab
-      if (selectedRoleTab !== 'All') {
-        const empId = log.employeeId?._id || log.employeeId;
-        const employeeObj = employees.find(e => e._id === empId) || (typeof log.employeeId === 'object' ? log.employeeId : null);
-        const empDept = employeeObj?.department || employeeObj?.designation || log.employeeId?.department || '';
-        if (!isRoleMatch(empDept, selectedRoleTab)) return false;
-      }
-      if (filterEmployee && !log.employeeId?.name?.toLowerCase().includes(filterEmployee.toLowerCase())) return false;
-      if (filterTask) {
-        const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
-        if (!title.includes(filterTask.toLowerCase())) return false;
-      }
-      if (filterStatus && log.status !== filterStatus) return false;
-      if (filterDateFrom) {
-        const logDate = new Date(log.createdAt);
-        if (logDate < new Date(filterDateFrom)) return false;
-      }
-      if (filterDateTo) {
-        const logDate = new Date(log.createdAt);
-        const to = new Date(filterDateTo);
-        to.setHours(23, 59, 59);
-        if (logDate > to) return false;
-      }
-      return true;
-    });
+    return currentLiveActivity
+      .filter((log) => {
+        if (!log || !log.employeeId || !log.employeeId.name || log.employeeId.name.trim().toLowerCase() === 'unknown') {
+          return false;
+        }
+
+        // Role Filter Tab
+        if (selectedRoleTab !== 'All') {
+          const empId = log.employeeId?._id || log.employeeId;
+          const employeeObj = employees.find(e => e._id === empId) || (typeof log.employeeId === 'object' ? log.employeeId : null);
+          const empDept = employeeObj?.department || employeeObj?.designation || log.employeeId?.department || '';
+          if (!isRoleMatch(empDept, selectedRoleTab)) return false;
+        }
+        if (filterEmployee && !log.employeeId?.name?.toLowerCase().includes(filterEmployee.toLowerCase())) return false;
+        if (filterTask) {
+          const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
+          if (!title.includes(filterTask.toLowerCase())) return false;
+        }
+        if (filterStatus && log.status !== filterStatus) return false;
+        if (filterDateFrom) {
+          const logDate = new Date(log.createdAt);
+          if (logDate < new Date(filterDateFrom)) return false;
+        }
+        if (filterDateTo) {
+          const logDate = new Date(log.createdAt);
+          const to = new Date(filterDateTo);
+          to.setHours(23, 59, 59);
+          if (logDate > to) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const priorityA = getStatusPriority(a.status);
+        const priorityB = getStatusPriority(b.status);
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
   }, [liveActivity, employees, selectedRoleTab, filterEmployee, filterTask, filterStatus, filterDateFrom, filterDateTo]);
 
   // Pagination
