@@ -12,6 +12,7 @@ import {
   clearSelectedInquiry,
   StudentInquiry,
 } from '../store/slices/studentInquirySlice';
+import { fetchEmployees } from '../store/slices/employeeSlice';
 import {
   Headphones,
   PhoneCall,
@@ -39,6 +40,8 @@ import {
   MessageCircle,
   ChevronDown,
   Info,
+  Send,
+  UserCheck,
 } from 'lucide-react';
 
 export const canAccessStudentInquiry = (user: any): boolean => {
@@ -63,6 +66,7 @@ const STATUS_TYPES = ['Solved', 'Follow Up', 'Purchases', 'Pending', 'Others'] a
 export default function StudentInquiries() {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { employees } = useSelector((state: RootState) => state.employees);
   const {
     inquiries,
     stats,
@@ -75,6 +79,24 @@ export default function StudentInquiries() {
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const isAuthorized = canAccessStudentInquiry(user);
+
+  useEffect(() => {
+    dispatch(fetchEmployees({ limit: 200 }));
+  }, [dispatch]);
+
+  const itSupportEmployees = useMemo(() => {
+    return (employees || []).filter((emp) => {
+      if (!emp || !emp.name || emp.name.trim().toLowerCase() === 'unknown') return false;
+      const dept = (emp.department || emp.designation || '').toLowerCase().trim();
+      if (dept.includes('editor') || dept.includes('dtp')) return false;
+      return (
+        dept === 'it and support' ||
+        dept === 'it & support' ||
+        dept.includes('support') ||
+        /\b(it)\b/i.test(dept)
+      );
+    });
+  }, [employees]);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -101,6 +123,8 @@ export default function StudentInquiries() {
     details: '',
     remark: '',
     status: 'Follow Up' as (typeof STATUS_TYPES)[number],
+    forwardedBy: user?.name || '',
+    forwardedTo: '',
     previousInquiryId: '',
     followUpDate: '',
   });
@@ -198,6 +222,8 @@ export default function StudentInquiries() {
       details: '',
       remark: '',
       status: 'Follow Up',
+      forwardedBy: user?.name || '',
+      forwardedTo: '',
       previousInquiryId: '',
       followUpDate: '',
     });
@@ -223,7 +249,6 @@ export default function StudentInquiries() {
     } else if (formData.mobileNumber.replace(/\D/g, '').length < 10) {
       errors.mobileNumber = 'Please enter a valid 10-digit mobile number';
     }
-    if (!formData.details.trim()) errors.details = 'Inquiry details are required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -265,9 +290,11 @@ export default function StudentInquiries() {
       email: inquiry.email || '',
       callType: inquiry.callType,
       subject: inquiry.subject || '',
-      details: inquiry.details,
+      details: inquiry.details || '',
       remark: inquiry.remark || '',
       status: inquiry.status,
+      forwardedBy: inquiry.forwardedBy || user?.name || '',
+      forwardedTo: inquiry.forwardedTo || '',
       previousInquiryId: inquiry.previousInquiryId || '',
       followUpDate: inquiry.followUpDate ? inquiry.followUpDate.split('T')[0] : '',
     });
@@ -628,10 +655,20 @@ export default function StudentInquiries() {
                       {inq.subject && (
                         <div className="font-medium text-xs text-gray-800 line-clamp-1">{inq.subject}</div>
                       )}
-                      <div className="text-xs text-gray-500 line-clamp-2 mt-0.5">{inq.details}</div>
+                      {inq.details ? (
+                        <div className="text-xs text-gray-500 line-clamp-2 mt-0.5">{inq.details}</div>
+                      ) : (
+                        <div className="text-xs text-gray-400 italic">No description</div>
+                      )}
                       {inq.remark && (
                         <div className="text-[11px] text-amber-700 bg-amber-50/60 px-2 py-0.5 rounded-md mt-1 inline-block border border-amber-100">
                           Remark: {inq.remark}
+                        </div>
+                      )}
+                      {inq.forwardedTo && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 max-w-fit">
+                          <Send className="w-3 h-3 text-indigo-500" />
+                          <span>Forwarded to: {inq.forwardedTo}</span>
                         </div>
                       )}
                     </td>
@@ -914,20 +951,15 @@ export default function StudentInquiries() {
               {/* Details */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Inquiry Details / Issue Description <span className="text-red-500">*</span>
+                  Inquiry Details / Issue Description
                 </label>
                 <textarea
                   rows={3}
                   value={formData.details}
                   onChange={(e) => setFormData({ ...formData, details: e.target.value })}
                   placeholder="Provide complete notes of what student asked or issue faced..."
-                  className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
-                    formErrors.details ? 'border-red-400 bg-red-50/20' : 'border-gray-200 focus:border-indigo-500'
-                  }`}
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 />
-                {formErrors.details && (
-                  <p className="text-xs text-red-500 mt-1">{formErrors.details}</p>
-                )}
               </div>
 
               {/* Remark */}
@@ -942,6 +974,50 @@ export default function StudentInquiries() {
                   placeholder="e.g. Cleared app cache, student confirmed working."
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
+              </div>
+
+              {/* Forwarded By & Forwarded To Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Forwarded By */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Forwarded By
+                  </label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+                    <input
+                      type="text"
+                      readOnly
+                      value={formData.forwardedBy || user?.name || ''}
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100/90 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 cursor-not-allowed select-none"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">Auto-filled with logged-in employee name</p>
+                </div>
+
+                {/* Forwarded To (IT and Support Employees Dropdown) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Forwarded To (IT & Support)
+                  </label>
+                  <div className="relative">
+                    <Headphones className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+                    <select
+                      value={formData.forwardedTo}
+                      onChange={(e) => setFormData({ ...formData, forwardedTo: e.target.value })}
+                      className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer"
+                    >
+                      <option value="">-- Select IT Support Staff (Optional) --</option>
+                      {itSupportEmployees.map((emp) => (
+                        <option key={emp._id} value={emp.name}>
+                          {emp.name} ({emp.designation || emp.department || 'IT & Support'})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">Assign to IT Support employee</p>
+                </div>
               </div>
 
               {/* Connected / Previous Reference ID with Dropdown */}
@@ -970,7 +1046,7 @@ export default function StudentInquiries() {
                         <option value="">-- None (Fresh Inquiry / No Connection) --</option>
                         {lookupResult.inquiries.map((prevInq) => (
                           <option key={prevInq._id} value={prevInq.inquiryId}>
-                            [{prevInq.inquiryId}] • {prevInq.status} • {prevInq.callType} : {prevInq.subject ? prevInq.subject + ' - ' : ''}{prevInq.details.substring(0, 35)}... (By {prevInq.addedByName} on {new Date(prevInq.createdAt).toLocaleDateString('en-IN')})
+                            [{prevInq.inquiryId}] • {prevInq.status} • {prevInq.callType} : {prevInq.subject ? prevInq.subject + ' - ' : ''}{(prevInq.details || '').substring(0, 35)}... (By {prevInq.addedByName} on {new Date(prevInq.createdAt).toLocaleDateString('en-IN')})
                           </option>
                         ))}
                         <option value="CUSTOM">+ Enter Custom Inquiry ID Manually...</option>
@@ -1180,6 +1256,34 @@ export default function StudentInquiries() {
                 />
               </div>
 
+              {/* Forwarded By & Forwarded To in Edit Modal */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Forwarded By</label>
+                  <input
+                    type="text"
+                    value={formData.forwardedBy}
+                    onChange={(e) => setFormData({ ...formData, forwardedBy: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Forwarded To (IT Support)</label>
+                  <select
+                    value={formData.forwardedTo}
+                    onChange={(e) => setFormData({ ...formData, forwardedTo: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                  >
+                    <option value="">-- None / Select IT Staff --</option>
+                    {itSupportEmployees.map((emp) => (
+                      <option key={emp._id} value={emp.name}>
+                        {emp.name} ({emp.designation || emp.department || 'IT & Support'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {/* Connected / Previous Inquiry Selection in Edit Modal */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
@@ -1268,7 +1372,7 @@ export default function StudentInquiries() {
                 {selectedInquiry.subject && (
                   <h4 className="font-semibold text-sm text-gray-900">{selectedInquiry.subject}</h4>
                 )}
-                <p className="text-sm text-gray-700 leading-relaxed">{selectedInquiry.details}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{selectedInquiry.details || 'No description provided'}</p>
 
                 {selectedInquiry.remark && (
                   <div className="p-2.5 rounded-xl bg-white border border-indigo-100 text-xs text-gray-700">
@@ -1276,8 +1380,13 @@ export default function StudentInquiries() {
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-indigo-100/60 flex items-center justify-between text-xs text-gray-500">
+                <div className="pt-2 border-t border-indigo-100/60 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
                   <span>Attended By: <strong>{selectedInquiry.addedByName}</strong> ({selectedInquiry.addedByDepartment || 'Support'})</span>
+                  {selectedInquiry.forwardedTo && (
+                    <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100 font-medium">
+                      👉 Forwarded To: <strong>{selectedInquiry.forwardedTo}</strong> {selectedInquiry.forwardedBy ? `(By ${selectedInquiry.forwardedBy})` : ''}
+                    </span>
+                  )}
                   {selectedInquiry.previousInquiryId && (
                     <span className="font-mono text-indigo-700">Ref: {selectedInquiry.previousInquiryId}</span>
                   )}

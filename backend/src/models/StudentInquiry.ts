@@ -8,9 +8,11 @@ export interface IStudentInquiry extends Document {
   email?: string;
   callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchases' | 'Others';
   subject?: string;
-  details: string;
+  details?: string;
   remark?: string;
   status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'Others';
+  forwardedBy?: string;
+  forwardedTo?: string;
   addedBy: mongoose.Types.ObjectId;
   addedByName: string;
   addedByEmail?: string;
@@ -65,8 +67,8 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
     },
     details: {
       type: String,
-      required: [true, 'Inquiry details are required'],
       trim: true,
+      default: '',
     },
     remark: {
       type: String,
@@ -78,6 +80,16 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
       enum: ['Solved', 'Follow Up', 'Purchases', 'Pending', 'Others'],
       default: 'Follow Up',
       required: true,
+    },
+    forwardedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    forwardedTo: {
+      type: String,
+      trim: true,
+      default: '',
     },
     addedBy: {
       type: Schema.Types.ObjectId,

@@ -94,13 +94,15 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       details,
       remark,
       status,
+      forwardedBy,
+      forwardedTo,
       previousInquiryId,
       followUpDate,
     } = req.body;
 
-    if (!studentName || !mobileNumber || !details) {
+    if (!studentName || !mobileNumber) {
       return res.status(400).json({
-        message: 'Student name, mobile number, and inquiry details are required.',
+        message: 'Student name and mobile number are required.',
       });
     }
 
@@ -124,9 +126,11 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       email: email ? email.trim() : '',
       callType: callType || 'Enquiry',
       subject: subject ? subject.trim() : '',
-      details: details.trim(),
+      details: details ? details.trim() : '',
       remark: remark ? remark.trim() : '',
       status: status || 'Follow Up',
+      forwardedBy: forwardedBy ? forwardedBy.trim() : (user.name || ''),
+      forwardedTo: forwardedTo ? forwardedTo.trim() : '',
       addedBy: user._id,
       addedByName: user.name,
       addedByEmail: user.email,
@@ -351,6 +355,8 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
       details,
       remark,
       status,
+      forwardedBy,
+      forwardedTo,
       previousInquiryId,
       followUpDate,
     } = req.body;
@@ -368,6 +374,8 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
     if (subject !== undefined) inquiry.subject = subject.trim();
     if (details !== undefined) inquiry.details = details.trim();
     if (remark !== undefined) inquiry.remark = remark.trim();
+    if (forwardedBy !== undefined) inquiry.forwardedBy = forwardedBy.trim();
+    if (forwardedTo !== undefined) inquiry.forwardedTo = forwardedTo.trim();
     if (previousInquiryId !== undefined) inquiry.previousInquiryId = previousInquiryId.trim().toUpperCase();
     if (followUpDate !== undefined) inquiry.followUpDate = followUpDate ? new Date(followUpDate) : undefined;
 

@@ -13,9 +13,11 @@ export interface StudentInquiry {
   email?: string;
   callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchases' | 'Others';
   subject?: string;
-  details: string;
+  details?: string;
   remark?: string;
   status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'Others';
+  forwardedBy?: string;
+  forwardedTo?: string;
   addedBy: {
     _id: string;
     name: string;
