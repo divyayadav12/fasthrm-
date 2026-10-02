@@ -17,6 +17,7 @@ import WorkHistory from './pages/employee/WorkHistory';
 import MyReport from './pages/employee/MyReport';
 import AdminLeaves from './pages/admin/Leaves';
 import MyLeaves from './pages/employee/MyLeaves';
+import StudentInquiries from './pages/StudentInquiries';
 import Layout from './components/Layout';
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
           <Route path="tasks" element={<TasksList />} />
           <Route path="reports" element={<Reports />} />
           <Route path="leaves" element={<AdminLeaves />} />
+          <Route path="student-inquiries" element={<StudentInquiries />} />
         </Route>
 
         {/* Employee Routes */}
@@ -68,6 +70,7 @@ function App() {
           <Route path="history" element={<WorkHistory />} />
           <Route path="my-report" element={<MyReport />} />
           <Route path="leaves" element={<MyLeaves />} />
+          <Route path="student-inquiries" element={<StudentInquiries />} />
 
           {/* Add more employee routes here */}
         </Route>

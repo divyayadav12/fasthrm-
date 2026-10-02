@@ -7,6 +7,7 @@ import projectReducer from './slices/projectSlice';
 import taskReducer from './slices/taskSlice';
 import notificationReducer from './slices/notificationSlice';
 import leaveReducer from './slices/leaveSlice';
+import studentInquiryReducer from './slices/studentInquirySlice';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +18,7 @@ export const store = configureStore({
     tasks: taskReducer,
     notifications: notificationReducer,
     leaves: leaveReducer,
+    studentInquiries: studentInquiryReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ serializableCheck: false }),

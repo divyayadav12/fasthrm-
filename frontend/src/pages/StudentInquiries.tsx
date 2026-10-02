@@ -1,0 +1,1208 @@
+import React, { useEffect, useState, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../store';
+import {
+  fetchStudentInquiries,
+  lookupStudentPhone,
+  createStudentInquiry,
+  updateStudentInquiry,
+  deleteStudentInquiry,
+  fetchStudentInquiryDetails,
+  clearLookupResult,
+  clearSelectedInquiry,
+  StudentInquiry,
+} from '../store/slices/studentInquirySlice';
+import {
+  Headphones,
+  PhoneCall,
+  Phone,
+  Search,
+  Plus,
+  Filter,
+  CheckCircle2,
+  Clock,
+  ShoppingBag,
+  AlertCircle,
+  Truck,
+  Copy,
+  Calendar,
+  User as UserIcon,
+  Trash2,
+  Edit3,
+  History,
+  Sparkles,
+  Link2,
+  X,
+  Check,
+  RefreshCw,
+  Eye,
+  MessageCircle,
+  ChevronDown,
+  Info,
+} from 'lucide-react';
+
+export const canAccessStudentInquiry = (user: any): boolean => {
+  if (!user) return false;
+  const role = (user.role || '').toUpperCase();
+  const dept = (user.department || '').toLowerCase();
+  const desig = (user.designation || '').toLowerCase();
+
+  const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
+  const isSupportOrIT =
+    dept.includes('support') ||
+    dept.includes('it') ||
+    desig.includes('support') ||
+    desig.includes('it');
+
+  return isAdminOrManager || isSupportOrIT;
+};
+
+const CALL_TYPES = ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchases', 'Others'] as const;
+const STATUS_TYPES = ['Solved', 'Follow Up', 'Purchases', 'Pending', 'Others'] as const;
+
+export default function StudentInquiries() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const {
+    inquiries,
+    stats,
+    isLoading,
+    lookupResult,
+    isLookupLoading,
+    selectedInquiry,
+    relatedInquiries,
+  } = useSelector((state: RootState) => state.studentInquiries);
+
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const isAuthorized = canAccessStudentInquiry(user);
+
+  // Filter States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [callTypeFilter, setCallTypeFilter] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('ALL');
+
+  // Modal States
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingInquiry, setEditingInquiry] = useState<StudentInquiry | null>(null);
+  const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
+  const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    studentName: '',
+    mobileNumber: '',
+    alternateNumber: '',
+    email: '',
+    callType: 'Enquiry' as (typeof CALL_TYPES)[number],
+    subject: '',
+    details: '',
+    remark: '',
+    status: 'Follow Up' as (typeof STATUS_TYPES)[number],
+    previousInquiryId: '',
+    followUpDate: '',
+  });
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load Inquiries on Mount & Filter Change
+  const loadData = () => {
+    const params: any = {};
+    if (searchTerm.trim()) params.search = searchTerm.trim();
+    if (statusFilter !== 'ALL') params.status = statusFilter;
+    if (callTypeFilter !== 'ALL') params.callType = callTypeFilter;
+
+    if (dateFilter === 'TODAY') {
+      const today = new Date().toISOString().split('T')[0];
+      params.dateFrom = today;
+      params.dateTo = today;
+    } else if (dateFilter === 'YESTERDAY') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      const yStr = y.toISOString().split('T')[0];
+      params.dateFrom = yStr;
+      params.dateTo = yStr;
+    } else if (dateFilter === 'THIS_WEEK') {
+      const w = new Date();
+      w.setDate(w.getDate() - 7);
+      params.dateFrom = w.toISOString().split('T')[0];
+    } else if (dateFilter === 'THIS_MONTH') {
+      const m = new Date();
+      m.setDate(1);
+      params.dateFrom = m.toISOString().split('T')[0];
+    }
+
+    dispatch(fetchStudentInquiries(params));
+  };
+
+  useEffect(() => {
+    if (isAuthorized) {
+      loadData();
+    }
+  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isAuthorized) loadData();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Handle Mobile Lookup when typing in Add Modal
+  useEffect(() => {
+    const cleanNumber = formData.mobileNumber.replace(/\D/g, '');
+    if (cleanNumber.length >= 6) {
+      dispatch(lookupStudentPhone(cleanNumber));
+    } else {
+      dispatch(clearLookupResult());
+    }
+  }, [formData.mobileNumber, dispatch]);
+
+  // Auto-fill student name & suggest previous inquiry ID if lookup finds matches
+  useEffect(() => {
+    if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
+      if (!formData.studentName.trim() && lookupResult.studentName) {
+        setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
+      }
+      if (!formData.previousInquiryId && lookupResult.latestInquiry.inquiryId) {
+        setFormData((prev) => ({
+          ...prev,
+          previousInquiryId: lookupResult.latestInquiry?.inquiryId || '',
+        }));
+      }
+    }
+  }, [lookupResult]);
+
+  const resetForm = () => {
+    setFormData({
+      studentName: '',
+      mobileNumber: '',
+      alternateNumber: '',
+      email: '',
+      callType: 'Enquiry',
+      subject: '',
+      details: '',
+      remark: '',
+      status: 'Follow Up',
+      previousInquiryId: '',
+      followUpDate: '',
+    });
+    setFormErrors({});
+    dispatch(clearLookupResult());
+  };
+
+  const handleOpenAddModal = () => {
+    resetForm();
+    setIsAddModalOpen(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
+    resetForm();
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.studentName.trim()) errors.studentName = 'Student name is required';
+    if (!formData.mobileNumber.trim()) {
+      errors.mobileNumber = 'Mobile number is required';
+    } else if (formData.mobileNumber.replace(/\D/g, '').length < 10) {
+      errors.mobileNumber = 'Please enter a valid 10-digit mobile number';
+    }
+    if (!formData.details.trim()) errors.details = 'Inquiry details are required';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmitNewInquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    try {
+      const resultAction = await dispatch(createStudentInquiry(formData));
+      if (createStudentInquiry.fulfilled.match(resultAction)) {
+        setNotificationMsg({
+          type: 'success',
+          text: `Inquiry ${resultAction.payload.inquiry.inquiryId} logged successfully!`,
+        });
+        handleCloseAddModal();
+        loadData();
+      } else {
+        setNotificationMsg({
+          type: 'error',
+          text: (resultAction.payload as string) || 'Failed to create inquiry',
+        });
+      }
+    } catch (err: any) {
+      setNotificationMsg({ type: 'error', text: err.message || 'Error creating inquiry' });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setNotificationMsg(null), 4000);
+    }
+  };
+
+  const handleOpenEdit = (inquiry: StudentInquiry) => {
+    setEditingInquiry(inquiry);
+    setFormData({
+      studentName: inquiry.studentName,
+      mobileNumber: inquiry.mobileNumber,
+      alternateNumber: inquiry.alternateNumber || '',
+      email: inquiry.email || '',
+      callType: inquiry.callType,
+      subject: inquiry.subject || '',
+      details: inquiry.details,
+      remark: inquiry.remark || '',
+      status: inquiry.status,
+      previousInquiryId: inquiry.previousInquiryId || '',
+      followUpDate: inquiry.followUpDate ? inquiry.followUpDate.split('T')[0] : '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateInquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInquiry) return;
+
+    setIsSubmitting(true);
+    try {
+      const resultAction = await dispatch(
+        updateStudentInquiry({ id: editingInquiry._id, data: formData })
+      );
+      if (updateStudentInquiry.fulfilled.match(resultAction)) {
+        setNotificationMsg({
+          type: 'success',
+          text: `Inquiry ${editingInquiry.inquiryId} updated successfully!`,
+        });
+        setIsEditModalOpen(false);
+        setEditingInquiry(null);
+        loadData();
+      } else {
+        setNotificationMsg({
+          type: 'error',
+          text: (resultAction.payload as string) || 'Failed to update inquiry',
+        });
+      }
+    } catch (err: any) {
+      setNotificationMsg({ type: 'error', text: err.message || 'Error updating inquiry' });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setNotificationMsg(null), 4000);
+    }
+  };
+
+  const handleDelete = async (id: string, inqId: string) => {
+    if (window.confirm(`Are you sure you want to delete inquiry ${inqId}?`)) {
+      const resultAction = await dispatch(deleteStudentInquiry(id));
+      if (deleteStudentInquiry.fulfilled.match(resultAction)) {
+        setNotificationMsg({ type: 'success', text: `Inquiry ${inqId} deleted.` });
+      } else {
+        setNotificationMsg({ type: 'error', text: 'Failed to delete inquiry.' });
+      }
+      setTimeout(() => setNotificationMsg(null), 4000);
+    }
+  };
+
+  const handleViewDetails = (inquiryId: string) => {
+    dispatch(fetchStudentInquiryDetails(inquiryId));
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCopyPhone = (phone: string) => {
+    navigator.clipboard.writeText(phone);
+    setCopiedPhone(phone);
+    setTimeout(() => setCopiedPhone(null), 2000);
+  };
+
+  // Status Badge Colors
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Solved':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'Follow Up':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'Purchases':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'Pending':
+        return 'bg-rose-50 text-rose-700 border-rose-200';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  // Call Type Badge Colors
+  const getCallTypeBadge = (callType: string) => {
+    switch (callType) {
+      case 'Tech Issue':
+        return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'Dispatch Related':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'Purchases':
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'Enquiry':
+        return 'bg-sky-50 text-sky-700 border-sky-200';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
+
+  // Access Denied Screen
+  if (!isAuthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-4 shadow-xs">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+        <p className="text-gray-600 max-w-md">
+          The <strong>Student Inquiry</strong> portal is reserved exclusively for Admin, IT, and Support staff.
+          Please contact your administrator if you require access.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Toast Notification */}
+      {notificationMsg && (
+        <div
+          className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-sm font-medium transition-all ${
+            notificationMsg.type === 'success'
+              ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+              : 'bg-red-600 text-white shadow-red-600/30'
+          }`}
+        >
+          {notificationMsg.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+          <span>{notificationMsg.text}</span>
+        </div>
+      )}
+
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl shadow-xs border border-gray-100">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+            <Headphones className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Student Inquiries</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                IT & Support
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+              Track student calls, resolve tech issues, and manage connected student histories.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadData}
+            className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-xl transition-all"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm shadow-md shadow-indigo-600/20 transition-all transform active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Student Inquiry</span>
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Total Inquiries */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Calls</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{stats?.total || inquiries.length}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <PhoneCall className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Solved */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Solved</p>
+            <p className="text-2xl font-bold text-emerald-700 mt-1">{stats?.solved || 0}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Follow Up */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-amber-600 uppercase tracking-wider">Follow Up</p>
+            <p className="text-2xl font-bold text-amber-700 mt-1">{stats?.followUp || 0}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Purchases */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-blue-600 uppercase tracking-wider">Purchases</p>
+            <p className="text-2xl font-bold text-blue-700 mt-1">{stats?.purchases || 0}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Filters & Search Toolbar */}
+      <div className="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 flex flex-col md:flex-row gap-3 items-center justify-between">
+        {/* Search Bar */}
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by name, number, INQ ID..."
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter Dropdowns */}
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="ALL">All Status</option>
+            {STATUS_TYPES.map((st) => (
+              <option key={st} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+
+          {/* Call Type Filter */}
+          <select
+            value={callTypeFilter}
+            onChange={(e) => setCallTypeFilter(e.target.value)}
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="ALL">All Call Types</option>
+            {CALL_TYPES.map((ct) => (
+              <option key={ct} value={ct}>
+                {ct}
+              </option>
+            ))}
+          </select>
+
+          {/* Date Filter */}
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="ALL">All Time</option>
+            <option value="TODAY">Today</option>
+            <option value="YESTERDAY">Yesterday</option>
+            <option value="THIS_WEEK">Last 7 Days</option>
+            <option value="THIS_MONTH">This Month</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Main Inquiries Table */}
+      <div className="bg-white rounded-2xl shadow-xs border border-gray-100 overflow-hidden">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center p-12 text-gray-400">
+            <RefreshCw className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
+            <p className="text-sm">Loading inquiries...</p>
+          </div>
+        ) : inquiries.length === 0 ? (
+          <div className="p-12 text-center text-gray-400">
+            <PhoneCall className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <h3 className="text-base font-semibold text-gray-700">No Inquiries Found</h3>
+            <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+              {searchTerm || statusFilter !== 'ALL' || callTypeFilter !== 'ALL'
+                ? 'Try clearing some search filters to find inquiries.'
+                : 'Click "+ Add Student Inquiry" above to log the first call.'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50/80 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
+                <tr>
+                  <th className="px-5 py-3.5">Inquiry ID</th>
+                  <th className="px-5 py-3.5">Student Details</th>
+                  <th className="px-5 py-3.5">Call Type</th>
+                  <th className="px-5 py-3.5">Subject & Details</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Attended By</th>
+                  <th className="px-5 py-3.5">Reference ID</th>
+                  <th className="px-5 py-3.5">Date & Time</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {inquiries.map((inq) => (
+                  <tr key={inq._id} className="hover:bg-slate-50/70 transition-colors">
+                    {/* Inquiry ID */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <span className="font-mono font-bold text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100">
+                        {inq.inquiryId}
+                      </span>
+                    </td>
+
+                    {/* Student Info */}
+                    <td className="px-5 py-4">
+                      <div className="font-semibold text-gray-900">{inq.studentName}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <span className="font-mono">{inq.mobileNumber}</span>
+                        <button
+                          onClick={() => handleCopyPhone(inq.mobileNumber)}
+                          className="text-gray-400 hover:text-indigo-600 transition-colors"
+                          title="Copy phone"
+                        >
+                          {copiedPhone === inq.mobileNumber ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                        <a
+                          href={`https://wa.me/91${inq.mobileNumber.replace(/\D/g, '').slice(-10)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-600 hover:text-emerald-700 ml-1"
+                          title="Chat on WhatsApp"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </td>
+
+                    {/* Call Type */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <span
+                        className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${getCallTypeBadge(
+                          inq.callType
+                        )}`}
+                      >
+                        {inq.callType}
+                      </span>
+                    </td>
+
+                    {/* Subject & Details */}
+                    <td className="px-5 py-4 max-w-xs">
+                      {inq.subject && (
+                        <div className="font-medium text-xs text-gray-800 line-clamp-1">{inq.subject}</div>
+                      )}
+                      <div className="text-xs text-gray-500 line-clamp-2 mt-0.5">{inq.details}</div>
+                      {inq.remark && (
+                        <div className="text-[11px] text-amber-700 bg-amber-50/60 px-2 py-0.5 rounded-md mt-1 inline-block border border-amber-100">
+                          Remark: {inq.remark}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <span
+                        className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${getStatusBadge(
+                          inq.status
+                        )}`}
+                      >
+                        {inq.status}
+                      </span>
+                    </td>
+
+                    {/* Added By (Staff Name) */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
+                          {inq.addedByName?.charAt(0) || 'S'}
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-gray-900">{inq.addedByName}</div>
+                          <div className="text-[10px] text-gray-400">
+                            {inq.addedByDepartment || 'Support'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Previous / Reference ID */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {inq.previousInquiryId ? (
+                        <button
+                          onClick={() => handleViewDetails(inq._id)}
+                          className="inline-flex items-center gap-1 text-xs font-mono font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-md border border-indigo-200 transition-colors"
+                          title="View Connected Call History"
+                        >
+                          <Link2 className="w-3 h-3" />
+                          <span>{inq.previousInquiryId}</span>
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Fresh Call</span>
+                      )}
+                    </td>
+
+                    {/* Date */}
+                    <td className="px-5 py-4 whitespace-nowrap text-xs text-gray-500">
+                      <div>{new Date(inq.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                      <div className="text-[10px] text-gray-400">
+                        {new Date(inq.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </div>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-5 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleViewDetails(inq._id)}
+                          className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="View History Thread"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(inq)}
+                          className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="Edit / Update"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(inq._id, inq.inquiryId)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* 🚀 ADD STUDENT INQUIRY MODAL WITH LIVE NUMBER LOOKUP      */}
+      {/* ========================================================= */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/70 rounded-t-3xl">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20">
+                  <PhoneCall className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Add Student Inquiry</h3>
+                  <p className="text-xs text-gray-500">
+                    Logged in as: <strong className="text-indigo-600">{user?.name}</strong> ({user?.department || user?.designation || 'Staff'})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseAddModal}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleSubmitNewInquiry} className="p-6 overflow-y-auto space-y-5 flex-1">
+              {/* Mobile Number with Live Lookup */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Mobile Number <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={formData.mobileNumber}
+                    onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+                    placeholder="Enter 10-digit student mobile number"
+                    className={`w-full pl-10 pr-10 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
+                      formErrors.mobileNumber ? 'border-red-400 bg-red-50/20' : 'border-gray-200 focus:border-indigo-500'
+                    }`}
+                  />
+                  {isLookupLoading && (
+                    <RefreshCw className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500 animate-spin" />
+                  )}
+                </div>
+                {formErrors.mobileNumber && (
+                  <p className="text-xs text-red-500 mt-1">{formErrors.mobileNumber}</p>
+                )}
+              </div>
+
+              {/* Live Number Lookup Alert Banner */}
+              {lookupResult && lookupResult.found && lookupResult.latestInquiry && (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold text-xs">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      <span>Existing Student Record Found ({lookupResult.count} Prior Calls)</span>
+                    </div>
+                    <span className="text-[11px] bg-amber-200/80 px-2 py-0.5 rounded-full font-semibold">
+                      Latest: {lookupResult.latestInquiry.inquiryId}
+                    </span>
+                  </div>
+
+                  <div className="text-xs bg-white/80 p-3 rounded-xl border border-amber-100 space-y-1">
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-800">
+                        Attended By: {lookupResult.latestInquiry.addedByName}
+                      </span>
+                      <span className="text-gray-500">
+                        {new Date(lookupResult.latestInquiry.createdAt).toLocaleDateString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="text-gray-600">
+                      <strong>Issue / Topic:</strong> {lookupResult.latestInquiry.details}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1 text-[11px]">
+                      <span className="font-semibold">Status:</span>
+                      <span className={`px-2 py-0.5 rounded-md ${getStatusBadge(lookupResult.latestInquiry.status)}`}>
+                        {lookupResult.latestInquiry.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Auto-link Reference ID option */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="linkRefCheck"
+                      checked={!!formData.previousInquiryId}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          previousInquiryId: e.target.checked
+                            ? lookupResult.latestInquiry?.inquiryId || ''
+                            : '',
+                        })
+                      }
+                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label htmlFor="linkRefCheck" className="text-xs font-semibold cursor-pointer text-amber-900">
+                      Link as Follow-up to Previous Inquiry ({lookupResult.latestInquiry.inquiryId})
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Student Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Student Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={formData.studentName}
+                    onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
+                    placeholder="Enter student full name"
+                    className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
+                      formErrors.studentName ? 'border-red-400 bg-red-50/20' : 'border-gray-200 focus:border-indigo-500'
+                    }`}
+                  />
+                </div>
+                {formErrors.studentName && (
+                  <p className="text-xs text-red-500 mt-1">{formErrors.studentName}</p>
+                )}
+              </div>
+
+              {/* Call Type & Status Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Call Type */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Call Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.callType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, callType: e.target.value as (typeof CALL_TYPES)[number] })
+                    }
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  >
+                    {CALL_TYPES.map((ct) => (
+                      <option key={ct} value={ct}>
+                        {ct}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Status <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value as (typeof STATUS_TYPES)[number] })
+                    }
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  >
+                    {STATUS_TYPES.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Subject / Topic */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Subject / Topic
+                </label>
+                <input
+                  type="text"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  placeholder="e.g. Video player issue / Book tracking / Course details"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Details */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Inquiry Details / Issue Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.details}
+                  onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                  placeholder="Provide complete notes of what student asked or issue faced..."
+                  className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
+                    formErrors.details ? 'border-red-400 bg-red-50/20' : 'border-gray-200 focus:border-indigo-500'
+                  }`}
+                />
+                {formErrors.details && (
+                  <p className="text-xs text-red-500 mt-1">{formErrors.details}</p>
+                )}
+              </div>
+
+              {/* Remark */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Staff Remark / Action Taken
+                </label>
+                <input
+                  type="text"
+                  value={formData.remark}
+                  onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
+                  placeholder="e.g. Cleared app cache, student confirmed working."
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Connected / Previous Reference ID */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Previous / Connected Inquiry ID (Optional)
+                </label>
+                <div className="relative">
+                  <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={formData.previousInquiryId}
+                    onChange={(e) => setFormData({ ...formData, previousInquiryId: e.target.value })}
+                    placeholder="e.g. INQ-1001 (Leave empty for fresh callers)"
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 uppercase"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Agar pehle kisi aur ne call attend kiya ho, to wo ID daal kar history link ho jayegi.
+                </p>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleCloseAddModal}
+                  className="px-5 py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Inquiry</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ✏️ EDIT INQUIRY MODAL                                     */}
+      {/* ========================================================= */}
+      {isEditModalOpen && editingInquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/70 rounded-t-3xl">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Edit Inquiry {editingInquiry.inquiryId}
+                </h3>
+                <p className="text-xs text-gray-500">Student: {editingInquiry.studentName}</p>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateInquiry} className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value as (typeof STATUS_TYPES)[number] })
+                    }
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium"
+                  >
+                    {STATUS_TYPES.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Call Type</label>
+                  <select
+                    value={formData.callType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, callType: e.target.value as (typeof CALL_TYPES)[number] })
+                    }
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium"
+                  >
+                    {CALL_TYPES.map((ct) => (
+                      <option key={ct} value={ct}>
+                        {ct}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Inquiry Details</label>
+                <textarea
+                  rows={3}
+                  value={formData.details}
+                  onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Staff Remark</label>
+                <input
+                  type="text"
+                  value={formData.remark}
+                  onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold"
+                >
+                  {isSubmitting ? 'Updating...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 📜 DETAIL & CALL HISTORY TIMELINE MODAL                   */}
+      {/* ========================================================= */}
+      {isDetailModalOpen && selectedInquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/70 rounded-t-3xl">
+              <div className="flex items-center space-x-3">
+                <span className="font-mono text-sm font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg">
+                  {selectedInquiry.inquiryId}
+                </span>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{selectedInquiry.studentName}</h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span>{selectedInquiry.mobileNumber}</span>
+                    <span>•</span>
+                    <span className={`px-2 py-0.5 rounded-full font-semibold border ${getStatusBadge(selectedInquiry.status)}`}>
+                      {selectedInquiry.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsDetailModalOpen(false);
+                  dispatch(clearSelectedInquiry());
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Primary Call Card */}
+              <div className="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${getCallTypeBadge(selectedInquiry.callType)}`}>
+                    {selectedInquiry.callType}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {new Date(selectedInquiry.createdAt).toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                {selectedInquiry.subject && (
+                  <h4 className="font-semibold text-sm text-gray-900">{selectedInquiry.subject}</h4>
+                )}
+                <p className="text-sm text-gray-700 leading-relaxed">{selectedInquiry.details}</p>
+
+                {selectedInquiry.remark && (
+                  <div className="p-2.5 rounded-xl bg-white border border-indigo-100 text-xs text-gray-700">
+                    <strong className="text-indigo-700">Staff Remark:</strong> {selectedInquiry.remark}
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-indigo-100/60 flex items-center justify-between text-xs text-gray-500">
+                  <span>Attended By: <strong>{selectedInquiry.addedByName}</strong> ({selectedInquiry.addedByDepartment || 'Support'})</span>
+                  {selectedInquiry.previousInquiryId && (
+                    <span className="font-mono text-indigo-700">Ref: {selectedInquiry.previousInquiryId}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Related Calls Timeline */}
+              {relatedInquiries && relatedInquiries.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                    <History className="w-4 h-4 text-indigo-600" />
+                    <span>Complete Call History for this Student ({relatedInquiries.length} Previous Calls)</span>
+                  </div>
+
+                  <div className="space-y-3 border-l-2 border-indigo-100 ml-3 pl-4">
+                    {relatedInquiries.map((rel) => (
+                      <div key={rel._id} className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 text-xs space-y-1.5 relative">
+                        <div className="absolute -left-[23px] top-4 w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-white" />
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-indigo-700">{rel.inquiryId}</span>
+                          <span className="text-gray-400">{new Date(rel.createdAt).toLocaleDateString('en-IN')}</span>
+                        </div>
+                        <div className="text-gray-800 font-medium">{rel.details}</div>
+                        <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
+                          <span>By: <strong>{rel.addedByName}</strong></span>
+                          <span className={`px-2 py-0.5 rounded-md ${getStatusBadge(rel.status)}`}>{rel.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => {
+                  setIsDetailModalOpen(false);
+                  dispatch(clearSelectedInquiry());
+                }}
+                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

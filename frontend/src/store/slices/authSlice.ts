@@ -10,6 +10,7 @@ export interface User {
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
   adminScope?: 'ALL' | 'ONLY_FAST_CAREERS' | 'EXCLUDE_FAST_CAREERS';
   department?: string;
+  designation?: string;
   token?: string;
 }
 

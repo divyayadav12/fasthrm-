@@ -38,3 +38,28 @@ export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) =
     res.status(403).json({ message: 'Not authorized as an admin' });
   }
 };
+
+export const supportOrAdminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authorized, user not found' });
+  }
+
+  const role = (req.user.role || '').toUpperCase();
+  const dept = (req.user.department || '').toLowerCase();
+  const desig = (req.user.designation || '').toLowerCase();
+
+  const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
+  const isSupportOrIT =
+    dept.includes('support') ||
+    dept.includes('it') ||
+    desig.includes('support') ||
+    desig.includes('it');
+
+  if (isAdminOrManager || isSupportOrIT) {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: 'Access denied. Student Inquiries are restricted to Admin and IT & Support team.',
+  });
+};
