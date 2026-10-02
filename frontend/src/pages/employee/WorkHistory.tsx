@@ -353,7 +353,9 @@ const WorkHistory = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Start Time</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">End Time</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Name</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Spent</th>
@@ -363,10 +365,10 @@ const WorkHistory = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading history...</td></tr>
+                <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-500">Loading history...</td></tr>
               ) : workLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
                     <Calendar className="h-12 w-12 text-gray-300 mb-3" />
                     <p>No work history recorded for this period.</p>
                   </td>
@@ -397,11 +399,65 @@ const WorkHistory = () => {
                   })
                   .map((log) => {
                     const dur = log.duration || log.durationMinutes || log.taskId?.totalDuration || 0;
+                    const logDate = new Date(log.startTime || log.createdAt);
+                    const formattedDate = logDate.toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    });
+
+                    let startDateObj = logDate;
+                    let endDateObj: Date | null = null;
+                    if (log.endTime) {
+                      endDateObj = new Date(log.endTime);
+                    } else if (dur > 0) {
+                      endDateObj = new Date(log.createdAt || logDate);
+                      startDateObj = log.startTime ? new Date(log.startTime) : new Date(endDateObj.getTime() - dur * 60000);
+                    } else {
+                      endDateObj = logDate;
+                    }
+
+                    const formattedStartTime = startDateObj.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true,
+                    });
+
+                    const formattedEndTime = log.status === 'WORKING'
+                      ? 'In Progress'
+                      : endDateObj
+                      ? endDateObj.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        })
+                      : '-';
+
                     return (
                   <tr key={log._id} className="hover:bg-gray-50 transition-colors">
+                    {/* Date */}
+                    <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                      {formattedDate}
+                    </td>
+
+                    {/* Start Time */}
                     <td className="px-5 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{new Date(log.createdAt).toLocaleDateString()}</div>
-                      <div className="text-xs text-gray-500">{new Date(log.createdAt).toLocaleTimeString()}</div>
+                      <span className="font-semibold text-gray-900 bg-gray-50 px-2 py-1 rounded-md border border-gray-200/80 text-xs">
+                        {formattedStartTime}
+                      </span>
+                    </td>
+
+                    {/* End Time */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {log.status === 'WORKING' ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
+                          In Progress
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-gray-900 bg-gray-50 px-2 py-1 rounded-md border border-gray-200/80 text-xs">
+                          {formattedEndTime}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       <button

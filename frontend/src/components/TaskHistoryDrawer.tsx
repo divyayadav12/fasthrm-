@@ -320,7 +320,8 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                   <thead className="bg-gray-50/80 font-semibold text-gray-600 uppercase tracking-wider text-[11px]">
                     <tr>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Date</th>
-                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Timing</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Start Time</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">End Time</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Time Spent</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Employee</th>
                       <th scope="col" className="px-4 py-3">Description</th>
@@ -334,10 +335,6 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
-                      });
-                      const formattedTime = logDate.toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
                       });
                       const employeeName = log.employeeId?.name || (typeof assignedEmployee === 'object' ? assignedEmployee?.name : assignedEmployee) || 'Team Member';
 
@@ -360,6 +357,48 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                         ? Math.max(1, Math.round((Date.now() - new Date(log.createdAt).getTime()) / 60000))
                         : 0;
 
+                      // Start & End Time Resolution
+                      let startDateObj: Date;
+                      let endDateObj: Date | null = null;
+
+                      if (log.startTime) {
+                        startDateObj = new Date(log.startTime);
+                      } else if (resolvedDuration > 0 && (log.status === 'COMPLETED' || log.status === 'ON_HOLD' || log.status === 'PENDING')) {
+                        startDateObj = new Date(logDate.getTime() - resolvedDuration * 60000);
+                      } else {
+                        startDateObj = logDate;
+                      }
+
+                      if (log.endTime) {
+                        endDateObj = new Date(log.endTime);
+                      } else if (isCurrentlyActive) {
+                        endDateObj = null;
+                      } else if (resolvedDuration > 0) {
+                        if (log.status === 'WORKING') {
+                          endDateObj = new Date(startDateObj.getTime() + resolvedDuration * 60000);
+                        } else {
+                          endDateObj = logDate;
+                        }
+                      } else {
+                        endDateObj = logDate;
+                      }
+
+                      const formattedStartTime = startDateObj.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      });
+
+                      const formattedEndTime = isCurrentlyActive
+                        ? 'In Progress'
+                        : endDateObj
+                        ? endDateObj.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true,
+                          })
+                        : '-';
+
                       return (
                         <tr key={log._id || index} className="hover:bg-indigo-50/30 transition-colors group">
                           {/* Date */}
@@ -367,9 +406,24 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                             {formattedDate}
                           </td>
 
-                          {/* Timing */}
+                          {/* Start Time */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className="font-semibold text-gray-900">{formattedTime}</span>
+                            <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                              {formattedStartTime}
+                            </span>
+                          </td>
+
+                          {/* End Time */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {isCurrentlyActive ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
+                                In Progress
+                              </span>
+                            ) : (
+                              <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                {formattedEndTime}
+                              </span>
+                            )}
                           </td>
 
                           {/* Time Spent */}

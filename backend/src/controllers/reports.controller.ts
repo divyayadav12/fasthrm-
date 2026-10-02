@@ -175,7 +175,7 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
     // Fetch all tasks belonging to this employee
     const tasks = await Task.find({ assignedTo: employeeId }).sort({ updatedAt: -1 });
 
-    // Aggregate latest worklog date per task
+    // Aggregate latest and earliest worklog date per task
     const hasDateFilter = !!(dateFrom || dateTo);
     const taskIds = tasks.map((t) => t._id);
     const latestLogPerTask = await WorkLog.aggregate([
@@ -191,16 +191,18 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
         $group: {
           _id: '$taskId',
           lastActivity: { $first: '$createdAt' },
+          firstActivity: { $last: '$createdAt' },
           logCount: { $sum: 1 },
           filteredDuration: { $sum: { $ifNull: ['$duration', 0] } }
         },
       },
     ]);
 
-    const logMap: Record<string, { lastActivity: Date; logCount: number; filteredDuration: number }> = {};
+    const logMap: Record<string, { lastActivity: Date; firstActivity: Date; logCount: number; filteredDuration: number }> = {};
     for (const entry of latestLogPerTask) {
       logMap[entry._id.toString()] = {
         lastActivity: entry.lastActivity,
+        firstActivity: entry.firstActivity,
         logCount: entry.logCount,
         filteredDuration: entry.filteredDuration || 0
       };
@@ -236,8 +238,8 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
         status: task.status,
         progress: task.progress,
         totalMinutes,
-        startedAt: task.startedAt,
-        completedAt: task.completedAt,
+        startedAt: task.startedAt || logInfo?.firstActivity || taskAny.createdAt,
+        completedAt: task.completedAt || (task.status === 'COMPLETED' ? logInfo?.lastActivity || taskAny.updatedAt : undefined),
         lastActivity: logInfo?.lastActivity || taskAny.updatedAt,
         logCount: logInfo?.logCount || 0,
         createdAt: taskAny.createdAt,

@@ -516,6 +516,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                       <tr>
                         <th scope="col" className="px-4 py-3">Task Name</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Start Time</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">End Time</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Time Spent</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap w-36">Time Bar</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Last Activity</th>
@@ -527,6 +529,27 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         const isWorking = task.status === 'WORKING';
                         const barWidth = Math.max(4, Math.round((task.totalMinutes / maxTaskMinutes) * 100));
                         const formattedDur = formatDuration(task.totalMinutes);
+
+                        const taskStart = task.startedAt || task.createdAt;
+                        const taskEnd = isWorking ? null : (task.completedAt || task.lastActivity);
+
+                        const formattedStartTime = taskStart
+                          ? new Date(taskStart).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                            })
+                          : '-';
+
+                        const formattedEndTime = isWorking
+                          ? 'In Progress'
+                          : taskEnd
+                          ? new Date(taskEnd).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                            })
+                          : '-';
 
                         return (
                           <tr key={task._id} className="hover:bg-indigo-50/30 transition-colors group">
@@ -558,6 +581,26 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                             {/* Status */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
                               {getStatusBadge(task.status, task.title)}
+                            </td>
+
+                            {/* Start Time */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                {formattedStartTime}
+                              </span>
+                            </td>
+
+                            {/* End Time */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              {isWorking ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
+                                  In Progress
+                                </span>
+                              ) : (
+                                <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                  {formattedEndTime}
+                                </span>
+                              )}
                             </td>
 
                             {/* Time Spent */}
@@ -650,7 +693,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                     <thead className="bg-gray-50/80 font-semibold text-gray-600 uppercase tracking-wider text-[11px]">
                       <tr>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Date</th>
-                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Timing</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Start Time</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">End Time</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Time Spent</th>
                         <th scope="col" className="px-4 py-3">Task</th>
                         <th scope="col" className="px-4 py-3">Description</th>
@@ -664,10 +708,6 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
-                        });
-                        const logTime = logDate.toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
                         });
                         const taskTitle = log.taskId?.title || log.customTaskTitle || 'General Work';
                         
@@ -687,6 +727,33 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                           durationStr = '-';
                         }
 
+                        let startDateObj = logDate;
+                        let endDateObj: Date | null = null;
+                        if (log.endTime) {
+                          endDateObj = new Date(log.endTime);
+                        } else if (durationMins > 0) {
+                          endDateObj = new Date(log.createdAt || logDate);
+                          startDateObj = log.startTime ? new Date(log.startTime) : new Date(endDateObj.getTime() - durationMins * 60000);
+                        } else {
+                          endDateObj = logDate;
+                        }
+
+                        const formattedStartTime = startDateObj.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        });
+
+                        const formattedEndTime = isLiveWorking
+                          ? 'In Progress'
+                          : endDateObj
+                          ? endDateObj.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                            })
+                          : '-';
+
                         return (
                           <tr key={log._id} className={`transition-colors group ${log.isVirtual ? 'bg-gray-50/50 hover:bg-gray-50' : 'hover:bg-indigo-50/30'}`}>
                             {/* Date */}
@@ -694,9 +761,24 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                               {formattedDate}
                             </td>
 
-                            {/* Timing */}
+                            {/* Start Time */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              <span className="font-semibold text-gray-900">{logTime}</span>
+                              <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                {formattedStartTime}
+                              </span>
+                            </td>
+
+                            {/* End Time */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              {isLiveWorking ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
+                                  In Progress
+                                </span>
+                              ) : (
+                                <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                  {formattedEndTime}
+                                </span>
+                              )}
                             </td>
 
                             {/* Time Spent */}
