@@ -177,6 +177,16 @@ export default function StudentInquiries() {
     }
   }, [lookupResult]);
 
+  const selectedPrevInquiry = useMemo(() => {
+    if (!formData.previousInquiryId) return null;
+    const targetId = formData.previousInquiryId.trim().toUpperCase();
+    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
+      const match = lookupResult.inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId);
+      if (match) return match;
+    }
+    return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
+  }, [formData.previousInquiryId, lookupResult, inquiries]);
+
   const resetForm = () => {
     setFormData({
       studentName: '',
@@ -937,23 +947,123 @@ export default function StudentInquiries() {
                 />
               </div>
 
-              {/* Connected / Previous Reference ID */}
+              {/* Connected / Previous Reference ID with Dropdown */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Previous / Connected Inquiry ID (Optional)
-                </label>
-                <div className="relative">
-                  <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={formData.previousInquiryId}
-                    onChange={(e) => setFormData({ ...formData, previousInquiryId: e.target.value })}
-                    placeholder="e.g. INQ-1001 (Leave empty for fresh callers)"
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 uppercase"
-                  />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Previous / Connected Inquiry ID (Optional)
+                  </label>
+                  {lookupResult?.inquiries && lookupResult.inquiries.length > 0 && (
+                    <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                      {lookupResult.inquiries.length} Previous Inquiries Found
+                    </span>
+                  )}
                 </div>
+
+                {/* If previous inquiries found for this student number, show rich dropdown */}
+                {lookupResult?.inquiries && lookupResult.inquiries.length > 0 ? (
+                  <div className="space-y-2.5">
+                    <div className="relative">
+                      <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+                      <select
+                        value={formData.previousInquiryId}
+                        onChange={(e) => setFormData({ ...formData, previousInquiryId: e.target.value })}
+                        className="w-full pl-10 pr-10 py-2.5 bg-indigo-50/40 border border-indigo-200 rounded-xl text-xs sm:text-sm font-medium text-gray-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer"
+                      >
+                        <option value="">-- None (Fresh Inquiry / No Connection) --</option>
+                        {lookupResult.inquiries.map((prevInq) => (
+                          <option key={prevInq._id} value={prevInq.inquiryId}>
+                            [{prevInq.inquiryId}] • {prevInq.status} • {prevInq.callType} : {prevInq.subject ? prevInq.subject + ' - ' : ''}{prevInq.details.substring(0, 35)}... (By {prevInq.addedByName} on {new Date(prevInq.createdAt).toLocaleDateString('en-IN')})
+                          </option>
+                        ))}
+                        <option value="CUSTOM">+ Enter Custom Inquiry ID Manually...</option>
+                      </select>
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+
+                    {/* Manual input if CUSTOM selected or custom ID entered */}
+                    {(formData.previousInquiryId === 'CUSTOM' ||
+                      (formData.previousInquiryId &&
+                        !lookupResult.inquiries.some(
+                          (i) => i.inquiryId?.toUpperCase() === formData.previousInquiryId?.toUpperCase()
+                        ))) && (
+                      <div className="relative animate-in fade-in duration-150">
+                        <input
+                          type="text"
+                          value={formData.previousInquiryId === 'CUSTOM' ? '' : formData.previousInquiryId}
+                          onChange={(e) =>
+                            setFormData({ ...formData, previousInquiryId: e.target.value.toUpperCase() })
+                          }
+                          placeholder="Type Custom Inquiry ID (e.g. INQ-1001)"
+                          className="w-full px-3.5 py-2 bg-white border border-indigo-300 rounded-xl text-sm font-mono uppercase focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                      </div>
+                    )}
+
+                    {/* Selected Previous Inquiry Full Details Card */}
+                    {selectedPrevInquiry && (
+                      <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl text-xs space-y-2 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-xs text-indigo-700 bg-white px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs">
+                            🔗 Selected Reference: {selectedPrevInquiry.inquiryId}
+                          </span>
+                          <span className="text-[11px] text-gray-500 font-medium">
+                            {new Date(selectedPrevInquiry.createdAt).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        <div className="text-gray-800 bg-white/70 p-2.5 rounded-xl border border-indigo-100/80">
+                          {selectedPrevInquiry.subject && (
+                            <div className="font-semibold text-gray-900 mb-0.5">
+                              {selectedPrevInquiry.subject}
+                            </div>
+                          )}
+                          <div className="text-gray-600">{selectedPrevInquiry.details}</div>
+                          {selectedPrevInquiry.remark && (
+                            <div className="text-[11px] text-amber-800 bg-amber-50/80 px-2 py-0.5 rounded-md mt-1.5 border border-amber-200/60">
+                              <strong>Previous Remark:</strong> {selectedPrevInquiry.remark}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getStatusBadge(
+                              selectedPrevInquiry.status
+                            )}`}
+                          >
+                            {selectedPrevInquiry.status}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getCallTypeBadge(
+                              selectedPrevInquiry.callType
+                            )}`}
+                          >
+                            {selectedPrevInquiry.callType}
+                          </span>
+                          <span className="text-gray-500 text-[11px] ml-auto">
+                            Attended By: <strong>{selectedPrevInquiry.addedByName}</strong> ({selectedPrevInquiry.addedByDepartment || 'Support'})
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={formData.previousInquiryId}
+                      onChange={(e) => setFormData({ ...formData, previousInquiryId: e.target.value })}
+                      placeholder="e.g. INQ-1001 (Leave empty for fresh callers)"
+                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 uppercase"
+                    />
+                  </div>
+                )}
                 <p className="text-[11px] text-gray-400 mt-1">
-                  Agar pehle kisi aur ne call attend kiya ho, to wo ID daal kar history link ho jayegi.
+                  Agar pehle kisi aur ne call attend kiya ho, to dropdown se purani ID select karein taaki history link ho jaye.
                 </p>
               </div>
 
@@ -1071,6 +1181,23 @@ export default function StudentInquiries() {
                   onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
                 />
+              </div>
+
+              {/* Connected / Previous Inquiry Selection in Edit Modal */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  Previous / Connected Inquiry ID
+                </label>
+                <div className="relative">
+                  <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={formData.previousInquiryId}
+                    onChange={(e) => setFormData({ ...formData, previousInquiryId: e.target.value.toUpperCase() })}
+                    placeholder="e.g. INQ-1001"
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono uppercase"
+                  />
+                </div>
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
