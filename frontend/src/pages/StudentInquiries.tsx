@@ -13,6 +13,7 @@ import {
   StudentInquiry,
 } from '../store/slices/studentInquirySlice';
 import { fetchEmployees } from '../store/slices/employeeSlice';
+import axios from 'axios';
 import {
   Headphones,
   PhoneCall,
@@ -43,6 +44,8 @@ import {
   Send,
   UserCheck,
 } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
 
 export const canAccessStudentInquiry = (user: any): boolean => {
   if (!user) return false;
@@ -80,12 +83,31 @@ export default function StudentInquiries() {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const isAuthorized = canAccessStudentInquiry(user);
 
+  const [supportStaffList, setSupportStaffList] = useState<any[]>([]);
+
   useEffect(() => {
     dispatch(fetchEmployees({ limit: 200 }));
-  }, [dispatch]);
+
+    const fetchSupportStaff = async () => {
+      try {
+        const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+        const res = await axios.get(`${API_URL}/student-inquiries/support-staff`, config);
+        if (res.data?.staff && Array.isArray(res.data.staff) && res.data.staff.length > 0) {
+          setSupportStaffList(res.data.staff);
+        }
+      } catch (err) {
+        console.error('Error fetching support staff list:', err);
+      }
+    };
+
+    if (user?.token) {
+      fetchSupportStaff();
+    }
+  }, [dispatch, user]);
 
   const itSupportEmployees = useMemo(() => {
-    return (employees || []).filter((emp) => {
+    const rawList = supportStaffList.length > 0 ? supportStaffList : (employees || []);
+    const filtered = rawList.filter((emp) => {
       if (!emp || !emp.name || emp.name.trim().toLowerCase() === 'unknown') return false;
       const dept = (emp.department || emp.designation || '').toLowerCase().trim();
       if (dept.includes('editor') || dept.includes('dtp')) return false;
@@ -93,10 +115,14 @@ export default function StudentInquiries() {
         dept === 'it and support' ||
         dept === 'it & support' ||
         dept.includes('support') ||
-        /\b(it)\b/i.test(dept)
+        /\b(it)\b/i.test(dept) ||
+        emp.role === 'ADMIN'
       );
     });
-  }, [employees]);
+
+    if (filtered.length > 0) return filtered;
+    return rawList.filter((e) => e && e.name && e.name.trim().toLowerCase() !== 'unknown');
+  }, [supportStaffList, employees]);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');

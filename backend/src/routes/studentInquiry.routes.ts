@@ -4,6 +4,7 @@ import {
   createStudentInquiry,
   getStudentInquiries,
   lookupStudentByPhone,
+  getSupportStaffList,
   getStudentInquiryById,
   updateStudentInquiry,
   deleteStudentInquiry,
@@ -20,6 +21,7 @@ router.route('/')
   .post(createStudentInquiry);
 
 router.get('/lookup', lookupStudentByPhone);
+router.get('/support-staff', getSupportStaffList);
 
 router.route('/:id')
   .get(getStudentInquiryById)

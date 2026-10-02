@@ -423,3 +423,25 @@ export const deleteStudentInquiry = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: error.message || 'Failed to delete inquiry' });
   }
 };
+
+/**
+ * @desc    Get all IT & Support staff for forwarding inquiries
+ * @route   GET /api/student-inquiries/support-staff
+ * @access  Private (Support & Admin)
+ */
+export const getSupportStaffList = async (req: AuthRequest, res: Response) => {
+  try {
+    const User = (await import('../models/User')).default;
+    const staff = await User.find({
+      name: { $nin: [/^unknown$/i, '', null] },
+    })
+      .select('_id name email department designation role')
+      .sort({ name: 1 })
+      .lean();
+
+    res.json({ success: true, staff });
+  } catch (error: any) {
+    console.error('Error fetching support staff list:', error);
+    res.status(500).json({ message: error.message || 'Failed to fetch staff list' });
+  }
+};
