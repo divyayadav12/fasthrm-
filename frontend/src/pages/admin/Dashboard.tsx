@@ -45,11 +45,34 @@ const AdminDashboard = () => {
   const [filterDateTo, setFilterDateTo] = useState('');
 
   // Helper function to match employee role/department flexibly
+  const isOthersRole = (empDept: string) => {
+    const dept = (empDept || '').trim().toLowerCase();
+    const isKnown =
+      dept.includes('editor') ||
+      dept.includes('dtp') ||
+      dept.includes('support') ||
+      /\b(it)\b/i.test(dept) ||
+      dept === 'ioa' ||
+      /\b(ioa)\b/i.test(dept) ||
+      dept.includes('career') ||
+      dept.includes('careear') ||
+      dept.includes('hr') ||
+      /\b(hr)\b/i.test(dept) ||
+      dept.includes('faculty') ||
+      dept.includes('education') ||
+      dept.includes('admin') ||
+      /\b(admin)\b/i.test(dept);
+    return dept === 'others' || dept === 'other' || dept.includes('other') || !isKnown;
+  };
+
   const isRoleMatch = (empDept: string, targetRole: string) => {
     const dept = (empDept || '').trim().toLowerCase();
     const target = targetRole.trim().toLowerCase();
 
-    if (target === 'all') return true;
+    // In 'All' tab, do NOT show 'Others' employees; they only show in 'Others' tab
+    if (target === 'all') {
+      return !isOthersRole(empDept);
+    }
 
     // Editor DTP
     if (target === 'editor dtp') {
@@ -94,22 +117,7 @@ const AdminDashboard = () => {
 
     // Others
     if (target === 'others' || target === 'other') {
-      const isKnown =
-        dept.includes('editor') ||
-        dept.includes('dtp') ||
-        dept.includes('support') ||
-        /\b(it)\b/i.test(dept) ||
-        dept === 'ioa' ||
-        /\b(ioa)\b/i.test(dept) ||
-        dept.includes('career') ||
-        dept.includes('careear') ||
-        dept.includes('hr') ||
-        /\b(hr)\b/i.test(dept) ||
-        dept.includes('faculty') ||
-        dept.includes('education') ||
-        dept.includes('admin') ||
-        /\b(admin)\b/i.test(dept);
-      return !isKnown || dept.includes('other');
+      return isOthersRole(empDept);
     }
 
     return dept === target;
@@ -260,12 +268,10 @@ const AdminDashboard = () => {
         }
 
         // Role Filter Tab
-        if (selectedRoleTab !== 'All') {
-          const empId = log.employeeId?._id || log.employeeId;
-          const employeeObj = employees.find(e => e._id === empId) || (typeof log.employeeId === 'object' ? log.employeeId : null);
-          const empDept = employeeObj?.department || employeeObj?.designation || log.employeeId?.department || '';
-          if (!isRoleMatch(empDept, selectedRoleTab)) return false;
-        }
+        const empId = log.employeeId?._id || log.employeeId;
+        const employeeObj = employees.find(e => e._id === empId) || (typeof log.employeeId === 'object' ? log.employeeId : null);
+        const empDept = employeeObj?.department || employeeObj?.designation || log.employeeId?.department || '';
+        if (!isRoleMatch(empDept, selectedRoleTab)) return false;
         if (filterEmployee && !log.employeeId?.name?.toLowerCase().includes(filterEmployee.toLowerCase())) return false;
         if (filterTask) {
           const title = (log.taskId?.title || log.customTaskTitle || '').toLowerCase();
