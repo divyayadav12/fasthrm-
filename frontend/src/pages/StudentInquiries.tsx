@@ -429,76 +429,84 @@ export default function StudentInquiries() {
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Total Inquiries */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Calls</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats?.total || inquiries.length}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-            <PhoneCall className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Solved */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Solved</p>
-            <p className="text-2xl font-bold text-emerald-700 mt-1">{stats?.solved || 0}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Follow Up */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-amber-600 uppercase tracking-wider">Follow Up</p>
-            <p className="text-2xl font-bold text-amber-700 mt-1">{stats?.followUp || 0}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Purchases */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-blue-600 uppercase tracking-wider">Purchases</p>
-            <p className="text-2xl font-bold text-blue-700 mt-1">{stats?.purchases || 0}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-            <ShoppingBag className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
       {/* Filters & Search Toolbar */}
       <div className="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 flex flex-col md:flex-row gap-3 items-center justify-between">
-        {/* Search Bar */}
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name, number, INQ ID..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-          />
-          {searchTerm && (
+        {/* Left Side: Search Bar & Quick Filter Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto flex-1">
+          {/* Search Bar */}
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, number, INQ ID..."
+              className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Dedicated "Enquiry" Filter Button */}
+          <button
+            onClick={() => setCallTypeFilter(callTypeFilter === 'Enquiry' ? 'ALL' : 'Enquiry')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border shadow-2xs ${
+              callTypeFilter === 'Enquiry'
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/20 ring-2 ring-indigo-500/30'
+                : 'bg-indigo-50/70 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+            }`}
+          >
+            <Headphones className="w-4 h-4" />
+            <span>Enquiry Only</span>
+            {callTypeFilter === 'Enquiry' && (
+              <span className="bg-white text-indigo-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase">
+                Active
+              </span>
+            )}
+          </button>
+
+          {/* Quick "Tech Issue" Filter Button */}
+          <button
+            onClick={() => setCallTypeFilter(callTypeFilter === 'Tech Issue' ? 'ALL' : 'Tech Issue')}
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all border shadow-2xs ${
+              callTypeFilter === 'Tech Issue'
+                ? 'bg-orange-600 text-white border-orange-600 shadow-orange-600/20 ring-2 ring-orange-500/30'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700'
+            }`}
+          >
+            <span>Tech Issue</span>
+          </button>
+
+          {/* Quick "Dispatch" Filter Button */}
+          <button
+            onClick={() => setCallTypeFilter(callTypeFilter === 'Dispatch Related' ? 'ALL' : 'Dispatch Related')}
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all border shadow-2xs ${
+              callTypeFilter === 'Dispatch Related'
+                ? 'bg-purple-600 text-white border-purple-600 shadow-purple-600/20 ring-2 ring-purple-500/30'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-purple-50 hover:text-purple-700'
+            }`}
+          >
+            <span>Dispatch</span>
+          </button>
+
+          {/* Reset Filter Button if active */}
+          {callTypeFilter !== 'ALL' && (
             <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => setCallTypeFilter('ALL')}
+              className="text-xs text-red-600 hover:text-red-700 font-semibold px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
             >
-              <X className="w-4 h-4" />
+              Show All
             </button>
           )}
         </div>
 
-        {/* Filter Dropdowns */}
+        {/* Right Side: Status & Date Filter Dropdowns */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {/* Status Filter */}
           <select
@@ -510,20 +518,6 @@ export default function StudentInquiries() {
             {STATUS_TYPES.map((st) => (
               <option key={st} value={st}>
                 {st}
-              </option>
-            ))}
-          </select>
-
-          {/* Call Type Filter */}
-          <select
-            value={callTypeFilter}
-            onChange={(e) => setCallTypeFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="ALL">All Call Types</option>
-            {CALL_TYPES.map((ct) => (
-              <option key={ct} value={ct}>
-                {ct}
               </option>
             ))}
           </select>
