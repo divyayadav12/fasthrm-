@@ -263,27 +263,14 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
 
 export const sendDailyReportEmailHandler = async (req: Request, res: Response) => {
   try {
-    const { date, sync } = req.body || req.query || {};
+    const { date } = req.body || req.query || {};
     const targetDate = date ? new Date(date as string) : new Date();
 
     const { dispatchDailyWorkReport } = await import('../jobs/dailyReportCron');
 
-    if (sync === 'true' || sync === true) {
-      const result = await dispatchDailyWorkReport(targetDate);
-      return res.json(result);
-    }
-
-    // Return instant 200 OK response so cron-job.org or any external ping never times out!
-    res.status(200).json({
-      success: true,
-      message: 'Daily staff work report PDF dispatch started in background!',
-      timestamp: new Date().toISOString(),
-    });
-
-    // Execute email & PDF generation in background
-    dispatchDailyWorkReport(targetDate).catch((err) => {
-      console.error('[Daily Report Background Dispatch Error]:', err);
-    });
+    // Await complete PDF generation and email sending (takes 2-3s when server is kept awake)
+    const result = await dispatchDailyWorkReport(targetDate);
+    res.json(result);
   } catch (error: any) {
     console.error('Error in sendDailyReportEmailHandler:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal error' });
