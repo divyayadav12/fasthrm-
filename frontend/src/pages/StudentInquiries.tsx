@@ -1169,8 +1169,13 @@ export default function StudentInquiries() {
                     const fieldNum = idx + 1;
                     return (
                       <div key={prevInq._id || idx} className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 uppercase">
-                          <span>Action Taken {fieldNum} (Call #{fieldNum} - {prevInq.inquiryId})</span>
+                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-600 uppercase">
+                          <div className="flex items-center gap-1.5">
+                            <span>Action Taken {fieldNum} (Call #{fieldNum} - {prevInq.inquiryId})</span>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusBadge(prevInq.status)}`}>
+                              {prevInq.status}
+                            </span>
+                          </div>
                           <span className="text-[10px] text-gray-500 font-normal">
                             By {prevInq.addedByName || 'Staff'} on {new Date(prevInq.createdAt).toLocaleDateString('en-IN')}
                           </span>
@@ -1187,9 +1192,14 @@ export default function StudentInquiries() {
 
                 {/* Active / Current Call Action Taken Input */}
                 <div className="space-y-1 pt-1">
-                  <label className="block text-[11px] font-bold text-indigo-700 uppercase">
-                    Action Taken {Math.min(priorInquiriesAsc.length + 1, 4)} (Current Call)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-indigo-700 uppercase">
+                      Action Taken {Math.min(priorInquiriesAsc.length + 1, 4)} (Current Call)
+                    </label>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.status)}`}>
+                      Status: {formData.status}
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={formData.remark}
