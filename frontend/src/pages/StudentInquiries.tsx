@@ -243,17 +243,11 @@ export default function StudentInquiries() {
     }
   }, [formData.mobileNumber, dispatch]);
 
-  // Auto-fill student name & suggest previous inquiry ID if lookup finds matches
+  // Auto-fill student name if lookup finds matches (keep previousInquiryId empty by default so user can choose)
   useEffect(() => {
     if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
       if (!formData.studentName.trim() && lookupResult.studentName) {
         setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
-      }
-      if (!formData.previousInquiryId && lookupResult.latestInquiry.inquiryId) {
-        setFormData((prev) => ({
-          ...prev,
-          previousInquiryId: lookupResult.latestInquiry?.inquiryId || '',
-        }));
       }
     }
   }, [lookupResult]);
@@ -268,12 +262,26 @@ export default function StudentInquiries() {
     return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
   }, [formData.previousInquiryId, lookupResult, inquiries]);
 
-  const priorInquiriesAsc = useMemo(() => {
-    if (!lookupResult?.inquiries || lookupResult.inquiries.length === 0) return [];
-    return [...lookupResult.inquiries].sort(
+  // Compute prior inquiries ONLY if a previous inquiry ID is explicitly selected in the dropdown
+  const linkedPriorInquiries = useMemo(() => {
+    if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') {
+      return [];
+    }
+    if (!lookupResult?.inquiries || lookupResult.inquiries.length === 0) {
+      return [];
+    }
+    const allAsc = [...lookupResult.inquiries].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
-  }, [lookupResult]);
+
+    const targetId = formData.previousInquiryId.trim().toUpperCase();
+    const matchIndex = allAsc.findIndex((i) => i.inquiryId?.toUpperCase() === targetId);
+
+    if (matchIndex !== -1) {
+      return allAsc.slice(0, matchIndex + 1).slice(-3);
+    }
+    return allAsc.slice(-3);
+  }, [formData.previousInquiryId, lookupResult]);
 
   const resetForm = () => {
     setFormData({
@@ -1146,26 +1154,22 @@ export default function StudentInquiries() {
                 />
               </div>
 
-              {/* Dynamic Staff Remark / Action Taken (Action Taken 1, 2, 3, 4 based on visit history) */}
+              {/* Dynamic Staff Remark / Action Taken (Shows prior action fields ONLY when a previous inquiry is selected in dropdown) */}
               <div className="space-y-3 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider">
                     Staff Remark / Action Taken
                   </label>
                   <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/90 px-2.5 py-0.5 rounded-full border border-indigo-200">
-                    {priorInquiriesAsc.length === 0
-                      ? '1st Visit (Fresh Call)'
-                      : priorInquiriesAsc.length === 1
-                      ? '2nd Visit (1 Previous Call)'
-                      : priorInquiriesAsc.length === 2
-                      ? '3rd Visit (2 Previous Calls)'
-                      : `${priorInquiriesAsc.length + 1}th Visit (${priorInquiriesAsc.length} Previous Calls)`}
+                    {linkedPriorInquiries.length === 0
+                      ? 'Fresh Call (No Linked History)'
+                      : `Linked Call Thread (${linkedPriorInquiries.length + 1}th Call in Thread)`}
                   </span>
                 </div>
 
-                {/* Previous Call Auto-filled Fields (Up to 3 prior visits) */}
-                {priorInquiriesAsc.length > 0 &&
-                  priorInquiriesAsc.slice(-3).map((prevInq, idx) => {
+                {/* Previous Call Auto-filled Fields (Shown ONLY if linkedPriorInquiries has items) */}
+                {linkedPriorInquiries.length > 0 &&
+                  linkedPriorInquiries.map((prevInq, idx) => {
                     const fieldNum = idx + 1;
                     return (
                       <div key={prevInq._id || idx} className="space-y-1">
@@ -1194,7 +1198,7 @@ export default function StudentInquiries() {
                 <div className="space-y-1 pt-1">
                   <div className="flex items-center justify-between">
                     <label className="block text-[11px] font-bold text-indigo-700 uppercase">
-                      Action Taken {Math.min(priorInquiriesAsc.length + 1, 4)} (Current Call)
+                      Action Taken {linkedPriorInquiries.length > 0 ? linkedPriorInquiries.length + 1 : 1} (Current Call)
                     </label>
                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.status)}`}>
                       Status: {formData.status}
