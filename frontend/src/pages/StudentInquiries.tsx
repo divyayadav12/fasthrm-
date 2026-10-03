@@ -262,6 +262,33 @@ export default function StudentInquiries() {
     return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
   }, [formData.previousInquiryId, lookupResult, inquiries]);
 
+  // Auto-fill all fields (subject, details, status, callType, etc.) when an inquiry ID is selected from dropdown
+  useEffect(() => {
+    if (selectedPrevInquiry) {
+      setFormData((prev) => ({
+        ...prev,
+        studentName: selectedPrevInquiry.studentName || prev.studentName,
+        callType: selectedPrevInquiry.callType || 'Enquiry',
+        status: selectedPrevInquiry.status || 'Follow Up',
+        subject: selectedPrevInquiry.subject || '',
+        details: selectedPrevInquiry.details || '',
+        remark: selectedPrevInquiry.remark || '',
+        forwardedBy: selectedPrevInquiry.forwardedBy || prev.forwardedBy,
+        forwardedTo: selectedPrevInquiry.forwardedTo || '',
+        alternateNumber: selectedPrevInquiry.alternateNumber || prev.alternateNumber,
+        email: selectedPrevInquiry.email || prev.email,
+      }));
+    } else if (lookupResult?.found) {
+      setFormData((prev) => ({
+        ...prev,
+        subject: '',
+        details: '',
+        remark: '',
+        forwardedTo: '',
+      }));
+    }
+  }, [selectedPrevInquiry]);
+
   // Compute prior inquiries ONLY if a previous inquiry ID is explicitly selected in the dropdown
   const linkedPriorInquiries = useMemo(() => {
     if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') {
@@ -331,22 +358,43 @@ export default function StudentInquiries() {
 
     setIsSubmitting(true);
     try {
-      const resultAction = await dispatch(createStudentInquiry(formData));
-      if (createStudentInquiry.fulfilled.match(resultAction)) {
-        setNotificationMsg({
-          type: 'success',
-          text: `Inquiry ${resultAction.payload.inquiry.inquiryId} logged successfully!`,
-        });
-        handleCloseAddModal();
-        loadData();
+      if (selectedPrevInquiry && selectedPrevInquiry._id) {
+        // If an existing inquiry ID was selected from the dropdown, UPDATE that inquiry record
+        const resultAction = await dispatch(
+          updateStudentInquiry({ id: selectedPrevInquiry._id, data: formData })
+        );
+        if (updateStudentInquiry.fulfilled.match(resultAction)) {
+          setNotificationMsg({
+            type: 'success',
+            text: `Inquiry ${selectedPrevInquiry.inquiryId} updated successfully!`,
+          });
+          handleCloseAddModal();
+          loadData();
+        } else {
+          setNotificationMsg({
+            type: 'error',
+            text: (resultAction.payload as string) || 'Failed to update inquiry',
+          });
+        }
       } else {
-        setNotificationMsg({
-          type: 'error',
-          text: (resultAction.payload as string) || 'Failed to create inquiry',
-        });
+        // Create new inquiry when -- None -- or no ID selected
+        const resultAction = await dispatch(createStudentInquiry(formData));
+        if (createStudentInquiry.fulfilled.match(resultAction)) {
+          setNotificationMsg({
+            type: 'success',
+            text: `Inquiry ${resultAction.payload.inquiry.inquiryId} logged successfully!`,
+          });
+          handleCloseAddModal();
+          loadData();
+        } else {
+          setNotificationMsg({
+            type: 'error',
+            text: (resultAction.payload as string) || 'Failed to create inquiry',
+          });
+        }
       }
     } catch (err: any) {
-      setNotificationMsg({ type: 'error', text: err.message || 'Error creating inquiry' });
+      setNotificationMsg({ type: 'error', text: err.message || 'Error saving inquiry' });
     } finally {
       setIsSubmitting(false);
       setTimeout(() => setNotificationMsg(null), 4000);
@@ -1278,7 +1326,11 @@ export default function StudentInquiries() {
                       <span>Saving...</span>
                     </>
                   ) : (
-                    <span>Save Inquiry</span>
+                    <span>
+                      {selectedPrevInquiry
+                        ? `Update Inquiry (${selectedPrevInquiry.inquiryId})`
+                        : 'Save Inquiry'}
+                    </span>
                   )}
                 </button>
               </div>
