@@ -12,7 +12,10 @@ import {
 
 const router = express.Router();
 
-// Apply protect + supportOrAdminOnly to all routes
+// Allow all authenticated users to get support staff list
+router.get('/support-staff', protect, getSupportStaffList);
+
+// Apply protect + supportOrAdminOnly to all student inquiry CRUD routes
 router.use(protect);
 router.use(supportOrAdminOnly);
 
@@ -21,7 +24,6 @@ router.route('/')
   .post(createStudentInquiry);
 
 router.get('/lookup', lookupStudentByPhone);
-router.get('/support-staff', getSupportStaffList);
 
 router.route('/:id')
   .get(getStudentInquiryById)

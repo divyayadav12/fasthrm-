@@ -66,6 +66,14 @@ export const canAccessStudentInquiry = (user: any): boolean => {
 const CALL_TYPES = ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchases', 'Others'] as const;
 const STATUS_TYPES = ['Solved', 'Follow Up', 'Purchases', 'Pending', 'Others'] as const;
 
+const DEFAULT_SUPPORT_STAFF = [
+  { _id: 'def-1', name: 'Divya yadav', department: 'IT and support', designation: 'IT Support' },
+  { _id: 'def-2', name: 'Jyoti', department: 'IT and support', designation: 'IT Support' },
+  { _id: 'def-3', name: 'Pallavi', department: 'IT and support', designation: 'IT Support' },
+  { _id: 'def-4', name: 'Palavi', department: 'IT and support', designation: 'IT Support' },
+  { _id: 'def-5', name: 'Admin', department: 'Admin', designation: 'Admin' },
+];
+
 export default function StudentInquiries() {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
@@ -83,32 +91,55 @@ export default function StudentInquiries() {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const isAuthorized = canAccessStudentInquiry(user);
 
-  const [supportStaffList, setSupportStaffList] = useState<any[]>([]);
+  const [supportStaffList, setSupportStaffList] = useState<any[]>(DEFAULT_SUPPORT_STAFF);
 
   useEffect(() => {
     dispatch(fetchEmployees({ limit: 200 }));
 
     const fetchSupportStaff = async () => {
       try {
-        const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+        const token = user?.token || localStorage.getItem('token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
         const res = await axios.get(`${API_URL}/student-inquiries/support-staff`, config);
         if (res.data?.staff && Array.isArray(res.data.staff) && res.data.staff.length > 0) {
           setSupportStaffList(res.data.staff);
+          return;
         }
       } catch (err) {
-        console.error('Error fetching support staff list:', err);
+        console.error('Error fetching support staff list from /support-staff:', err);
+      }
+
+      try {
+        const token = user?.token || localStorage.getItem('token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const empRes = await axios.get(`${API_URL}/employees?limit=200`, config);
+        if (empRes.data?.employees && Array.isArray(empRes.data.employees) && empRes.data.employees.length > 0) {
+          setSupportStaffList(empRes.data.employees);
+        }
+      } catch (e2) {
+        console.error('Fallback fetch /employees failed:', e2);
       }
     };
 
-    if (user?.token) {
-      fetchSupportStaff();
-    }
+    fetchSupportStaff();
   }, [dispatch, user]);
 
   const itSupportEmployees = useMemo(() => {
     const rawList = supportStaffList.length > 0 ? supportStaffList : (employees || []);
-    const filtered = rawList.filter((emp) => {
-      if (!emp || !emp.name || emp.name.trim().toLowerCase() === 'unknown') return false;
+    
+    // Deduplicate by clean lowercase name
+    const seenNames = new Set<string>();
+    const uniqueList: any[] = [];
+    rawList.forEach((emp) => {
+      if (!emp || !emp.name || emp.name.trim().toLowerCase() === 'unknown') return;
+      const clean = emp.name.trim().toLowerCase();
+      if (!seenNames.has(clean)) {
+        seenNames.add(clean);
+        uniqueList.push(emp);
+      }
+    });
+
+    const filtered = uniqueList.filter((emp) => {
       const dept = (emp.department || emp.designation || '').toLowerCase().trim();
       if (dept.includes('editor') || dept.includes('dtp')) return false;
       return (
@@ -121,7 +152,7 @@ export default function StudentInquiries() {
     });
 
     if (filtered.length > 0) return filtered;
-    return rawList.filter((e) => e && e.name && e.name.trim().toLowerCase() !== 'unknown');
+    return uniqueList;
   }, [supportStaffList, employees]);
 
   // Filter States
