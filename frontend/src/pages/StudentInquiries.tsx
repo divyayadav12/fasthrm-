@@ -243,29 +243,17 @@ export default function StudentInquiries() {
     }
   }, [formData.mobileNumber, dispatch]);
 
-  // When mobile number lookup finds existing student inquiry history, auto-fill all form fields with latest inquiry details by default
+  // When mobile number lookup succeeds, auto-fill ONLY student name (keep fields blank and previousInquiryId empty for fresh inquiry)
   useEffect(() => {
     if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
-      const latest = lookupResult.latestInquiry;
-      setFormData((prev) => ({
-        ...prev,
-        studentName: latest.studentName || prev.studentName,
-        callType: latest.callType || 'Enquiry',
-        status: latest.status || 'Follow Up',
-        subject: latest.subject || '',
-        details: latest.details || '',
-        remark: latest.remark || '',
-        forwardedBy: latest.forwardedBy || prev.forwardedBy,
-        forwardedTo: latest.forwardedTo || '',
-        alternateNumber: latest.alternateNumber || prev.alternateNumber,
-        email: latest.email || prev.email,
-        previousInquiryId: latest.inquiryId || prev.previousInquiryId,
-      }));
+      if (!formData.studentName.trim() && lookupResult.studentName) {
+        setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
+      }
     }
   }, [lookupResult]);
 
   const selectedPrevInquiry = useMemo(() => {
-    if (!formData.previousInquiryId) return null;
+    if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') return null;
     const targetId = formData.previousInquiryId.trim().toUpperCase();
     if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
       const match = lookupResult.inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId);
@@ -274,42 +262,35 @@ export default function StudentInquiries() {
     return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
   }, [formData.previousInquiryId, lookupResult, inquiries]);
 
-  // When user selects a specific inquiry ID from the dropdown, auto-fill all details from that selected inquiry
+  // Auto-fill fields ONLY when an existing inquiry ID is explicitly selected from the dropdown
   useEffect(() => {
-    if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') {
-      if (lookupResult?.found) {
-        setFormData((prev) => ({
-          ...prev,
-          subject: '',
-          details: '',
-          remark: '',
-          forwardedTo: '',
-        }));
-      }
-      return;
-    }
-
-    const targetId = formData.previousInquiryId.trim().toUpperCase();
-    const match = (lookupResult?.inquiries || inquiries).find(
-      (i) => i.inquiryId?.toUpperCase() === targetId
-    );
-
-    if (match) {
+    if (selectedPrevInquiry) {
       setFormData((prev) => ({
         ...prev,
-        studentName: match.studentName || prev.studentName,
-        callType: match.callType || 'Enquiry',
-        status: match.status || 'Follow Up',
-        subject: match.subject || '',
-        details: match.details || '',
-        remark: match.remark || '',
-        forwardedBy: match.forwardedBy || prev.forwardedBy,
-        forwardedTo: match.forwardedTo || '',
-        alternateNumber: match.alternateNumber || prev.alternateNumber,
-        email: match.email || prev.email,
+        studentName: selectedPrevInquiry.studentName || prev.studentName,
+        callType: selectedPrevInquiry.callType || 'Enquiry',
+        status: selectedPrevInquiry.status || 'Follow Up',
+        subject: selectedPrevInquiry.subject || '',
+        details: selectedPrevInquiry.details || '',
+        remark: selectedPrevInquiry.remark || '',
+        forwardedBy: selectedPrevInquiry.forwardedBy || prev.forwardedBy,
+        forwardedTo: selectedPrevInquiry.forwardedTo || '',
+        alternateNumber: selectedPrevInquiry.alternateNumber || prev.alternateNumber,
+        email: selectedPrevInquiry.email || prev.email,
+      }));
+    } else {
+      // If -- None (Fresh Inquiry) -- is selected (or previousInquiryId is empty), reset details/subject/remark/status for fresh entry
+      setFormData((prev) => ({
+        ...prev,
+        subject: '',
+        details: '',
+        remark: '',
+        forwardedTo: '',
+        callType: 'Enquiry',
+        status: 'Follow Up',
       }));
     }
-  }, [formData.previousInquiryId, lookupResult, inquiries]);
+  }, [selectedPrevInquiry]);
 
   // Compute prior inquiries ONLY if a previous inquiry ID is explicitly selected in the dropdown
   const linkedPriorInquiries = useMemo(() => {
