@@ -262,32 +262,25 @@ export default function StudentInquiries() {
     return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
   }, [formData.previousInquiryId, lookupResult, inquiries]);
 
-  // Auto-fill all fields (subject, details, status, callType, etc.) when an inquiry ID is selected from dropdown
+  // Auto-fill all fields (subject, details, status, callType, etc.) when an inquiry ID is selected or when existing student number is found
   useEffect(() => {
-    if (selectedPrevInquiry) {
+    const targetInq = selectedPrevInquiry || (lookupResult?.found ? lookupResult.latestInquiry : null);
+    if (targetInq) {
       setFormData((prev) => ({
         ...prev,
-        studentName: selectedPrevInquiry.studentName || prev.studentName,
-        callType: selectedPrevInquiry.callType || 'Enquiry',
-        status: selectedPrevInquiry.status || 'Follow Up',
-        subject: selectedPrevInquiry.subject || '',
-        details: selectedPrevInquiry.details || '',
-        remark: selectedPrevInquiry.remark || '',
-        forwardedBy: selectedPrevInquiry.forwardedBy || prev.forwardedBy,
-        forwardedTo: selectedPrevInquiry.forwardedTo || '',
-        alternateNumber: selectedPrevInquiry.alternateNumber || prev.alternateNumber,
-        email: selectedPrevInquiry.email || prev.email,
-      }));
-    } else if (lookupResult?.found) {
-      setFormData((prev) => ({
-        ...prev,
-        subject: '',
-        details: '',
-        remark: '',
-        forwardedTo: '',
+        studentName: targetInq.studentName || prev.studentName,
+        callType: targetInq.callType || 'Enquiry',
+        status: targetInq.status || 'Follow Up',
+        subject: targetInq.subject || '',
+        details: targetInq.details || '',
+        remark: targetInq.remark || '',
+        forwardedBy: targetInq.forwardedBy || prev.forwardedBy,
+        forwardedTo: targetInq.forwardedTo || '',
+        alternateNumber: targetInq.alternateNumber || prev.alternateNumber,
+        email: targetInq.email || prev.email,
       }));
     }
-  }, [selectedPrevInquiry]);
+  }, [selectedPrevInquiry, lookupResult]);
 
   // Compute prior inquiries ONLY if a previous inquiry ID is explicitly selected in the dropdown
   const linkedPriorInquiries = useMemo(() => {
@@ -358,31 +351,33 @@ export default function StudentInquiries() {
 
     setIsSubmitting(true);
     try {
-      if (selectedPrevInquiry && selectedPrevInquiry._id) {
-        // If an existing inquiry ID was selected from the dropdown, UPDATE that inquiry record
+      // Always UPDATE if student mobile number exists in DB or if an inquiry ID is selected, preventing duplicate rows
+      const targetInquiryToUpdate = selectedPrevInquiry || (lookupResult?.found ? lookupResult.latestInquiry : null);
+
+      if (targetInquiryToUpdate && targetInquiryToUpdate._id) {
         const resultAction = await dispatch(
-          updateStudentInquiry({ id: selectedPrevInquiry._id, data: formData })
+          updateStudentInquiry({ id: targetInquiryToUpdate._id, data: formData })
         );
         if (updateStudentInquiry.fulfilled.match(resultAction)) {
           setNotificationMsg({
             type: 'success',
-            text: `Inquiry ${selectedPrevInquiry.inquiryId} updated successfully!`,
+            text: `Student Record ${targetInquiryToUpdate.inquiryId} updated successfully!`,
           });
           handleCloseAddModal();
           loadData();
         } else {
           setNotificationMsg({
             type: 'error',
-            text: (resultAction.payload as string) || 'Failed to update inquiry',
+            text: (resultAction.payload as string) || 'Failed to update student record',
           });
         }
       } else {
-        // Create new inquiry when -- None -- or no ID selected
+        // Create new inquiry ONLY IF student mobile number is completely new to the database
         const resultAction = await dispatch(createStudentInquiry(formData));
         if (createStudentInquiry.fulfilled.match(resultAction)) {
           setNotificationMsg({
             type: 'success',
-            text: `Inquiry ${resultAction.payload.inquiry.inquiryId} logged successfully!`,
+            text: `New Student Inquiry ${resultAction.payload.inquiry.inquiryId} logged successfully!`,
           });
           handleCloseAddModal();
           loadData();
@@ -1327,9 +1322,9 @@ export default function StudentInquiries() {
                     </>
                   ) : (
                     <span>
-                      {selectedPrevInquiry
-                        ? `Update Inquiry (${selectedPrevInquiry.inquiryId})`
-                        : 'Save Inquiry'}
+                      {selectedPrevInquiry || lookupResult?.found
+                        ? `Update Student Record (${selectedPrevInquiry?.inquiryId || lookupResult?.latestInquiry?.inquiryId})`
+                        : 'Save New Inquiry'}
                     </span>
                   )}
                 </button>
