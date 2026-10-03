@@ -243,12 +243,24 @@ export default function StudentInquiries() {
     }
   }, [formData.mobileNumber, dispatch]);
 
-  // Auto-fill student name if lookup finds matches (keep previousInquiryId empty by default so user can choose)
+  // When mobile number lookup finds existing student inquiry history, auto-fill all form fields with latest inquiry details by default
   useEffect(() => {
     if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
-      if (!formData.studentName.trim() && lookupResult.studentName) {
-        setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
-      }
+      const latest = lookupResult.latestInquiry;
+      setFormData((prev) => ({
+        ...prev,
+        studentName: latest.studentName || prev.studentName,
+        callType: latest.callType || 'Enquiry',
+        status: latest.status || 'Follow Up',
+        subject: latest.subject || '',
+        details: latest.details || '',
+        remark: latest.remark || '',
+        forwardedBy: latest.forwardedBy || prev.forwardedBy,
+        forwardedTo: latest.forwardedTo || '',
+        alternateNumber: latest.alternateNumber || prev.alternateNumber,
+        email: latest.email || prev.email,
+        previousInquiryId: latest.inquiryId || prev.previousInquiryId,
+      }));
     }
   }, [lookupResult]);
 
@@ -262,25 +274,42 @@ export default function StudentInquiries() {
     return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
   }, [formData.previousInquiryId, lookupResult, inquiries]);
 
-  // Auto-fill all fields (subject, details, status, callType, etc.) when an inquiry ID is selected or when existing student number is found
+  // When user selects a specific inquiry ID from the dropdown, auto-fill all details from that selected inquiry
   useEffect(() => {
-    const targetInq = selectedPrevInquiry || (lookupResult?.found ? lookupResult.latestInquiry : null);
-    if (targetInq) {
+    if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') {
+      if (lookupResult?.found) {
+        setFormData((prev) => ({
+          ...prev,
+          subject: '',
+          details: '',
+          remark: '',
+          forwardedTo: '',
+        }));
+      }
+      return;
+    }
+
+    const targetId = formData.previousInquiryId.trim().toUpperCase();
+    const match = (lookupResult?.inquiries || inquiries).find(
+      (i) => i.inquiryId?.toUpperCase() === targetId
+    );
+
+    if (match) {
       setFormData((prev) => ({
         ...prev,
-        studentName: targetInq.studentName || prev.studentName,
-        callType: targetInq.callType || 'Enquiry',
-        status: targetInq.status || 'Follow Up',
-        subject: targetInq.subject || '',
-        details: targetInq.details || '',
-        remark: targetInq.remark || '',
-        forwardedBy: targetInq.forwardedBy || prev.forwardedBy,
-        forwardedTo: targetInq.forwardedTo || '',
-        alternateNumber: targetInq.alternateNumber || prev.alternateNumber,
-        email: targetInq.email || prev.email,
+        studentName: match.studentName || prev.studentName,
+        callType: match.callType || 'Enquiry',
+        status: match.status || 'Follow Up',
+        subject: match.subject || '',
+        details: match.details || '',
+        remark: match.remark || '',
+        forwardedBy: match.forwardedBy || prev.forwardedBy,
+        forwardedTo: match.forwardedTo || '',
+        alternateNumber: match.alternateNumber || prev.alternateNumber,
+        email: match.email || prev.email,
       }));
     }
-  }, [selectedPrevInquiry, lookupResult]);
+  }, [formData.previousInquiryId, lookupResult, inquiries]);
 
   // Compute prior inquiries ONLY if a previous inquiry ID is explicitly selected in the dropdown
   const linkedPriorInquiries = useMemo(() => {
