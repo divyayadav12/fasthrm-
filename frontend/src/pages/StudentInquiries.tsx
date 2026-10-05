@@ -820,14 +820,13 @@ export default function StudentInquiries() {
                             <Copy className="w-3 h-3" />
                           )}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenWhatsApp(inq.mobileNumber)}
-                          className="text-emerald-600 hover:text-emerald-700 ml-1 p-0.5 hover:bg-emerald-50 rounded transition-colors"
-                          title="Chat on WhatsApp"
+                        <a
+                          href={`whatsapp://send?phone=91${inq.mobileNumber.replace(/\D/g, '').slice(-10)}`}
+                          className="text-emerald-600 hover:text-emerald-700 ml-1 p-0.5 hover:bg-emerald-50 rounded transition-colors inline-flex items-center"
+                          title="Open in WhatsApp App"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
-                        </button>
+                        </a>
                       </div>
                     </td>
 
@@ -1476,7 +1475,14 @@ export default function StudentInquiries() {
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{selectedInquiry.studentName}</h3>
                   <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>{selectedInquiry.mobileNumber}</span>
+                    <span className="font-mono">{selectedInquiry.mobileNumber}</span>
+                    <a
+                      href={`whatsapp://send?phone=91${selectedInquiry.mobileNumber.replace(/\D/g, '').slice(-10)}`}
+                      className="text-emerald-600 hover:text-emerald-700 p-0.5 hover:bg-emerald-50 rounded transition-colors inline-flex items-center"
+                      title="Open in WhatsApp App"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </a>
                     <span>•</span>
                     <span className={`px-2 py-0.5 rounded-full font-semibold border ${getStatusBadge(selectedInquiry.status)}`}>
                       {selectedInquiry.status}
