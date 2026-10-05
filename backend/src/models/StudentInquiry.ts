@@ -10,7 +10,7 @@ export interface IStudentInquiry extends Document {
   subject?: string;
   details?: string;
   remark?: string;
-  status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'Others';
+  status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'FAST Education App' | 'FAST Education 2.0 App' | 'Others';
   forwardedBy?: string;
   forwardedTo?: string;
   addedBy: mongoose.Types.ObjectId;
@@ -77,7 +77,7 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
     },
     status: {
       type: String,
-      enum: ['Solved', 'Follow Up', 'Purchases', 'Pending', 'Others'],
+      enum: ['Solved', 'Follow Up', 'Purchases', 'Pending', 'FAST Education App', 'FAST Education 2.0 App', 'Others'],
       default: 'Pending',
       required: true,
     },

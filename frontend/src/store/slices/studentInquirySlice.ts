@@ -15,7 +15,7 @@ export interface StudentInquiry {
   subject?: string;
   details?: string;
   remark?: string;
-  status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'Others';
+  status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'FAST Education App' | 'FAST Education 2.0 App' | 'Others';
   forwardedBy?: string;
   forwardedTo?: string;
   addedBy: {

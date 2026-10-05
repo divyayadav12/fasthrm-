@@ -64,7 +64,15 @@ export const canAccessStudentInquiry = (user: any): boolean => {
 };
 
 const CALL_TYPES = ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchases', 'Others'] as const;
-const STATUS_TYPES = ['Solved', 'Follow Up', 'Purchases', 'Pending', 'Others'] as const;
+const STATUS_TYPES = [
+  'Solved',
+  'Follow Up',
+  'Purchases',
+  'Pending',
+  'FAST Education App',
+  'FAST Education 2.0 App',
+  'Others',
+] as const;
 
 const DEFAULT_SUPPORT_STAFF = [
   { _id: 'def-1', name: 'Divya yadav', department: 'IT and support', designation: 'IT Support' },
@@ -508,6 +516,10 @@ export default function StudentInquiries() {
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'Pending':
         return 'bg-rose-50 text-rose-700 border-rose-200';
+      case 'FAST Education App':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'FAST Education 2.0 App':
+        return 'bg-cyan-50 text-cyan-700 border-cyan-200';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
     }
