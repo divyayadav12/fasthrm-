@@ -483,6 +483,16 @@ export default function StudentInquiries() {
     setTimeout(() => setCopiedPhone(null), 2000);
   };
 
+  const handleOpenWhatsApp = (mobileNumber: string) => {
+    const cleanNumber = (mobileNumber || '').replace(/\D/g, '').slice(-10);
+    if (!cleanNumber) return;
+    const whatsappUrl = `https://web.whatsapp.com/send/?phone=91${cleanNumber}`;
+    const win = window.open(whatsappUrl, 'WhatsAppWeb');
+    if (win) {
+      win.focus();
+    }
+  };
+
   // Status Badge Colors
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -806,15 +816,14 @@ export default function StudentInquiries() {
                             <Copy className="w-3 h-3" />
                           )}
                         </button>
-                        <a
-                          href={`https://web.whatsapp.com/send/?phone=91${inq.mobileNumber.replace(/\D/g, '').slice(-10)}`}
-                          target="whatsapp_web"
-                          rel="noreferrer"
-                          className="text-emerald-600 hover:text-emerald-700 ml-1"
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWhatsApp(inq.mobileNumber)}
+                          className="text-emerald-600 hover:text-emerald-700 ml-1 p-0.5 hover:bg-emerald-50 rounded transition-colors"
                           title="Chat on WhatsApp"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
-                        </a>
+                        </button>
                       </div>
                     </td>
 
