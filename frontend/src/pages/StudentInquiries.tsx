@@ -613,18 +613,18 @@ export default function StudentInquiries() {
       {/* Filters & Search Toolbar */}
       <div className="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 flex flex-col gap-3">
         {/* Top Row: Search, Quick Filters & Dropdowns */}
-        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="flex flex-col lg:flex-row gap-3 items-center justify-between">
           {/* Left Side: Search Bar & Quick Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto flex-1">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto flex-1">
             {/* Search Bar */}
-            <div className="relative w-full sm:w-80">
+            <div className="relative w-full sm:w-60">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name, number, INQ ID..."
-                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                className="w-full pl-10 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               />
               {searchTerm && (
                 <button
@@ -639,7 +639,7 @@ export default function StudentInquiries() {
             {/* Dedicated "Enquiry" Filter Button */}
             <button
               onClick={() => setCallTypeFilter(callTypeFilter === 'Enquiry' ? 'ALL' : 'Enquiry')}
-              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+              className={`h-9 inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
                 callTypeFilter === 'Enquiry'
                   ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/25 ring-2 ring-indigo-500/20'
                   : 'bg-white text-gray-700 border-gray-200/90 hover:bg-indigo-50/60 hover:text-indigo-600 hover:border-indigo-200'
@@ -657,7 +657,7 @@ export default function StudentInquiries() {
             {/* Quick "Tech Issue" Filter Button */}
             <button
               onClick={() => setCallTypeFilter(callTypeFilter === 'Tech Issue' ? 'ALL' : 'Tech Issue')}
-              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+              className={`h-9 inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
                 callTypeFilter === 'Tech Issue'
                   ? 'bg-orange-600 text-white border-orange-600 shadow-orange-600/25 ring-2 ring-orange-500/20'
                   : 'bg-white text-gray-700 border-gray-200/90 hover:bg-orange-50/60 hover:text-orange-600 hover:border-orange-200'
@@ -670,7 +670,7 @@ export default function StudentInquiries() {
             {/* Quick "Dispatch" Filter Button */}
             <button
               onClick={() => setCallTypeFilter(callTypeFilter === 'Dispatch Related' ? 'ALL' : 'Dispatch Related')}
-              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+              className={`h-9 inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
                 callTypeFilter === 'Dispatch Related'
                   ? 'bg-purple-600 text-white border-purple-600 shadow-purple-600/25 ring-2 ring-purple-500/20'
                   : 'bg-white text-gray-700 border-gray-200/90 hover:bg-purple-50/60 hover:text-purple-600 hover:border-purple-200'
@@ -683,7 +683,7 @@ export default function StudentInquiries() {
             {/* Quick "Follow Up" Filter Button */}
             <button
               onClick={() => setStatusFilter(statusFilter === 'Follow Up' ? 'ALL' : 'Follow Up')}
-              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+              className={`h-9 inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
                 statusFilter === 'Follow Up'
                   ? 'bg-amber-600 text-white border-amber-600 shadow-amber-600/25 ring-2 ring-amber-500/20'
                   : 'bg-white text-gray-700 border-gray-200/90 hover:bg-amber-50/60 hover:text-amber-600 hover:border-amber-200'
