@@ -166,6 +166,7 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
       addedBy,
       dateFrom,
       dateTo,
+      followUpDate,
       page = 1,
       limit = 50,
       sortBy = 'createdAt',
@@ -198,6 +199,15 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
 
     if (addedBy && addedBy !== 'ALL') {
       query.addedBy = addedBy;
+    }
+
+    if (followUpDate && typeof followUpDate === 'string' && followUpDate.trim()) {
+      const fDate = new Date(followUpDate.trim());
+      const startOfDay = new Date(fDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(fDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      query.followUpDate = { $gte: startOfDay, $lte: endOfDay };
     }
 
     if (dateFrom || dateTo) {

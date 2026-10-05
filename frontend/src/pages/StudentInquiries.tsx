@@ -160,6 +160,7 @@ export default function StudentInquiries() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [callTypeFilter, setCallTypeFilter] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
+  const [followUpDateFilter, setFollowUpDateFilter] = useState('');
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -195,6 +196,7 @@ export default function StudentInquiries() {
     if (searchTerm.trim()) params.search = searchTerm.trim();
     if (statusFilter !== 'ALL') params.status = statusFilter;
     if (callTypeFilter !== 'ALL') params.callType = callTypeFilter;
+    if (followUpDateFilter) params.followUpDate = followUpDateFilter;
 
     if (dateFilter === 'TODAY') {
       const today = new Date().toISOString().split('T')[0];
@@ -223,7 +225,7 @@ export default function StudentInquiries() {
     if (isAuthorized) {
       loadData();
     }
-  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter]);
+  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter, followUpDateFilter]);
 
   // Debounced search
   useEffect(() => {
@@ -649,10 +651,53 @@ export default function StudentInquiries() {
             <span>Dispatch</span>
           </button>
 
+          {/* Quick "Follow Up" Filter Button (Next to Dispatch) */}
+          <button
+            onClick={() => setStatusFilter(statusFilter === 'Follow Up' ? 'ALL' : 'Follow Up')}
+            className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+              statusFilter === 'Follow Up'
+                ? 'bg-amber-600 text-white border-amber-600 shadow-amber-600/25 ring-2 ring-amber-500/20'
+                : 'bg-white text-gray-700 border-gray-200/90 hover:bg-amber-50/60 hover:text-amber-600 hover:border-amber-200'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-500" />
+            <span>Follow Up</span>
+            {statusFilter === 'Follow Up' && (
+              <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
+                Active
+              </span>
+            )}
+          </button>
+
+          {/* Follow-Up Date Filter Picker */}
+          <div className="relative flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 h-10 shadow-2xs">
+            <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <input
+              type="date"
+              value={followUpDateFilter}
+              onChange={(e) => setFollowUpDateFilter(e.target.value)}
+              title="Filter by Follow-Up Date"
+              className="text-xs font-semibold text-gray-700 bg-transparent border-none focus:outline-hidden cursor-pointer"
+            />
+            {followUpDateFilter && (
+              <button
+                onClick={() => setFollowUpDateFilter('')}
+                className="p-0.5 text-gray-400 hover:text-red-500 rounded-full"
+                title="Clear Follow-Up Date filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           {/* Reset Filter Button if active */}
-          {callTypeFilter !== 'ALL' && (
+          {(callTypeFilter !== 'ALL' || statusFilter !== 'ALL' || followUpDateFilter !== '') && (
             <button
-              onClick={() => setCallTypeFilter('ALL')}
+              onClick={() => {
+                setCallTypeFilter('ALL');
+                setStatusFilter('ALL');
+                setFollowUpDateFilter('');
+              }}
               className="h-10 inline-flex items-center px-3 text-xs text-red-600 hover:text-red-700 font-semibold bg-red-50 hover:bg-red-100 rounded-xl transition-colors border border-red-100 whitespace-nowrap cursor-pointer"
             >
               <X className="w-3.5 h-3.5 mr-1" />
@@ -1267,12 +1312,12 @@ export default function StudentInquiries() {
                 </div>
               </div>
 
-              {/* Forwarded By & Forwarded To Row */}
+              {/* Handled By & Handled To Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Forwarded By */}
+                {/* Handled By */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Forwarded By
+                    Handled By
                   </label>
                   <div className="relative">
                     <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
@@ -1286,10 +1331,10 @@ export default function StudentInquiries() {
                   <p className="text-[11px] text-gray-400 mt-1">Auto-filled with logged-in employee name</p>
                 </div>
 
-                {/* Forwarded To (IT and Support Employees Dropdown) */}
+                {/* Handled To (IT and Support Employees Dropdown) */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Forwarded To (IT & Support)
+                    Handled To (IT & Support)
                   </label>
                   <div className="relative">
                     <Headphones className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
@@ -1298,7 +1343,7 @@ export default function StudentInquiries() {
                       onChange={(e) => setFormData({ ...formData, forwardedTo: e.target.value })}
                       className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer"
                     >
-                      <option value="">-- Select IT Support Staff (Optional) --</option>
+                      <option value="">-- Select Handled To Staff (Optional) --</option>
                       {itSupportEmployees.map((emp) => (
                         <option key={emp._id} value={emp.name}>
                           {emp.name} ({emp.designation || emp.department || 'IT & Support'})
@@ -1309,6 +1354,54 @@ export default function StudentInquiries() {
                   </div>
                   <p className="text-[11px] text-gray-400 mt-1">Assign to IT Support employee</p>
                 </div>
+              </div>
+
+              {/* Follow-Up Date (Optional Field, highlighted when Status is 'Follow Up') */}
+              <div
+                className={`p-4 rounded-2xl transition-all border ${
+                  formData.status === 'Follow Up'
+                    ? 'bg-amber-50/80 border-amber-200/90 shadow-2xs'
+                    : 'bg-gray-50/70 border-gray-200/80'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    className={`block text-xs font-bold uppercase tracking-wider ${
+                      formData.status === 'Follow Up' ? 'text-amber-900' : 'text-gray-700'
+                    }`}
+                  >
+                    Follow-Up Date <span className="font-normal text-gray-500">(Optional)</span>
+                  </label>
+                  {formData.status === 'Follow Up' && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                      Follow Up Active
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Calendar
+                    className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                      formData.status === 'Follow Up' ? 'text-amber-600' : 'text-gray-400'
+                    }`}
+                  />
+                  <input
+                    type="date"
+                    value={formData.followUpDate}
+                    onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      formData.status === 'Follow Up'
+                        ? 'bg-white border border-amber-300 text-amber-900 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
+                        : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500'
+                    }`}
+                  />
+                </div>
+                <p
+                  className={`text-[11px] mt-1 ${
+                    formData.status === 'Follow Up' ? 'text-amber-800 font-medium' : 'text-gray-400'
+                  }`}
+                >
+                  Agar follow-up schedule karna ho to date select karein (Optional).
+                </p>
               </div>
 
               {/* Modal Actions */}
@@ -1344,158 +1437,7 @@ export default function StudentInquiries() {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* ✏️ EDIT INQUIRY MODAL                                     */}
-      {/* ========================================================= */}
-      {isEditModalOpen && editingInquiry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/70 rounded-t-3xl">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Edit Inquiry {editingInquiry.inquiryId}
-                </h3>
-                <p className="text-xs text-gray-500">Student: {editingInquiry.studentName}</p>
-              </div>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleUpdateInquiry} className="p-6 overflow-y-auto space-y-4 flex-1">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData({ ...formData, status: e.target.value as (typeof STATUS_TYPES)[number] })
-                    }
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium"
-                  >
-                    {STATUS_TYPES.map((st) => (
-                      <option key={st} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Call Type</label>
-                  <select
-                    value={formData.callType}
-                    onChange={(e) =>
-                      setFormData({ ...formData, callType: e.target.value as (typeof CALL_TYPES)[number] })
-                    }
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium"
-                  >
-                    {CALL_TYPES.map((ct) => (
-                      <option key={ct} value={ct}>
-                        {ct}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Subject</label>
-                <input
-                  type="text"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Inquiry Details</label>
-                <textarea
-                  rows={3}
-                  value={formData.details}
-                  onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Staff Remark</label>
-                <input
-                  type="text"
-                  value={formData.remark}
-                  onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                />
-              </div>
-
-              {/* Forwarded By & Forwarded To in Edit Modal */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Forwarded By</label>
-                  <input
-                    type="text"
-                    value={formData.forwardedBy}
-                    onChange={(e) => setFormData({ ...formData, forwardedBy: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Forwarded To (IT Support)</label>
-                  <select
-                    value={formData.forwardedTo}
-                    onChange={(e) => setFormData({ ...formData, forwardedTo: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                  >
-                    <option value="">-- None / Select IT Staff --</option>
-                    {itSupportEmployees.map((emp) => (
-                      <option key={emp._id} value={emp.name}>
-                        {emp.name} ({emp.designation || emp.department || 'IT & Support'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Connected / Previous Inquiry Selection in Edit Modal */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                  Previous / Connected Inquiry ID
-                </label>
-                <div className="relative">
-                  <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={formData.previousInquiryId}
-                    onChange={(e) => setFormData({ ...formData, previousInquiryId: e.target.value.toUpperCase() })}
-                    placeholder="e.g. INQ-1001"
-                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono uppercase"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold"
-                >
-                  {isSubmitting ? 'Updating...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================= */}
       {/* 📜 DETAIL & CALL HISTORY TIMELINE MODAL                   */}
