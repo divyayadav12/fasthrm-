@@ -376,7 +376,17 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Inquiry not found' });
     }
 
-    if (studentName !== undefined) inquiry.studentName = studentName.trim();
+    if (studentName !== undefined && studentName.trim()) {
+      const newName = studentName.trim();
+      inquiry.studentName = newName;
+      const cleanPhone = (inquiry.mobileNumber || '').replace(/\D/g, '');
+      if (cleanPhone.length >= 6) {
+        await StudentInquiry.updateMany(
+          { mobileNumber: { $regex: cleanPhone.slice(-10) } },
+          { studentName: newName }
+        );
+      }
+    }
     if (mobileNumber !== undefined) inquiry.mobileNumber = mobileNumber.trim();
     if (alternateNumber !== undefined) inquiry.alternateNumber = alternateNumber.trim();
     if (email !== undefined) inquiry.email = email.trim();

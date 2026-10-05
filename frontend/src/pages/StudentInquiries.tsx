@@ -368,6 +368,7 @@ export default function StudentInquiries() {
       followUpDate: '',
     });
     setFormErrors({});
+    setEditingInquiry(null);
     dispatch(clearLookupResult());
   };
 
@@ -399,8 +400,8 @@ export default function StudentInquiries() {
 
     setIsSubmitting(true);
     try {
-      // Always UPDATE if student mobile number exists in DB or if an inquiry ID is selected, preventing duplicate rows
-      const targetInquiryToUpdate = selectedPrevInquiry || (lookupResult?.found ? lookupResult.latestInquiry : null);
+      // Prioritize editingInquiry when editing, or selected/existing student inquiry to update
+      const targetInquiryToUpdate = editingInquiry || selectedPrevInquiry || (lookupResult?.found ? lookupResult.latestInquiry : null);
 
       if (targetInquiryToUpdate && targetInquiryToUpdate._id) {
         const resultAction = await dispatch(
