@@ -180,7 +180,7 @@ export default function StudentInquiries() {
     subject: '',
     details: '',
     remark: '',
-    status: 'Follow Up' as (typeof STATUS_TYPES)[number],
+    status: 'Pending' as (typeof STATUS_TYPES)[number],
     forwardedBy: user?.name || '',
     forwardedTo: '',
     previousInquiryId: '',
@@ -271,7 +271,7 @@ export default function StudentInquiries() {
         ...prev,
         studentName: selectedPrevInquiry.studentName || prev.studentName,
         callType: selectedPrevInquiry.callType || 'Enquiry',
-        status: selectedPrevInquiry.status || 'Follow Up',
+        status: selectedPrevInquiry.status || 'Pending',
         subject: selectedPrevInquiry.subject || '',
         details: selectedPrevInquiry.details || '',
         remark: selectedPrevInquiry.remark || '',
@@ -289,7 +289,7 @@ export default function StudentInquiries() {
         remark: '',
         forwardedTo: '',
         callType: 'Enquiry',
-        status: 'Follow Up',
+        status: 'Pending',
       }));
     }
   }, [selectedPrevInquiry]);
@@ -325,7 +325,7 @@ export default function StudentInquiries() {
       subject: '',
       details: '',
       remark: '',
-      status: 'Follow Up',
+      status: 'Pending',
       forwardedBy: user?.name || '',
       forwardedTo: '',
       previousInquiryId: '',

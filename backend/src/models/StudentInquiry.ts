@@ -78,7 +78,7 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
     status: {
       type: String,
       enum: ['Solved', 'Follow Up', 'Purchases', 'Pending', 'Others'],
-      default: 'Follow Up',
+      default: 'Pending',
       required: true,
     },
     forwardedBy: {
