@@ -411,21 +411,22 @@ export default function StudentInquiries() {
   const handleOpenEdit = (inquiry: StudentInquiry) => {
     setEditingInquiry(inquiry);
     setFormData({
-      studentName: inquiry.studentName,
-      mobileNumber: inquiry.mobileNumber,
+      studentName: inquiry.studentName || '',
+      mobileNumber: inquiry.mobileNumber || '',
       alternateNumber: inquiry.alternateNumber || '',
       email: inquiry.email || '',
-      callType: inquiry.callType,
+      callType: inquiry.callType || 'Enquiry',
       subject: inquiry.subject || '',
       details: inquiry.details || '',
       remark: inquiry.remark || '',
-      status: inquiry.status,
+      status: inquiry.status || 'Pending',
       forwardedBy: inquiry.forwardedBy || user?.name || '',
       forwardedTo: inquiry.forwardedTo || '',
       previousInquiryId: inquiry.previousInquiryId || '',
       followUpDate: inquiry.followUpDate ? inquiry.followUpDate.split('T')[0] : '',
     });
-    setIsEditModalOpen(true);
+    setFormErrors({});
+    setIsAddModalOpen(true);
   };
 
   const handleUpdateInquiry = async (e: React.FormEvent) => {
