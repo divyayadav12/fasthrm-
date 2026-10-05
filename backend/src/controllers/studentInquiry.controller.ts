@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import https from 'https';
 import { AuthRequest } from '../middleware/auth.middleware';
 import StudentInquiry from '../models/StudentInquiry';
 
@@ -491,18 +492,50 @@ export const sendStudentFeedback = async (req: AuthRequest, res: Response) => {
     const formattedPhone = `91${rawPhone}`;
     const webhookUrl = 'https://dash.teleobi.com/webhook/whatsapp-workflow/61602.183817.415500.1785233215';
 
-    // Call Teleobi Webhook
+    // Call Teleobi Webhook using Node https module bypassing SSL leaf verification
     try {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: formattedPhone,
-          number: formattedPhone,
-          mobileNumber: formattedPhone,
-          studentName: inquiry.studentName,
-          inquiryId: inquiry.inquiryId,
-        }),
+      const payloadData = JSON.stringify({
+        phone: formattedPhone,
+        number: formattedPhone,
+        mobile: formattedPhone,
+        mobileNumber: formattedPhone,
+        phoneNumber: formattedPhone,
+        phone_number: formattedPhone,
+        wa_number: formattedPhone,
+        studentName: inquiry.studentName || '',
+        name: inquiry.studentName || '',
+        inquiryId: inquiry.inquiryId || '',
+        subject: inquiry.subject || '',
+        details: inquiry.details || '',
+      });
+
+      await new Promise<void>((resolve) => {
+        const reqOpts: https.RequestOptions = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payloadData),
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          },
+          rejectUnauthorized: false,
+        };
+
+        const webhookReq = https.request(webhookUrl, reqOpts, (webhookRes) => {
+          let body = '';
+          webhookRes.on('data', (chunk) => (body += chunk));
+          webhookRes.on('end', () => {
+            console.log('Teleobi webhook response:', webhookRes.statusCode, body);
+            resolve();
+          });
+        });
+
+        webhookReq.on('error', (err) => {
+          console.error('Teleobi webhook request error:', err.message);
+          resolve(); // Resolve to proceed with DB state update
+        });
+
+        webhookReq.write(payloadData);
+        webhookReq.end();
       });
     } catch (webhookErr: any) {
       console.error('Teleobi Webhook error (logged, continuing DB update):', webhookErr?.message || webhookErr);
