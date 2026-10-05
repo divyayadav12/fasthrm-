@@ -90,6 +90,9 @@ export default function StudentInquiries() {
     inquiries,
     stats,
     isLoading,
+    total,
+    totalPages,
+    currentPage,
     lookupResult,
     isLookupLoading,
     selectedInquiry,
@@ -163,12 +166,32 @@ export default function StudentInquiries() {
     return uniqueList;
   }, [supportStaffList, employees]);
 
-  // Filter States
+  // Filter & Pagination States
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [callTypeFilter, setCallTypeFilter] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
   const [followUpDateFilter, setFollowUpDateFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const limit = 30;
+
+  // Reset page to 1 whenever filters change
+  const handleStatusChange = (val: string) => {
+    setStatusFilter(val);
+    setPage(1);
+  };
+  const handleCallTypeChange = (val: string) => {
+    setCallTypeFilter(val);
+    setPage(1);
+  };
+  const handleDateFilterChange = (val: string) => {
+    setDateFilter(val);
+    setPage(1);
+  };
+  const handleFollowUpDateChange = (val: string) => {
+    setFollowUpDateFilter(val);
+    setPage(1);
+  };
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -200,7 +223,7 @@ export default function StudentInquiries() {
 
   // Load Inquiries on Mount & Filter Change
   const loadData = () => {
-    const params: any = {};
+    const params: any = { page, limit };
     if (searchTerm.trim()) params.search = searchTerm.trim();
     if (statusFilter !== 'ALL') params.status = statusFilter;
     if (callTypeFilter !== 'ALL') params.callType = callTypeFilter;
@@ -233,12 +256,15 @@ export default function StudentInquiries() {
     if (isAuthorized) {
       loadData();
     }
-  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter, followUpDateFilter]);
+  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter, followUpDateFilter, page]);
 
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isAuthorized) loadData();
+      if (isAuthorized) {
+        setPage(1);
+        loadData();
+      }
     }, 400);
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -958,6 +984,68 @@ export default function StudentInquiries() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Bar */}
+        {total > 0 && (
+          <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div className="text-gray-500 font-medium">
+              Showing <span className="font-semibold text-gray-800">{(page - 1) * limit + 1}</span> to{' '}
+              <span className="font-semibold text-gray-800">{Math.min(page * limit, total)}</span> of{' '}
+              <span className="font-semibold text-gray-800">{total}</span> inquiries (30 per page)
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || isLoading}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xs"
+              >
+                Previous
+              </button>
+
+              {/* Page Number Buttons */}
+              <div className="flex items-center gap-1 px-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                      acc.push('...');
+                    }
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((item, idx) =>
+                    item === '...' ? (
+                      <span key={`dots-${idx}`} className="px-2 py-1 text-gray-400 font-medium">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        onClick={() => setPage(Number(item))}
+                        disabled={isLoading}
+                        className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
+                          page === item
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+              </div>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || isLoading}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xs"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
