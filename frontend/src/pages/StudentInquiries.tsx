@@ -483,13 +483,17 @@ export default function StudentInquiries() {
     setTimeout(() => setCopiedPhone(null), 2000);
   };
 
-  const handleOpenWhatsApp = (mobileNumber: string) => {
+  const handleOpenWhatsApp = (mobileNumber: string, mode: 'app' | 'web' = 'app') => {
     const cleanNumber = (mobileNumber || '').replace(/\D/g, '').slice(-10);
     if (!cleanNumber) return;
-    const whatsappUrl = `https://web.whatsapp.com/send/?phone=91${cleanNumber}`;
-    const win = window.open(whatsappUrl, 'WhatsAppWeb');
-    if (win) {
-      win.focus();
+
+    if (mode === 'app') {
+      // Opens WhatsApp App on PC directly (No browser tab created!)
+      window.location.href = `whatsapp://send?phone=91${cleanNumber}`;
+    } else {
+      // Opens WhatsApp Web in browser
+      const whatsappUrl = `https://web.whatsapp.com/send/?phone=91${cleanNumber}`;
+      window.open(whatsappUrl, 'WhatsAppWeb');
     }
   };
 
