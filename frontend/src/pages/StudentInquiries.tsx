@@ -807,8 +807,8 @@ export default function StudentInquiries() {
                           )}
                         </button>
                         <a
-                          href={`https://wa.me/91${inq.mobileNumber.replace(/\D/g, '').slice(-10)}`}
-                          target="_blank"
+                          href={`https://web.whatsapp.com/send/?phone=91${inq.mobileNumber.replace(/\D/g, '').slice(-10)}`}
+                          target="whatsapp_web"
                           rel="noreferrer"
                           className="text-emerald-600 hover:text-emerald-700 ml-1"
                           title="Chat on WhatsApp"
