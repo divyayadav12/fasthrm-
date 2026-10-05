@@ -585,100 +585,138 @@ export default function StudentInquiries() {
       </div>
 
       {/* Filters & Search Toolbar */}
-      <div className="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 flex flex-col md:flex-row gap-3 items-center justify-between">
-        {/* Left Side: Search Bar & Quick Filter Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto flex-1">
-          {/* Search Bar */}
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, number, INQ ID..."
-              className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+      <div className="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 flex flex-col gap-3">
+        {/* Top Row: Search, Quick Filters & Dropdowns */}
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+          {/* Left Side: Search Bar & Quick Filter Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto flex-1">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, number, INQ ID..."
+                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Dedicated "Enquiry" Filter Button */}
+            <button
+              onClick={() => setCallTypeFilter(callTypeFilter === 'Enquiry' ? 'ALL' : 'Enquiry')}
+              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+                callTypeFilter === 'Enquiry'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/25 ring-2 ring-indigo-500/20'
+                  : 'bg-white text-gray-700 border-gray-200/90 hover:bg-indigo-50/60 hover:text-indigo-600 hover:border-indigo-200'
+              }`}
+            >
+              <Headphones className="w-3.5 h-3.5 text-indigo-500 group-hover:text-indigo-600" />
+              <span>Enquiry</span>
+              {callTypeFilter === 'Enquiry' && (
+                <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
+                  Active
+                </span>
+              )}
+            </button>
+
+            {/* Quick "Tech Issue" Filter Button */}
+            <button
+              onClick={() => setCallTypeFilter(callTypeFilter === 'Tech Issue' ? 'ALL' : 'Tech Issue')}
+              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+                callTypeFilter === 'Tech Issue'
+                  ? 'bg-orange-600 text-white border-orange-600 shadow-orange-600/25 ring-2 ring-orange-500/20'
+                  : 'bg-white text-gray-700 border-gray-200/90 hover:bg-orange-50/60 hover:text-orange-600 hover:border-orange-200'
+              }`}
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-orange-500" />
+              <span>Tech Issue</span>
+            </button>
+
+            {/* Quick "Dispatch" Filter Button */}
+            <button
+              onClick={() => setCallTypeFilter(callTypeFilter === 'Dispatch Related' ? 'ALL' : 'Dispatch Related')}
+              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+                callTypeFilter === 'Dispatch Related'
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-purple-600/25 ring-2 ring-purple-500/20'
+                  : 'bg-white text-gray-700 border-gray-200/90 hover:bg-purple-50/60 hover:text-purple-600 hover:border-purple-200'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5 text-purple-500" />
+              <span>Dispatch</span>
+            </button>
+
+            {/* Quick "Follow Up" Filter Button */}
+            <button
+              onClick={() => setStatusFilter(statusFilter === 'Follow Up' ? 'ALL' : 'Follow Up')}
+              className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+                statusFilter === 'Follow Up'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-amber-600/25 ring-2 ring-amber-500/20'
+                  : 'bg-white text-gray-700 border-gray-200/90 hover:bg-amber-50/60 hover:text-amber-600 hover:border-amber-200'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
+              <span>Follow Up</span>
+              {statusFilter === 'Follow Up' && (
+                <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
+                  Active
+                </span>
+              )}
+            </button>
           </div>
 
-          {/* Dedicated "Enquiry" Filter Button */}
-          <button
-            onClick={() => setCallTypeFilter(callTypeFilter === 'Enquiry' ? 'ALL' : 'Enquiry')}
-            className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
-              callTypeFilter === 'Enquiry'
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/25 ring-2 ring-indigo-500/20'
-                : 'bg-white text-gray-700 border-gray-200/90 hover:bg-indigo-50/60 hover:text-indigo-600 hover:border-indigo-200'
-            }`}
-          >
-            <Headphones className="w-3.5 h-3.5 text-indigo-500 group-hover:text-indigo-600" />
-            <span>Enquiry</span>
-            {callTypeFilter === 'Enquiry' && (
-              <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
-                Active
-              </span>
-            )}
-          </button>
+          {/* Right Side: Status & Date Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+            >
+              <option value="ALL">All Status</option>
+              {STATUS_TYPES.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
 
-          {/* Quick "Tech Issue" Filter Button */}
-          <button
-            onClick={() => setCallTypeFilter(callTypeFilter === 'Tech Issue' ? 'ALL' : 'Tech Issue')}
-            className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
-              callTypeFilter === 'Tech Issue'
-                ? 'bg-orange-600 text-white border-orange-600 shadow-orange-600/25 ring-2 ring-orange-500/20'
-                : 'bg-white text-gray-700 border-gray-200/90 hover:bg-orange-50/60 hover:text-orange-600 hover:border-orange-200'
-            }`}
-          >
-            <AlertCircle className="w-3.5 h-3.5 text-orange-500" />
-            <span>Tech Issue</span>
-          </button>
+            {/* Date Filter */}
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+            >
+              <option value="ALL">All Time</option>
+              <option value="TODAY">Today</option>
+              <option value="YESTERDAY">Yesterday</option>
+              <option value="THIS_WEEK">Last 7 Days</option>
+              <option value="THIS_MONTH">This Month</option>
+            </select>
+          </div>
+        </div>
 
-          {/* Quick "Dispatch" Filter Button */}
-          <button
-            onClick={() => setCallTypeFilter(callTypeFilter === 'Dispatch Related' ? 'ALL' : 'Dispatch Related')}
-            className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
-              callTypeFilter === 'Dispatch Related'
-                ? 'bg-purple-600 text-white border-purple-600 shadow-purple-600/25 ring-2 ring-purple-500/20'
-                : 'bg-white text-gray-700 border-gray-200/90 hover:bg-purple-50/60 hover:text-purple-600 hover:border-purple-200'
-            }`}
-          >
-            <Truck className="w-3.5 h-3.5 text-purple-500" />
-            <span>Dispatch</span>
-          </button>
-
-          {/* Quick "Follow Up" Filter Button (Next to Dispatch) */}
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'Follow Up' ? 'ALL' : 'Follow Up')}
-            className={`h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
-              statusFilter === 'Follow Up'
-                ? 'bg-amber-600 text-white border-amber-600 shadow-amber-600/25 ring-2 ring-amber-500/20'
-                : 'bg-white text-gray-700 border-gray-200/90 hover:bg-amber-50/60 hover:text-amber-600 hover:border-amber-200'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
-            <span>Follow Up</span>
-            {statusFilter === 'Follow Up' && (
-              <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
-                Active
-              </span>
-            )}
-          </button>
-
-          {/* Follow-Up Date Filter Picker */}
-          <div className="relative flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 h-10 shadow-2xs">
-            <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+        {/* Second Row: Follow-Up Date Filter Picker under Search Box */}
+        <div className="flex items-center gap-2.5 pt-1 border-t border-gray-100">
+          <div className="relative flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 border border-gray-200 rounded-xl px-3 h-10 shadow-2xs transition-colors">
+            <span className="text-xs font-medium text-gray-600 flex items-center gap-1.5 shrink-0">
+              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+              Follow-Up Date:
+            </span>
             <input
               type="date"
               value={followUpDateFilter}
               onChange={(e) => setFollowUpDateFilter(e.target.value)}
               title="Filter by Follow-Up Date"
-              className="text-xs font-semibold text-gray-700 bg-transparent border-none focus:outline-hidden cursor-pointer"
+              className="text-xs font-semibold text-gray-800 bg-transparent border-none focus:outline-hidden cursor-pointer"
             />
             {followUpDateFilter && (
               <button
@@ -702,39 +740,9 @@ export default function StudentInquiries() {
               className="h-10 inline-flex items-center px-3 text-xs text-red-600 hover:text-red-700 font-semibold bg-red-50 hover:bg-red-100 rounded-xl transition-colors border border-red-100 whitespace-nowrap cursor-pointer"
             >
               <X className="w-3.5 h-3.5 mr-1" />
-              <span>Show All</span>
+              <span>Reset Filters</span>
             </button>
           )}
-        </div>
-
-        {/* Right Side: Status & Date Filter Dropdowns */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="ALL">All Status</option>
-            {STATUS_TYPES.map((st) => (
-              <option key={st} value={st}>
-                {st}
-              </option>
-            ))}
-          </select>
-
-          {/* Date Filter */}
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="ALL">All Time</option>
-            <option value="TODAY">Today</option>
-            <option value="YESTERDAY">Yesterday</option>
-            <option value="THIS_WEEK">Last 7 Days</option>
-            <option value="THIS_MONTH">This Month</option>
-          </select>
         </div>
       </div>
 
