@@ -21,6 +21,8 @@ export interface IStudentInquiry extends Document {
   previousInquiryRef?: mongoose.Types.ObjectId;
   followUpDate?: Date;
   resolvedAt?: Date;
+  feedbackSent?: boolean;
+  feedbackSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,6 +124,13 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
       type: Date,
     },
     resolvedAt: {
+      type: Date,
+    },
+    feedbackSent: {
+      type: Boolean,
+      default: false,
+    },
+    feedbackSentAt: {
       type: Date,
     },
   },

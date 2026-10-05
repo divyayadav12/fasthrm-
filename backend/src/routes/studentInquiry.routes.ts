@@ -8,6 +8,7 @@ import {
   getStudentInquiryById,
   updateStudentInquiry,
   deleteStudentInquiry,
+  sendStudentFeedback,
 } from '../controllers/studentInquiry.controller';
 
 const router = express.Router();
@@ -24,6 +25,8 @@ router.route('/')
   .post(createStudentInquiry);
 
 router.get('/lookup', lookupStudentByPhone);
+
+router.post('/:id/send-feedback', sendStudentFeedback);
 
 router.route('/:id')
   .get(getStudentInquiryById)

@@ -32,6 +32,8 @@ export interface StudentInquiry {
   previousInquiryRef?: any;
   followUpDate?: string;
   resolvedAt?: string;
+  feedbackSent?: boolean;
+  feedbackSentAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -216,6 +218,28 @@ export const deleteStudentInquiry = createAsyncThunk(
   }
 );
 
+export const sendInquiryFeedback = createAsyncThunk(
+  'studentInquiries/sendFeedback',
+  async (id: string, thunkAPI) => {
+    try {
+      const state = thunkAPI.getState() as RootState;
+      const token = state.auth.user?.token;
+      const config = {
+        headers: { Authorization: `Bearer ${token}` },
+      };
+
+      const response = await axios.post(`${API_URL}/student-inquiries/${id}/send-feedback`, {}, config);
+      return response.data;
+    } catch (error: any) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 export const studentInquirySlice = createSlice({
   name: 'studentInquiries',
   initialState,
@@ -271,6 +295,20 @@ export const studentInquirySlice = createSlice({
 
       // Update Inquiry
       .addCase(updateStudentInquiry.fulfilled, (state, action) => {
+        if (action.payload.inquiry) {
+          const updated = action.payload.inquiry;
+          const index = state.inquiries.findIndex((i) => i._id === updated._id);
+          if (index !== -1) {
+            state.inquiries[index] = updated;
+          }
+          if (state.selectedInquiry && state.selectedInquiry._id === updated._id) {
+            state.selectedInquiry = updated;
+          }
+        }
+      })
+
+      // Send Feedback
+      .addCase(sendInquiryFeedback.fulfilled, (state, action) => {
         if (action.payload.inquiry) {
           const updated = action.payload.inquiry;
           const index = state.inquiries.findIndex((i) => i._id === updated._id);

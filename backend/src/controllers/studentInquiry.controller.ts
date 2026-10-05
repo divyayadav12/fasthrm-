@@ -455,3 +455,60 @@ export const getSupportStaffList = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: error.message || 'Failed to fetch staff list' });
   }
 };
+
+/**
+ * @desc    Send WhatsApp Feedback Message via Teleobi Webhook
+ * @route   POST /api/student-inquiries/:id/send-feedback
+ * @access  Private (Support & Admin)
+ */
+export const sendStudentFeedback = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const inquiry = await StudentInquiry.findById(id);
+    if (!inquiry) {
+      return res.status(404).json({ message: 'Inquiry not found' });
+    }
+
+    if (inquiry.feedbackSent) {
+      return res.status(400).json({ message: 'Feedback has already been sent for this student.' });
+    }
+
+    const rawPhone = (inquiry.mobileNumber || '').replace(/\D/g, '').slice(-10);
+    if (!rawPhone || rawPhone.length !== 10) {
+      return res.status(400).json({ message: 'Valid 10-digit mobile number is required.' });
+    }
+
+    const formattedPhone = `91${rawPhone}`;
+    const webhookUrl = 'https://dash.teleobi.com/webhook/whatsapp-workflow/61602.183817.415500.1785233215';
+
+    // Call Teleobi Webhook
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          number: formattedPhone,
+          mobileNumber: formattedPhone,
+          studentName: inquiry.studentName,
+          inquiryId: inquiry.inquiryId,
+        }),
+      });
+    } catch (webhookErr: any) {
+      console.error('Teleobi Webhook error (logged, continuing DB update):', webhookErr?.message || webhookErr);
+    }
+
+    inquiry.feedbackSent = true;
+    inquiry.feedbackSentAt = new Date();
+    await inquiry.save();
+
+    res.json({
+      success: true,
+      message: 'Feedback message sent successfully!',
+      inquiry,
+    });
+  } catch (error: any) {
+    console.error('Error sending feedback message:', error);
+    res.status(500).json({ message: error.message || 'Failed to send feedback message' });
+  }
+};

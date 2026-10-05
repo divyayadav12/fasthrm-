@@ -8,6 +8,7 @@ import {
   updateStudentInquiry,
   deleteStudentInquiry,
   fetchStudentInquiryDetails,
+  sendInquiryFeedback,
   clearLookupResult,
   clearSelectedInquiry,
   StudentInquiry,
@@ -199,6 +200,7 @@ export default function StudentInquiries() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingInquiry, setEditingInquiry] = useState<StudentInquiry | null>(null);
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
+  const [sendingFeedbackId, setSendingFeedbackId] = useState<string | null>(null);
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Form State
@@ -515,6 +517,30 @@ export default function StudentInquiries() {
     navigator.clipboard.writeText(phone);
     setCopiedPhone(phone);
     setTimeout(() => setCopiedPhone(null), 2000);
+  };
+
+  const handleSendFeedback = async (id: string, inqId: string) => {
+    if (sendingFeedbackId) return;
+    setSendingFeedbackId(id);
+    try {
+      const resultAction = await dispatch(sendInquiryFeedback(id));
+      if (sendInquiryFeedback.fulfilled.match(resultAction)) {
+        setNotificationMsg({
+          type: 'success',
+          text: `Feedback message sent successfully for ${inqId}!`,
+        });
+      } else {
+        setNotificationMsg({
+          type: 'error',
+          text: (resultAction.payload as string) || 'Failed to send feedback message.',
+        });
+      }
+    } catch (err: any) {
+      setNotificationMsg({ type: 'error', text: err.message || 'Error sending feedback.' });
+    } finally {
+      setSendingFeedbackId(null);
+      setTimeout(() => setNotificationMsg(null), 4000);
+    }
   };
 
   const handleOpenWhatsApp = (mobileNumber: string, mode: 'app' | 'web' = 'app') => {
@@ -865,6 +891,30 @@ export default function StudentInquiries() {
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
                         </a>
+                        {inq.feedbackSent ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="text-emerald-700 bg-emerald-100/90 border border-emerald-300 ml-1 p-0.5 rounded transition-all cursor-not-allowed opacity-90 inline-flex items-center"
+                            title="Feedback Sent Successfully"
+                          >
+                            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSendFeedback(inq._id, inq.inquiryId)}
+                            disabled={sendingFeedbackId === inq._id}
+                            className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 ml-1 p-0.5 rounded transition-all cursor-pointer active:scale-95 shadow-2xs inline-flex items-center"
+                            title="Send Feedback"
+                          >
+                            {sendingFeedbackId === inq._id ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                            ) : (
+                              <Send className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </td>
 
@@ -1583,6 +1633,30 @@ export default function StudentInquiries() {
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                     </a>
+                    {selectedInquiry.feedbackSent ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="text-emerald-700 bg-emerald-100/90 border border-emerald-300 p-0.5 rounded transition-all cursor-not-allowed opacity-90 inline-flex items-center"
+                        title="Feedback Sent Successfully"
+                      >
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSendFeedback(selectedInquiry._id, selectedInquiry.inquiryId)}
+                        disabled={sendingFeedbackId === selectedInquiry._id}
+                        className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 p-0.5 rounded transition-all cursor-pointer active:scale-95 shadow-2xs inline-flex items-center"
+                        title="Send Feedback"
+                      >
+                        {sendingFeedbackId === selectedInquiry._id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
                     <span>•</span>
                     <span className={`px-2 py-0.5 rounded-full font-semibold border ${getStatusBadge(selectedInquiry.status)}`}>
                       {selectedInquiry.status}
