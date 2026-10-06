@@ -6,11 +6,11 @@ export interface IStudentInquiry extends Document {
   mobileNumber: string;
   alternateNumber?: string;
   email?: string;
-  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchases' | 'Others';
+  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Others';
   subject?: string;
   details?: string;
   remark?: string;
-  status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'FAST Education App' | 'FAST Education 2.0 App' | 'Others';
+  status: 'Solved' | 'Follow Up' | 'Purchased' | 'Pending' | 'FAST Education App' | 'FAST Education 2.0 App' | 'Others';
   forwardedBy?: string;
   forwardedTo?: string;
   addedBy: mongoose.Types.ObjectId;
@@ -58,7 +58,7 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
     },
     callType: {
       type: String,
-      enum: ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchases', 'Others'],
+      enum: ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchased', 'Others'],
       default: 'Enquiry',
       required: true,
     },
@@ -79,7 +79,7 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
     },
     status: {
       type: String,
-      enum: ['Solved', 'Follow Up', 'Purchases', 'Pending', 'FAST Education App', 'FAST Education 2.0 App', 'Others'],
+      enum: ['Solved', 'Follow Up', 'Purchased', 'Pending', 'FAST Education App', 'FAST Education 2.0 App', 'Others'],
       default: 'Pending',
       required: true,
     },

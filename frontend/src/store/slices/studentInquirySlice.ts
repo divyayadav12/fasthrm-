@@ -11,11 +11,11 @@ export interface StudentInquiry {
   mobileNumber: string;
   alternateNumber?: string;
   email?: string;
-  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchases' | 'Others';
+  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Others';
   subject?: string;
   details?: string;
   remark?: string;
-  status: 'Solved' | 'Follow Up' | 'Purchases' | 'Pending' | 'FAST Education App' | 'FAST Education 2.0 App' | 'Others';
+  status: 'Solved' | 'Follow Up' | 'Purchased' | 'Pending' | 'FAST Education App' | 'FAST Education 2.0 App' | 'Others';
   forwardedBy?: string;
   forwardedTo?: string;
   addedBy: {

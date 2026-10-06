@@ -153,8 +153,22 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     }
   }, [employee, isOpen, user?.token, dateFilter, customFrom, customTo]);
 
+  const formatDateSubtext = (dateVal?: string | Date | null) => {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   // Quick Date Filter Calculation + IDLE Gaps for Activity Log
   const filteredLogs = useMemo(() => {
+    const [startH, startM] = (employee?.officeStartTime || '10:00').split(':').map(Number);
+    const [endH, endM] = (employee?.officeEndTime || '19:00').split(':').map(Number);
+
     const now = new Date();
     const todayStr = now.toDateString();
 
@@ -167,7 +181,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const baseFiltered = logs.filter((log) => {
-      const logDate = new Date(log.createdAt);
+      const logDate = new Date(log.startTime || log.createdAt);
 
       if (dateFilter === 'today') return logDate.toDateString() === todayStr;
       if (dateFilter === 'yesterday') return logDate.toDateString() === yesterdayStr;
@@ -184,76 +198,246 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       return true;
     });
 
-    const getVirtualGaps = (dayLogs: any[]) => {
-      // Sort chronologically for gap analysis
-      dayLogs.sort((a, b) => new Date(a.startTime || a.createdAt).getTime() - new Date(b.startTime || b.createdAt).getTime());
-      
-      const finalLogs: any[] = [];
-      const [startH, startM] = (employee?.officeStartTime || '10:05').split(':').map(Number);
-      const [endH, endM] = (employee?.officeEndTime || '19:05').split(':').map(Number);
-      
-      const days = new Set(dayLogs.map(l => new Date(l.startTime || l.createdAt).toDateString()));
-      
-      days.forEach(dateStr => {
-        const d = new Date(dateStr);
-        const shiftStart = new Date(d); shiftStart.setHours(startH, startM, 0, 0);
-        const shiftEnd = new Date(d); shiftEnd.setHours(endH, endM, 0, 0);
-        const now = new Date();
-        const limit = Math.min(shiftEnd.getTime(), now.getTime());
-        
-        let cursor = shiftStart.getTime();
-        const logsForDay = dayLogs.filter(l => new Date(l.startTime || l.createdAt).toDateString() === dateStr);
-        
-        logsForDay.forEach((log) => {
-          const st = new Date(log.startTime || log.createdAt).getTime();
-          let durMins = log.duration || log.durationMinutes || 0;
-          const isLatestOverall = log._id === logs[0]?._id;
-          if (log.status === 'WORKING' && isLatestOverall) {
-            durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
-          }
-          const et = st + durMins * 60000;
+    const daysSet = new Set<string>();
+    baseFiltered.forEach((l) => {
+      const dStr = new Date(l.startTime || l.createdAt).toDateString();
+      daysSet.add(dStr);
+    });
 
-          if (st > cursor + 60000 && st <= limit) {
-             finalLogs.push({
-               _id: `idle-${cursor}`,
-               isVirtual: true,
-               createdAt: new Date(cursor).toISOString(),
-               startTime: new Date(cursor).toISOString(),
-               duration: Math.floor((Math.min(st, limit) - cursor) / 60000),
-               status: 'IDLE',
-               customTaskTitle: 'IDLE',
-               description: 'No active task'
-             });
-          }
-          finalLogs.push({ ...log });
-          cursor = Math.max(cursor, et);
-        });
+    if (dateFilter === 'today' || (dateFilter === 'all' && daysSet.size === 0)) {
+      daysSet.add(todayStr);
+    } else if (dateFilter === 'yesterday') {
+      daysSet.add(yesterdayStr);
+    }
 
-        if (cursor + 60000 < limit) {
-           finalLogs.push({
-               _id: `idle-${cursor}-end`,
-               isVirtual: true,
-               createdAt: new Date(cursor).toISOString(),
-               startTime: new Date(cursor).toISOString(),
-               duration: Math.floor((limit - cursor) / 60000),
-               status: 'IDLE',
-               customTaskTitle: 'IDLE',
-               description: 'No active task'
-           });
+    const finalLogs: any[] = [];
+
+    daysSet.forEach((dateStr) => {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return;
+
+      const shiftStart = new Date(d);
+      shiftStart.setHours(startH || 10, startM || 0, 0, 0);
+
+      const shiftEnd = new Date(d);
+      shiftEnd.setHours(endH || 19, endM || 0, 0, 0);
+
+      const isToday = d.toDateString() === todayStr;
+      const limit = isToday ? Math.min(shiftEnd.getTime(), Date.now()) : shiftEnd.getTime();
+
+      if (isToday && Date.now() < shiftStart.getTime()) {
+        const logsForDay = baseFiltered.filter(
+          (l) => new Date(l.startTime || l.createdAt).toDateString() === dateStr
+        );
+        finalLogs.push(...logsForDay);
+        return;
+      }
+
+      const logsForDay = baseFiltered
+        .filter((l) => new Date(l.startTime || l.createdAt).toDateString() === dateStr)
+        .sort(
+          (a, b) =>
+            new Date(a.startTime || a.createdAt).getTime() -
+            new Date(b.startTime || b.createdAt).getTime()
+        );
+
+      let cursor = shiftStart.getTime();
+
+      logsForDay.forEach((log) => {
+        const st = new Date(log.startTime || log.createdAt).getTime();
+        let durMins = log.duration || log.durationMinutes || 0;
+        const isLatestOverall = log._id === logs[0]?._id;
+        if (log.status === 'WORKING' && isLatestOverall) {
+          durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
         }
+        const et = st + Math.max(1, durMins) * 60000;
+
+        if (st > cursor + 120000 && cursor < limit) {
+          const idleEnd = Math.min(st, limit);
+          const idleDur = Math.floor((idleEnd - cursor) / 60000);
+          if (idleDur >= 2) {
+            finalLogs.push({
+              _id: `idle-log-${dateStr}-${cursor}`,
+              isVirtual: true,
+              createdAt: new Date(cursor).toISOString(),
+              startTime: new Date(cursor).toISOString(),
+              endTime: new Date(idleEnd).toISOString(),
+              duration: idleDur,
+              status: 'IDLE',
+              customTaskTitle: 'IDLE',
+              description: 'No active task logged',
+            });
+          }
+        }
+
+        finalLogs.push({ ...log });
+        cursor = Math.max(cursor, et);
       });
 
-      finalLogs.sort((a, b) => new Date(b.startTime || b.createdAt).getTime() - new Date(a.startTime || a.createdAt).getTime());
-      return finalLogs;
-    };
+      if (cursor + 120000 < limit) {
+        const idleDur = Math.floor((limit - cursor) / 60000);
+        if (idleDur >= 2) {
+          finalLogs.push({
+            _id: `idle-log-${dateStr}-${cursor}-end`,
+            isVirtual: true,
+            createdAt: new Date(cursor).toISOString(),
+            startTime: new Date(cursor).toISOString(),
+            endTime: new Date(limit).toISOString(),
+            duration: idleDur,
+            status: 'IDLE',
+            customTaskTitle: 'IDLE',
+            description: 'No active task logged',
+          });
+        }
+      }
+    });
 
-    return getVirtualGaps(baseFiltered);
+    return finalLogs.sort(
+      (a, b) =>
+        new Date(b.startTime || b.createdAt).getTime() -
+        new Date(a.startTime || a.createdAt).getTime()
+    );
   }, [logs, dateFilter, customFrom, customTo, employee]);
 
-  // Filtered Task Breakdown items
+  // Filtered Task Breakdown items + IDLE Gaps
   const filteredTasks = useMemo(() => {
-    return taskReports;
-  }, [taskReports]);
+    const [startH, startM] = (employee?.officeStartTime || '10:00').split(':').map(Number);
+    const [endH, endM] = (employee?.officeEndTime || '19:00').split(':').map(Number);
+
+    const now = new Date();
+    const todayStr = now.toDateString();
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const baseTasks = taskReports.filter((task) => {
+      const taskStart = new Date(task.startedAt || task.createdAt);
+      if (dateFilter === 'today') return taskStart.toDateString() === todayStr;
+      if (dateFilter === 'yesterday') return taskStart.toDateString() === yesterdayStr;
+      if (dateFilter === '7days') return taskStart >= sevenDaysAgo;
+      if (dateFilter === 'custom') {
+        if (customFrom && taskStart < new Date(customFrom)) return false;
+        if (customTo) {
+          const to = new Date(customTo);
+          to.setHours(23, 59, 59, 999);
+          if (taskStart > to) return false;
+        }
+        return true;
+      }
+      return true;
+    });
+
+    const daysSet = new Set<string>();
+    baseTasks.forEach((t) => {
+      const dStr = new Date(t.startedAt || t.createdAt).toDateString();
+      daysSet.add(dStr);
+    });
+
+    if (dateFilter === 'today' || (dateFilter === 'all' && daysSet.size === 0)) {
+      daysSet.add(todayStr);
+    } else if (dateFilter === 'yesterday') {
+      daysSet.add(yesterdayStr);
+    }
+
+    const finalTaskList: TaskReportItem[] = [];
+
+    daysSet.forEach((dateStr) => {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return;
+
+      const shiftStart = new Date(d);
+      shiftStart.setHours(startH || 10, startM || 0, 0, 0);
+
+      const shiftEnd = new Date(d);
+      shiftEnd.setHours(endH || 19, endM || 0, 0, 0);
+
+      const isToday = d.toDateString() === todayStr;
+      const limit = isToday ? Math.min(shiftEnd.getTime(), Date.now()) : shiftEnd.getTime();
+
+      if (isToday && Date.now() < shiftStart.getTime()) {
+        const tasksForDay = baseTasks.filter(
+          (t) => new Date(t.startedAt || t.createdAt).toDateString() === dateStr
+        );
+        finalTaskList.push(...tasksForDay);
+        return;
+      }
+
+      const tasksForDay = baseTasks
+        .filter((t) => new Date(t.startedAt || t.createdAt).toDateString() === dateStr)
+        .sort(
+          (a, b) =>
+            new Date(a.startedAt || a.createdAt).getTime() -
+            new Date(b.startedAt || b.createdAt).getTime()
+        );
+
+      let cursor = shiftStart.getTime();
+
+      tasksForDay.forEach((task) => {
+        const st = new Date(task.startedAt || task.createdAt).getTime();
+        const isWorking = task.status === 'WORKING';
+        let et = isWorking
+          ? Date.now()
+          : task.completedAt
+          ? new Date(task.completedAt).getTime()
+          : st + (task.totalMinutes || 0) * 60000;
+
+        if (et <= st) et = st + Math.max(1, task.totalMinutes || 0) * 60000;
+
+        if (st > cursor + 120000 && cursor < limit) {
+          const idleEnd = Math.min(st, limit);
+          const durMins = Math.floor((idleEnd - cursor) / 60000);
+          if (durMins >= 2) {
+            finalTaskList.push({
+              _id: `idle-${dateStr}-${cursor}`,
+              title: 'IDLE',
+              description: 'No active task being tracked',
+              status: 'IDLE',
+              progress: 0,
+              totalMinutes: durMins,
+              startedAt: new Date(cursor).toISOString(),
+              completedAt: new Date(idleEnd).toISOString(),
+              lastActivity: new Date(idleEnd).toISOString(),
+              logCount: 0,
+              createdAt: new Date(cursor).toISOString(),
+            });
+          }
+        }
+
+        finalTaskList.push(task);
+        cursor = Math.max(cursor, et);
+      });
+
+      if (cursor + 120000 < limit) {
+        const durMins = Math.floor((limit - cursor) / 60000);
+        if (durMins >= 2) {
+          finalTaskList.push({
+            _id: `idle-${dateStr}-${cursor}-end`,
+            title: 'IDLE',
+            description: 'No active task being tracked',
+            status: 'IDLE',
+            progress: 0,
+            totalMinutes: durMins,
+            startedAt: new Date(cursor).toISOString(),
+            completedAt: new Date(limit).toISOString(),
+            lastActivity: new Date(limit).toISOString(),
+            logCount: 0,
+            createdAt: new Date(cursor).toISOString(),
+          });
+        }
+      }
+    });
+
+    return finalTaskList.sort(
+      (a, b) =>
+        new Date(b.startedAt || b.createdAt).getTime() -
+        new Date(a.startedAt || a.createdAt).getTime()
+    );
+  }, [taskReports, dateFilter, customFrom, customTo, employee]);
 
   // Derived Stats
   const stats = useMemo(() => {
@@ -262,9 +446,9 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     let completedCount = 0;
     let workingCount = 0;
 
-    // Use task reports if available for total accumulated task time, otherwise calculate from logs
     if (taskReports.length > 0 && dateFilter === 'all') {
-      taskReports.forEach(t => {
+      taskReports.forEach((t) => {
+        if (t.status === 'IDLE') return;
         totalMinutes += t.totalMinutes || 0;
         taskTitles.add(t.title);
         if (t.status === 'COMPLETED') completedCount++;
@@ -290,12 +474,12 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     const formattedDuration = formatDuration(totalMinutes);
 
     return {
-      totalTasks: taskTitles.size || taskReports.length,
+      totalTasks: taskTitles.size || taskReports.filter((t) => t.status !== 'IDLE').length,
       completedCount,
       workingCount,
       totalDuration: formattedDuration,
       totalMinutes,
-      totalLogs: filteredLogs.length,
+      totalLogs: filteredLogs.filter((l) => l.status !== 'IDLE').length,
     };
   }, [filteredLogs, taskReports, dateFilter]);
 
@@ -552,29 +736,40 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                           : '-';
 
                         return (
-                          <tr key={task._id} className="hover:bg-indigo-50/30 transition-colors group">
+                          <tr key={task._id} className={`transition-colors group ${task.status === 'IDLE' ? 'bg-gray-50/60 hover:bg-gray-50' : 'hover:bg-indigo-50/30'}`}>
                             {/* Task Name */}
                             <td className="px-4 py-3.5">
-                              <span
-                                onClick={() => {
-                                  if (onSelectTask) {
-                                    onSelectTask({
-                                      taskId: task._id,
-                                      title: task.title,
-                                      employee,
-                                    });
-                                  }
-                                }}
-                                className="font-semibold text-gray-900 hover:text-indigo-600 cursor-pointer hover:underline inline-flex items-center group-hover:text-indigo-600"
-                                title="Click to view task details"
-                              >
-                                {task.title}
-                                <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-indigo-500 transition-opacity flex-shrink-0" />
-                              </span>
-                              {task.description && (
-                                <p className="text-[11px] text-gray-400 truncate max-w-xs mt-0.5">
-                                  {task.description}
-                                </p>
+                              {task.status === 'IDLE' ? (
+                                <div>
+                                  <span className="font-semibold text-gray-500 italic">IDLE</span>
+                                  <p className="text-[11px] text-gray-400 truncate max-w-xs mt-0.5">
+                                    {task.description || 'No active task tracked'}
+                                  </p>
+                                </div>
+                              ) : (
+                                <>
+                                  <span
+                                    onClick={() => {
+                                      if (onSelectTask) {
+                                        onSelectTask({
+                                          taskId: task._id,
+                                          title: task.title,
+                                          employee,
+                                        });
+                                      }
+                                    }}
+                                    className="font-semibold text-gray-900 hover:text-indigo-600 cursor-pointer hover:underline inline-flex items-center group-hover:text-indigo-600"
+                                    title="Click to view task details"
+                                  >
+                                    {task.title}
+                                    <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-indigo-500 transition-opacity flex-shrink-0" />
+                                  </span>
+                                  {task.description && (
+                                    <p className="text-[11px] text-gray-400 truncate max-w-xs mt-0.5">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                </>
                               )}
                             </td>
 
@@ -583,24 +778,45 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                               {getStatusBadge(task.status, task.title)}
                             </td>
 
-                            {/* Start Time */}
+                            {/* Start Time + Date Subtext */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
-                                {formattedStartTime}
-                              </span>
+                              <div className="flex flex-col items-start">
+                                <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                  {formattedStartTime}
+                                </span>
+                                {taskStart && (
+                                  <span className="text-[10px] text-gray-500 font-medium mt-0.5 pl-0.5">
+                                    {formatDateSubtext(taskStart)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
-                            {/* End Time */}
+                            {/* End Time + Date Subtext */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              {isWorking ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
-                                  In Progress
-                                </span>
-                              ) : (
-                                <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
-                                  {formattedEndTime}
-                                </span>
-                              )}
+                              <div className="flex flex-col items-start">
+                                {isWorking ? (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
+                                      In Progress
+                                    </span>
+                                    <span className="text-[10px] text-blue-600/70 font-medium mt-0.5 pl-0.5">
+                                      {formatDateSubtext(taskStart || new Date())}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                      {formattedEndTime}
+                                    </span>
+                                    {taskEnd && (
+                                      <span className="text-[10px] text-gray-500 font-medium mt-0.5 pl-0.5">
+                                        {formatDateSubtext(taskEnd)}
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </td>
 
                             {/* Time Spent */}
@@ -609,6 +825,11 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md font-bold">
                                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
                                   {formattedDur} (LIVE)
+                                </span>
+                              ) : task.status === 'IDLE' ? (
+                                <span className="inline-flex items-center gap-1 text-gray-500 font-medium italic">
+                                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                  {formattedDur}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-gray-800 font-semibold">
@@ -623,7 +844,13 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                               <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                                 <div
                                   className={`h-1.5 rounded-full transition-all duration-500 ${
-                                    isWorking ? 'bg-blue-500 animate-pulse' : task.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-indigo-400'
+                                    task.status === 'IDLE'
+                                      ? 'bg-gray-300'
+                                      : isWorking
+                                      ? 'bg-blue-500 animate-pulse'
+                                      : task.status === 'COMPLETED'
+                                      ? 'bg-emerald-500'
+                                      : 'bg-indigo-400'
                                   }`}
                                   style={{ width: `${barWidth}%` }}
                                 />
@@ -656,19 +883,23 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
                             {/* Progress */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-16 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className={`h-1.5 rounded-full ${
-                                      task.progress === 100 ? 'bg-emerald-500' : 'bg-blue-600'
-                                    }`}
-                                    style={{ width: `${task.progress || 0}%` }}
-                                  />
+                              {task.status === 'IDLE' ? (
+                                <span className="text-gray-400 font-normal text-[11px]">-</span>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-16 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                      className={`h-1.5 rounded-full ${
+                                        task.progress === 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                                      }`}
+                                      style={{ width: `${task.progress || 0}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-gray-700 font-semibold text-[11px]">
+                                    {task.progress || 0}%
+                                  </span>
                                 </div>
-                                <span className="text-gray-700 font-semibold text-[11px]">
-                                  {task.progress || 0}%
-                                </span>
-                              </div>
+                              )}
                             </td>
                           </tr>
                         );
@@ -761,24 +992,45 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                               {formattedDate}
                             </td>
 
-                            {/* Start Time */}
+                            {/* Start Time + Date Subtext */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
-                                {formattedStartTime}
-                              </span>
+                              <div className="flex flex-col items-start">
+                                <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                  {formattedStartTime}
+                                </span>
+                                {startDateObj && (
+                                  <span className="text-[10px] text-gray-500 font-medium mt-0.5 pl-0.5">
+                                    {formatDateSubtext(startDateObj)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
-                            {/* End Time */}
+                            {/* End Time + Date Subtext */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              {isLiveWorking ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
-                                  In Progress
-                                </span>
-                              ) : (
-                                <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
-                                  {formattedEndTime}
-                                </span>
-                              )}
+                              <div className="flex flex-col items-start">
+                                {isLiveWorking ? (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 animate-pulse">
+                                      In Progress
+                                    </span>
+                                    <span className="text-[10px] text-blue-600/70 font-medium mt-0.5 pl-0.5">
+                                      {formatDateSubtext(startDateObj || new Date())}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-semibold text-gray-900 bg-gray-50/80 px-2 py-1 rounded-md border border-gray-200/80">
+                                      {formattedEndTime}
+                                    </span>
+                                    {endDateObj && (
+                                      <span className="text-[10px] text-gray-500 font-medium mt-0.5 pl-0.5">
+                                        {formatDateSubtext(endDateObj)}
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </td>
 
                             {/* Time Spent */}

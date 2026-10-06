@@ -64,11 +64,11 @@ export const canAccessStudentInquiry = (user: any): boolean => {
   return isAdminOrManager || isSupportOrIT;
 };
 
-const CALL_TYPES = ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchases', 'Others'] as const;
+const CALL_TYPES = ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchased', 'Others'] as const;
 const STATUS_TYPES = [
   'Solved',
   'Follow Up',
-  'Purchases',
+  'Purchased',
   'Pending',
   'FAST Education App',
   'FAST Education 2.0 App',
@@ -565,7 +565,7 @@ export default function StudentInquiries() {
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'Follow Up':
         return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'Purchases':
+      case 'Purchased':
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'Pending':
         return 'bg-rose-50 text-rose-700 border-rose-200';
@@ -585,7 +585,7 @@ export default function StudentInquiries() {
         return 'bg-orange-50 text-orange-700 border-orange-200';
       case 'Dispatch Related':
         return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'Purchases':
+      case 'Purchased':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'Enquiry':
         return 'bg-sky-50 text-sky-700 border-sky-200';
