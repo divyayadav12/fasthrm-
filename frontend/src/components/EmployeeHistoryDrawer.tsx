@@ -489,7 +489,10 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                 .filter((l) => new Date(l.startTime || l.createdAt) < shiftStart)
                 .reduce((sum, l) => sum + (l.duration || l.durationMinutes || 0), 0);
 
-              const minsForDay = Math.max(1, (t.totalMinutes || 0) - prevLogsMins);
+              let minsForDay = (t.totalMinutes || 0) - prevLogsMins;
+              if (minsForDay <= 0 || prevLogsMins === 0) {
+                minsForDay = Math.min(t.totalMinutes || 15, 30);
+              }
               st = Math.max(shiftStart.getTime(), et - minsForDay * 60000);
             }
 
