@@ -507,7 +507,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
               let minsForDay = (t.totalMinutes || 0) - prevLogsMins;
               if (minsForDay <= 0 || prevLogsMins === 0) {
-                minsForDay = Math.min(t.totalMinutes || 15, 30);
+                const maxShiftMins = Math.floor((et - shiftStart.getTime()) / 60000);
+                minsForDay = Math.min(t.totalMinutes || 120, maxShiftMins > 0 ? maxShiftMins : 120);
               }
               st = Math.max(shiftStart.getTime(), et - minsForDay * 60000);
             }
