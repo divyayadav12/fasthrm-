@@ -495,18 +495,7 @@ export const sendStudentFeedback = async (req: AuthRequest, res: Response) => {
     // Call Teleobi Webhook using Node fetch
     try {
       const payloadData = JSON.stringify({
-        phone: formattedPhone,
-        number: rawPhone,
-        mobile: formattedPhone,
-        mobileNumber: formattedPhone,
         phoneNumber: formattedPhone,
-        phonenumber: formattedPhone,
-        phone_number: formattedPhone,
-        phoneWithoutCode: rawPhone,
-        rawPhone: rawPhone,
-        countryCode: '91',
-        country_code: '91',
-        wa_number: formattedPhone,
         studentName: inquiry.studentName || '',
         name: inquiry.studentName || '',
         inquiryId: inquiry.inquiryId || '',
