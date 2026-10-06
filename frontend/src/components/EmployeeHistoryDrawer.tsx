@@ -181,17 +181,22 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const baseFiltered = logs.filter((log) => {
+      const isWorking = log.status === 'WORKING';
       const logDate = new Date(log.startTime || log.createdAt);
 
-      if (dateFilter === 'today') return logDate.toDateString() === todayStr;
-      if (dateFilter === 'yesterday') return logDate.toDateString() === yesterdayStr;
-      if (dateFilter === '7days') return logDate >= sevenDaysAgo;
+      if (dateFilter === 'today') {
+        return isWorking || logDate.toDateString() === todayStr;
+      }
+      if (dateFilter === 'yesterday') {
+        return logDate.toDateString() === yesterdayStr;
+      }
+      if (dateFilter === '7days') return isWorking || logDate >= sevenDaysAgo;
       if (dateFilter === 'custom') {
-        if (customFrom && logDate < new Date(customFrom)) return false;
+        if (customFrom && logDate < new Date(customFrom) && !isWorking) return false;
         if (customTo) {
           const to = new Date(customTo);
           to.setHours(23, 59, 59, 999);
-          if (logDate > to) return false;
+          if (logDate > to && !isWorking) return false;
         }
         return true;
       }
@@ -234,17 +239,26 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       }
 
       const logsForDay = baseFiltered
-        .filter((l) => new Date(l.startTime || l.createdAt).toDateString() === dateStr)
-        .sort(
-          (a, b) =>
-            new Date(a.startTime || a.createdAt).getTime() -
-            new Date(b.startTime || b.createdAt).getTime()
-        );
+        .filter((l) => {
+          const lTime = new Date(l.startTime || l.createdAt);
+          if (lTime.toDateString() === dateStr) return true;
+          if (l.status === 'WORKING' && isToday) return true;
+          return false;
+        })
+        .sort((a, b) => {
+          const tA = new Date(a.startTime || a.createdAt).getTime();
+          const tB = new Date(b.startTime || b.createdAt).getTime();
+          return tA - tB;
+        });
 
       let cursor = shiftStart.getTime();
 
       logsForDay.forEach((log) => {
-        const st = new Date(log.startTime || log.createdAt).getTime();
+        let st = new Date(log.startTime || log.createdAt).getTime();
+        if (isToday && st < shiftStart.getTime() && log.status === 'WORKING') {
+          st = Math.max(st, shiftStart.getTime());
+        }
+
         let durMins = log.duration || log.durationMinutes || 0;
         const isLatestOverall = log._id === logs[0]?._id;
         if (log.status === 'WORKING' && isLatestOverall) {
@@ -316,12 +330,30 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const baseTasks = taskReports.filter((task) => {
+      const isWorking = task.status === 'WORKING';
       const taskStart = new Date(task.startedAt || task.createdAt);
-      if (dateFilter === 'today') return taskStart.toDateString() === todayStr;
-      if (dateFilter === 'yesterday') return taskStart.toDateString() === yesterdayStr;
-      if (dateFilter === '7days') return taskStart >= sevenDaysAgo;
+      const taskLast = task.lastActivity ? new Date(task.lastActivity) : taskStart;
+      const taskComp = task.completedAt ? new Date(task.completedAt) : taskLast;
+
+      if (isWorking) return true;
+
+      if (dateFilter === 'today') {
+        return (
+          taskStart.toDateString() === todayStr ||
+          taskLast.toDateString() === todayStr ||
+          taskComp.toDateString() === todayStr
+        );
+      }
+      if (dateFilter === 'yesterday') {
+        return (
+          taskStart.toDateString() === yesterdayStr ||
+          taskLast.toDateString() === yesterdayStr ||
+          taskComp.toDateString() === yesterdayStr
+        );
+      }
+      if (dateFilter === '7days') return taskLast >= sevenDaysAgo || taskStart >= sevenDaysAgo;
       if (dateFilter === 'custom') {
-        if (customFrom && taskStart < new Date(customFrom)) return false;
+        if (customFrom && taskLast < new Date(customFrom)) return false;
         if (customTo) {
           const to = new Date(customTo);
           to.setHours(23, 59, 59, 999);
@@ -344,6 +376,41 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       daysSet.add(yesterdayStr);
     }
 
+    const getTaskStartForDay = (task: TaskReportItem, dateStr: string) => {
+      const d = new Date(dateStr);
+      const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999);
+
+      const taskLogs = logs.filter((l) => {
+        const lTaskId = l.taskId?._id || l.taskId;
+        const lTitle = (l.taskId?.title || l.customTaskTitle || '').trim().toLowerCase();
+        const matches = (lTaskId && lTaskId === task._id) || (lTitle && lTitle === task.title.trim().toLowerCase());
+        if (!matches) return false;
+        const logTime = new Date(l.startTime || l.createdAt);
+        return logTime >= dayStart && logTime <= dayEnd;
+      });
+
+      if (taskLogs.length > 0) {
+        taskLogs.sort((a, b) => new Date(a.startTime || a.createdAt).getTime() - new Date(b.startTime || b.createdAt).getTime());
+        return new Date(taskLogs[0].startTime || taskLogs[0].createdAt).getTime();
+      }
+
+      const rawStart = new Date(task.startedAt || task.createdAt).getTime();
+      if (new Date(rawStart).toDateString() === dateStr) {
+        return rawStart;
+      }
+
+      if (task.status === 'WORKING') {
+        if (rawStart >= dayStart.getTime() && rawStart <= dayEnd.getTime()) {
+          return rawStart;
+        }
+        const shiftStart = new Date(d); shiftStart.setHours(startH || 10, startM || 0, 0, 0);
+        return shiftStart.getTime();
+      }
+
+      return rawStart;
+    };
+
     const finalTaskList: TaskReportItem[] = [];
 
     daysSet.forEach((dateStr) => {
@@ -361,24 +428,29 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
       if (isToday && Date.now() < shiftStart.getTime()) {
         const tasksForDay = baseTasks.filter(
-          (t) => new Date(t.startedAt || t.createdAt).toDateString() === dateStr
+          (t) => new Date(t.startedAt || t.createdAt).toDateString() === dateStr || t.status === 'WORKING'
         );
         finalTaskList.push(...tasksForDay);
         return;
       }
 
       const tasksForDay = baseTasks
-        .filter((t) => new Date(t.startedAt || t.createdAt).toDateString() === dateStr)
-        .sort(
-          (a, b) =>
-            new Date(a.startedAt || a.createdAt).getTime() -
-            new Date(b.startedAt || b.createdAt).getTime()
-        );
+        .filter((t) => {
+          const tStart = getTaskStartForDay(t, dateStr);
+          if (new Date(tStart).toDateString() === dateStr) return true;
+          if (t.status === 'WORKING' && isToday) return true;
+          return false;
+        })
+        .sort((a, b) => getTaskStartForDay(a, dateStr) - getTaskStartForDay(b, dateStr));
 
       let cursor = shiftStart.getTime();
 
       tasksForDay.forEach((task) => {
-        const st = new Date(task.startedAt || task.createdAt).getTime();
+        let st = getTaskStartForDay(task, dateStr);
+        if (isToday && st < shiftStart.getTime() && task.status === 'WORKING') {
+          st = Math.max(st, shiftStart.getTime());
+        }
+
         const isWorking = task.status === 'WORKING';
         let et = isWorking
           ? Date.now()
@@ -432,12 +504,12 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       }
     });
 
-    return finalTaskList.sort(
-      (a, b) =>
-        new Date(b.startedAt || b.createdAt).getTime() -
-        new Date(a.startedAt || a.createdAt).getTime()
-    );
-  }, [taskReports, dateFilter, customFrom, customTo, employee]);
+    return finalTaskList.sort((a, b) => {
+      const tA = a.status === 'WORKING' ? Date.now() : new Date(a.startedAt || a.createdAt).getTime();
+      const tB = b.status === 'WORKING' ? Date.now() : new Date(b.startedAt || b.createdAt).getTime();
+      return tB - tA;
+    });
+  }, [taskReports, dateFilter, customFrom, customTo, employee, logs]);
 
   // Derived Stats
   const stats = useMemo(() => {
