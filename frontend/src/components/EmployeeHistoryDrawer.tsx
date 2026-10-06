@@ -315,7 +315,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     );
   }, [logs, dateFilter, customFrom, customTo, employee]);
 
-  // Filtered Task Breakdown items + IDLE Gaps (Strictly Deduplicated)
+  // Filtered Task Breakdown items + IDLE Gaps (Strictly Deduplicated & Session-Aware)
   const filteredTasks = useMemo(() => {
     const [startH, startM] = (employee?.officeStartTime || '10:00').split(':').map(Number);
     const [endH, endM] = (employee?.officeEndTime || '19:00').split(':').map(Number);
@@ -337,20 +337,33 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       const taskLast = task.lastActivity ? new Date(task.lastActivity) : taskStart;
       const taskComp = task.completedAt ? new Date(task.completedAt) : taskLast;
 
+      const hasMatchingLogOnDate = (dStr: string) => {
+        return logs.some((l) => {
+          const lTime = new Date(l.startTime || l.createdAt);
+          const lTaskId = typeof l.taskId === 'object' ? l.taskId?._id : l.taskId;
+          const isMatch =
+            (lTaskId && task._id && lTaskId.toString() === task._id.toString()) ||
+            (l.customTaskTitle && task.title && l.customTaskTitle.trim().toLowerCase() === task.title.trim().toLowerCase());
+          return isMatch && lTime.toDateString() === dStr;
+        });
+      };
+
       if (isWorking) return true;
 
       if (dateFilter === 'today') {
         return (
           taskStart.toDateString() === todayStr ||
           taskLast.toDateString() === todayStr ||
-          taskComp.toDateString() === todayStr
+          taskComp.toDateString() === todayStr ||
+          hasMatchingLogOnDate(todayStr)
         );
       }
       if (dateFilter === 'yesterday') {
         return (
           taskStart.toDateString() === yesterdayStr ||
           taskLast.toDateString() === yesterdayStr ||
-          taskComp.toDateString() === yesterdayStr
+          taskComp.toDateString() === yesterdayStr ||
+          hasMatchingLogOnDate(yesterdayStr)
         );
       }
       if (dateFilter === '7days') return taskLast >= sevenDaysAgo || taskStart >= sevenDaysAgo;
@@ -384,6 +397,10 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
         const dStr = new Date(t.startedAt || t.createdAt).toDateString();
         daysSet.add(dStr);
       });
+      logs.forEach((l) => {
+        const dStr = new Date(l.startTime || l.createdAt).toDateString();
+        daysSet.add(dStr);
+      });
       if (daysSet.size === 0) daysSet.add(todayStr);
     }
 
@@ -404,31 +421,79 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
       if (isToday && Date.now() < shiftStart.getTime()) return;
 
-      const tasksForDay = uniqueBaseTasks
-        .filter((t) => {
-          const tStart = new Date(t.startedAt || t.createdAt);
-          if (tStart.toDateString() === dateStr) return true;
-          if (t.status === 'WORKING' && isToday) return true;
+      interface TaskSession {
+        task: TaskReportItem;
+        st: number;
+        et: number;
+      }
+
+      const taskSessionsForDay: TaskSession[] = [];
+
+      uniqueBaseTasks.forEach((t) => {
+        const matchingLogs = logs.filter((l) => {
+          const lTaskId = typeof l.taskId === 'object' ? l.taskId?._id : l.taskId;
+          if (lTaskId && t._id && lTaskId.toString() === t._id.toString()) return true;
+          if (l.customTaskTitle && t.title && l.customTaskTitle.trim().toLowerCase() === t.title.trim().toLowerCase()) return true;
           return false;
-        })
-        .sort((a, b) => new Date(a.startedAt || a.createdAt).getTime() - new Date(b.startedAt || b.createdAt).getTime());
+        });
+
+        const logsOnDay = matchingLogs.filter((l) => {
+          const lTime = new Date(l.startTime || l.createdAt);
+          if (lTime.toDateString() === dateStr) return true;
+          if (l.status === 'WORKING' && isToday) return true;
+          return false;
+        });
+
+        if (logsOnDay.length > 0) {
+          logsOnDay.forEach((l) => {
+            let st = new Date(l.startTime || l.createdAt).getTime();
+            let durMins = l.duration || l.durationMinutes || 0;
+            const isLatestOverall = l._id === logs[0]?._id;
+            if (l.status === 'WORKING' && isLatestOverall) {
+              durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
+            }
+            if (isToday && st < shiftStart.getTime() && l.status === 'WORKING') {
+              st = Math.max(st, shiftStart.getTime());
+            }
+            let et = st + Math.max(1, durMins) * 60000;
+            taskSessionsForDay.push({ task: t, st, et });
+          });
+        } else {
+          const tStart = new Date(t.startedAt || t.createdAt);
+          const tComp = t.completedAt ? new Date(t.completedAt) : null;
+          const tLast = t.lastActivity ? new Date(t.lastActivity) : null;
+
+          const matchesDay =
+            tStart.toDateString() === dateStr ||
+            (tComp && tComp.toDateString() === dateStr) ||
+            (tLast && tLast.toDateString() === dateStr) ||
+            (t.status === 'WORKING' && isToday);
+
+          if (matchesDay) {
+            let st = tStart.getTime();
+            if (st < shiftStart.getTime()) {
+              st = shiftStart.getTime();
+            }
+            let et = t.status === 'WORKING'
+              ? Date.now()
+              : tComp
+              ? tComp.getTime()
+              : tLast
+              ? tLast.getTime()
+              : st + Math.max(1, t.totalMinutes || 0) * 60000;
+            if (et <= st) et = st + Math.max(1, t.totalMinutes || 0) * 60000;
+            taskSessionsForDay.push({ task: t, st, et });
+          }
+        }
+      });
+
+      taskSessionsForDay.sort((a, b) => a.st - b.st);
 
       let cursor = shiftStart.getTime();
 
-      tasksForDay.forEach((task) => {
-        let st = new Date(task.startedAt || task.createdAt).getTime();
-        if (isToday && st < shiftStart.getTime() && task.status === 'WORKING') {
-          st = Math.max(st, shiftStart.getTime());
-        }
-
-        const isWorking = task.status === 'WORKING';
-        let et = isWorking
-          ? Date.now()
-          : task.completedAt
-          ? new Date(task.completedAt).getTime()
-          : st + (task.totalMinutes || 0) * 60000;
-
-        if (et <= st) et = st + Math.max(1, task.totalMinutes || 0) * 60000;
+      taskSessionsForDay.forEach((session) => {
+        const st = session.st;
+        const et = session.et;
 
         if (st > cursor + 120000 && cursor < limit) {
           const idleEnd = Math.min(st, limit);
@@ -478,7 +543,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       const tB = b.status === 'WORKING' ? Date.now() : new Date(b.startedAt || b.createdAt).getTime();
       return tB - tA;
     });
-  }, [taskReports, dateFilter, customFrom, customTo, employee]);
+  }, [taskReports, logs, dateFilter, customFrom, customTo, employee]);
 
   // Derived Stats
   const stats = useMemo(() => {
