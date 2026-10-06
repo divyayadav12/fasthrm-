@@ -463,24 +463,36 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           const tComp = t.completedAt ? new Date(t.completedAt) : null;
           const tLast = t.lastActivity ? new Date(t.lastActivity) : null;
 
-          const matchesDay =
-            tStart.toDateString() === dateStr ||
-            (tComp && tComp.toDateString() === dateStr) ||
-            (tLast && tLast.toDateString() === dateStr) ||
-            (t.status === 'WORKING' && isToday);
+          const isTaskCreatedOnDay = tStart.toDateString() === dateStr;
+          const isTaskEndedOnDay = (tComp && tComp.toDateString() === dateStr) || (tLast && tLast.toDateString() === dateStr);
+          const isTaskWorkingToday = t.status === 'WORKING' && isToday;
 
-          if (matchesDay) {
-            let st = tStart.getTime();
-            if (st < shiftStart.getTime()) {
-              st = shiftStart.getTime();
-            }
-            let et = t.status === 'WORKING'
+          if (isTaskCreatedOnDay || isTaskEndedOnDay || isTaskWorkingToday) {
+            let et = isTaskWorkingToday
               ? Date.now()
               : tComp
               ? tComp.getTime()
               : tLast
               ? tLast.getTime()
-              : st + Math.max(1, t.totalMinutes || 0) * 60000;
+              : tStart.getTime() + Math.max(1, t.totalMinutes || 0) * 60000;
+
+            let st = tStart.getTime();
+
+            if (isTaskCreatedOnDay) {
+              if (st < shiftStart.getTime()) {
+                st = shiftStart.getTime();
+              }
+            } else {
+              // Task was created on an EARLIER day!
+              // Calculate how much time was spent on earlier days vs today.
+              const prevLogsMins = matchingLogs
+                .filter((l) => new Date(l.startTime || l.createdAt) < shiftStart)
+                .reduce((sum, l) => sum + (l.duration || l.durationMinutes || 0), 0);
+
+              const minsForDay = Math.max(1, (t.totalMinutes || 0) - prevLogsMins);
+              st = Math.max(shiftStart.getTime(), et - minsForDay * 60000);
+            }
+
             if (et <= st) et = st + Math.max(1, t.totalMinutes || 0) * 60000;
             taskSessionsForDay.push({ task: t, st, et });
           }
