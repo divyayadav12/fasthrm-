@@ -948,7 +948,7 @@ export default function StudentInquiries() {
                       {inq.forwardedTo && (
                         <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 max-w-fit">
                           <Send className="w-3 h-3 text-indigo-500" />
-                          <span>Forwarded to: {inq.forwardedTo}</span>
+                          <span>Forwarded by: {inq.forwardedBy || inq.addedByName}</span>
                         </div>
                       )}
                     </td>
@@ -964,19 +964,24 @@ export default function StudentInquiries() {
                       </span>
                     </td>
 
-                    {/* Added By (Staff Name) */}
+                    {/* Attended By (Staff Name) */}
                     <td className="px-5 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
-                          {inq.addedByName?.charAt(0) || 'S'}
-                        </div>
-                        <div>
-                          <div className="text-xs font-semibold text-gray-900">{inq.addedByName}</div>
-                          <div className="text-[10px] text-gray-400">
-                            {inq.addedByDepartment || 'Support'}
+                      {(() => {
+                        const attendedName = inq.forwardedTo || inq.addedByName;
+                        return (
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
+                              {attendedName?.charAt(0)?.toUpperCase() || 'S'}
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-gray-900">{attendedName}</div>
+                              <div className="text-[10px] text-gray-400">
+                                {inq.addedByDepartment || 'Support'}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
                     </td>
 
                     {/* Previous / Reference ID */}
@@ -1701,10 +1706,10 @@ export default function StudentInquiries() {
                 )}
 
                 <div className="pt-2 border-t border-indigo-100/60 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-                  <span>Attended By: <strong>{selectedInquiry.addedByName}</strong> ({selectedInquiry.addedByDepartment || 'Support'})</span>
+                  <span>Attended By: <strong>{selectedInquiry.forwardedTo || selectedInquiry.addedByName}</strong> ({selectedInquiry.addedByDepartment || 'Support'})</span>
                   {selectedInquiry.forwardedTo && (
                     <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100 font-medium">
-                      👉 Forwarded To: <strong>{selectedInquiry.forwardedTo}</strong> {selectedInquiry.forwardedBy ? `(By ${selectedInquiry.forwardedBy})` : ''}
+                      👉 Forwarded By: <strong>{selectedInquiry.forwardedBy || selectedInquiry.addedByName}</strong>
                     </span>
                   )}
                   {selectedInquiry.previousInquiryId && (
