@@ -492,7 +492,7 @@ export const sendStudentFeedback = async (req: AuthRequest, res: Response) => {
     const formattedPhone = `91${rawPhone}`;
     const webhookUrl = 'https://dash.teleobi.com/webhook/whatsapp-workflow/61602.183817.415500.1785233215';
 
-    // Call Teleobi Webhook using Node https module bypassing SSL leaf verification
+    // Call Teleobi Webhook using Node fetch
     try {
       const payloadData = JSON.stringify({
         phone: formattedPhone,
@@ -500,6 +500,7 @@ export const sendStudentFeedback = async (req: AuthRequest, res: Response) => {
         mobile: formattedPhone,
         mobileNumber: formattedPhone,
         phoneNumber: formattedPhone,
+        phonenumber: formattedPhone,
         phone_number: formattedPhone,
         wa_number: formattedPhone,
         studentName: inquiry.studentName || '',
@@ -509,36 +510,34 @@ export const sendStudentFeedback = async (req: AuthRequest, res: Response) => {
         details: inquiry.details || '',
       });
 
-      await new Promise<void>((resolve) => {
-        const reqOpts: https.RequestOptions = {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(payloadData),
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          },
-          rejectUnauthorized: false,
-        };
-
-        const webhookReq = https.request(webhookUrl, reqOpts, (webhookRes) => {
-          let body = '';
-          webhookRes.on('data', (chunk) => (body += chunk));
-          webhookRes.on('end', () => {
-            console.log('Teleobi webhook response:', webhookRes.statusCode, body);
-            resolve();
-          });
-        });
-
-        webhookReq.on('error', (err) => {
-          console.error('Teleobi webhook request error:', err.message);
-          resolve(); // Resolve to proceed with DB state update
-        });
-
-        webhookReq.write(payloadData);
-        webhookReq.end();
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        },
+        body: payloadData,
       });
+
+      const responseText = await response.text();
+      console.log('Teleobi webhook response:', response.status, responseText);
+      
+      let isSuccess = response.ok;
+      if (responseText) {
+        try {
+          const json = JSON.parse(responseText);
+          if (json.status === 0 || json.sent === false) {
+            isSuccess = false;
+          }
+        } catch (e) {}
+      }
+
+      if (!isSuccess) {
+        throw new Error(`Teleobi webhook failed: ${responseText}`);
+      }
     } catch (webhookErr: any) {
-      console.error('Teleobi Webhook error (logged, continuing DB update):', webhookErr?.message || webhookErr);
+      console.error('Teleobi Webhook error:', webhookErr?.message || webhookErr);
+      return res.status(500).json({ message: webhookErr?.message || 'Failed to trigger Teleobi webhook' });
     }
 
     inquiry.feedbackSent = true;
