@@ -439,6 +439,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       const dayTaskSessions: SessionData[] = [];
 
       uniqueBaseTasks.forEach((t) => {
+        const isLunchBreak = t.title?.trim().toLowerCase() === 'lunch break';
         const matchingLogs = logs.filter((l) => {
           const lTaskId = typeof l.taskId === 'object' ? l.taskId?._id : l.taskId;
           if (lTaskId && t._id && lTaskId.toString() === t._id.toString()) return true;
@@ -480,19 +481,22 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
         } else {
           const tStart = new Date(t.startedAt || t.createdAt);
           const tComp = t.completedAt ? new Date(t.completedAt) : null;
-          const tLast = t.lastActivity ? new Date(t.lastActivity) : null;
 
           const isTaskCreatedOnDay = tStart.toDateString() === dateStr;
-          const isTaskEndedOnDay = (tComp && tComp.toDateString() === dateStr) || (tLast && tLast.toDateString() === dateStr);
+          const isTaskCompletedOnDay = tComp ? tComp.toDateString() === dateStr : false;
           const isTaskWorkingToday = t.status === 'WORKING' && isToday;
 
-          if (isTaskCreatedOnDay || isTaskEndedOnDay || isTaskWorkingToday) {
+          // For Lunch Break: ONLY include if created on dateStr or working today!
+          // For Regular Tasks: include if created, completed, or working on dateStr!
+          const belongsToDay = isLunchBreak
+            ? isTaskCreatedOnDay || isTaskWorkingToday
+            : isTaskCreatedOnDay || isTaskCompletedOnDay || isTaskWorkingToday;
+
+          if (belongsToDay) {
             let et = isTaskWorkingToday
               ? Date.now()
               : tComp
               ? tComp.getTime()
-              : tLast
-              ? tLast.getTime()
               : tStart.getTime() + Math.max(1, t.totalMinutes || 0) * 60000;
 
             let st = tStart.getTime();
@@ -502,7 +506,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                 st = shiftStart.getTime();
               }
             } else {
-              // Task was created on an EARLIER day!
+              // Task was created on an EARLIER day and completed today!
               const prevLogsMins = matchingLogs
                 .filter((l) => new Date(l.startTime || l.createdAt) < shiftStart)
                 .reduce((sum, l) => sum + (l.duration || l.durationMinutes || 0), 0);
@@ -516,7 +520,6 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             }
 
             if (et <= st) et = st + Math.max(1, t.totalMinutes || 0) * 60000;
-            const isLunchBreak = t.title?.trim().toLowerCase() === 'lunch break';
             const isResumed = !isLunchBreak && tStart.toDateString() !== dateStr;
 
             dayTaskSessions.push({
