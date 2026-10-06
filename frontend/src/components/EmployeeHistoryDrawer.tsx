@@ -666,7 +666,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       PENDING: 'bg-orange-50 text-orange-700 border-orange-200',
       BLOCKED: 'bg-red-50 text-red-700 border-red-200',
       NOT_STARTED: 'bg-gray-100 text-gray-700 border-gray-200',
-      IDLE: 'bg-gray-50 text-gray-500 border-gray-200 border-dashed',
+      IDLE: 'bg-amber-50 text-amber-700 border-amber-300 border-dashed font-bold',
     };
     
     let displayStatus = status;
@@ -899,14 +899,17 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                           : '-';
 
                         return (
-                          <tr key={task._id} className={`transition-colors group ${task.status === 'IDLE' ? 'bg-gray-50/60 hover:bg-gray-50' : 'hover:bg-indigo-50/30'}`}>
+                          <tr key={task._id} className={`transition-colors group ${task.status === 'IDLE' ? 'bg-amber-50/25 hover:bg-amber-50/50 border-l-4 border-l-amber-400' : 'hover:bg-indigo-50/30'}`}>
                             {/* Task Name */}
                             <td className="px-4 py-3.5">
                               {task.status === 'IDLE' ? (
                                 <div>
-                                  <span className="font-semibold text-gray-500 italic">IDLE</span>
-                                  <p className="text-[11px] text-gray-400 truncate max-w-xs mt-0.5">
-                                    {task.description || 'No active task tracked'}
+                                  <div className="flex items-center space-x-1.5">
+                                    <Clock className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+                                    <span className="font-bold text-amber-900 tracking-wide text-xs">IDLE (UN-TRACKED TIME GAP)</span>
+                                  </div>
+                                  <p className="text-[11px] text-amber-700/80 truncate max-w-xs mt-0.5">
+                                    {task.description || 'No active task logged during this period'}
                                   </p>
                                 </div>
                               ) : (
