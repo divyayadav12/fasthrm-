@@ -38,6 +38,10 @@ interface TaskReportItem {
   lastActivity?: string;
   logCount: number;
   createdAt: string;
+  isResumedTask?: boolean;
+  originalStartedAt?: string;
+  st?: number;
+  et?: number;
 }
 
 export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
@@ -316,6 +320,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
   }, [logs, dateFilter, customFrom, customTo, employee]);
 
   // Filtered Task Breakdown items + IDLE Gaps (Strictly Deduplicated & Session-Aware)
+  // Filtered Task Breakdown items + IDLE Gaps (Strictly Deduplicated & Session-Aware)
   const filteredTasks = useMemo(() => {
     const [startH, startM] = (employee?.officeStartTime || '10:00').split(':').map(Number);
     const [endH, endM] = (employee?.officeEndTime || '19:00').split(':').map(Number);
@@ -404,7 +409,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       if (daysSet.size === 0) daysSet.add(todayStr);
     }
 
-    const idleItems: TaskReportItem[] = [];
+    const allFinalItems: TaskReportItem[] = [];
 
     daysSet.forEach((dateStr) => {
       const d = new Date(dateStr);
@@ -421,13 +426,16 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
       if (isToday && Date.now() < shiftStart.getTime()) return;
 
-      interface TaskSession {
+      interface SessionData {
         task: TaskReportItem;
         st: number;
         et: number;
+        isResumed: boolean;
+        originalStartedAt?: string;
+        sessionMinutes: number;
       }
 
-      const taskSessionsForDay: TaskSession[] = [];
+      const dayTaskSessions: SessionData[] = [];
 
       uniqueBaseTasks.forEach((t) => {
         const matchingLogs = logs.filter((l) => {
@@ -456,7 +464,16 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               st = Math.max(st, shiftStart.getTime());
             }
             let et = st + Math.max(1, durMins) * 60000;
-            taskSessionsForDay.push({ task: t, st, et });
+            const origStart = new Date(t.startedAt || t.createdAt);
+            const isResumed = origStart.toDateString() !== dateStr;
+            dayTaskSessions.push({
+              task: t,
+              st,
+              et,
+              isResumed,
+              originalStartedAt: t.startedAt || t.createdAt,
+              sessionMinutes: durMins,
+            });
           });
         } else {
           const tStart = new Date(t.startedAt || t.createdAt);
@@ -484,7 +501,6 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               }
             } else {
               // Task was created on an EARLIER day!
-              // Calculate how much time was spent on earlier days vs today.
               const prevLogsMins = matchingLogs
                 .filter((l) => new Date(l.startTime || l.createdAt) < shiftStart)
                 .reduce((sum, l) => sum + (l.duration || l.durationMinutes || 0), 0);
@@ -497,16 +513,25 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             }
 
             if (et <= st) et = st + Math.max(1, t.totalMinutes || 0) * 60000;
-            taskSessionsForDay.push({ task: t, st, et });
+            const isResumed = tStart.toDateString() !== dateStr;
+
+            dayTaskSessions.push({
+              task: t,
+              st,
+              et,
+              isResumed,
+              originalStartedAt: t.startedAt || t.createdAt,
+              sessionMinutes: Math.round((et - st) / 60000),
+            });
           }
         }
       });
 
-      taskSessionsForDay.sort((a, b) => a.st - b.st);
+      dayTaskSessions.sort((a, b) => a.st - b.st);
 
       let cursor = shiftStart.getTime();
 
-      taskSessionsForDay.forEach((session) => {
+      dayTaskSessions.forEach((session) => {
         const st = session.st;
         const et = session.et;
 
@@ -514,7 +539,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           const idleEnd = Math.min(st, limit);
           const durMins = Math.floor((idleEnd - cursor) / 60000);
           if (durMins >= 2) {
-            idleItems.push({
+            allFinalItems.push({
               _id: `idle-${dateStr}-${cursor}`,
               title: 'IDLE',
               description: 'No active task being tracked',
@@ -526,16 +551,31 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               lastActivity: new Date(idleEnd).toISOString(),
               logCount: 0,
               createdAt: new Date(cursor).toISOString(),
+              st: cursor,
+              et: idleEnd,
             });
           }
         }
+
+        allFinalItems.push({
+          ...session.task,
+          _id: `${session.task._id}-session-${dateStr}-${session.st}`,
+          startedAt: new Date(session.st).toISOString(),
+          completedAt: session.task.status === 'WORKING' && isToday ? undefined : new Date(session.et).toISOString(),
+          totalMinutes: session.sessionMinutes || session.task.totalMinutes,
+          isResumedTask: session.isResumed,
+          originalStartedAt: session.originalStartedAt,
+          st: session.st,
+          et: session.et,
+        });
+
         cursor = Math.max(cursor, et);
       });
 
       if (cursor + 120000 < limit) {
         const durMins = Math.floor((limit - cursor) / 60000);
         if (durMins >= 2) {
-          idleItems.push({
+          allFinalItems.push({
             _id: `idle-${dateStr}-${cursor}-end`,
             title: 'IDLE',
             description: 'No active task being tracked',
@@ -547,15 +587,16 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             lastActivity: new Date(limit).toISOString(),
             logCount: 0,
             createdAt: new Date(cursor).toISOString(),
+            st: cursor,
+            et: limit,
           });
         }
       }
     });
 
-    const combined = [...uniqueBaseTasks, ...idleItems];
-    return combined.sort((a, b) => {
-      const tA = a.status === 'WORKING' ? Date.now() : new Date(a.startedAt || a.createdAt).getTime();
-      const tB = b.status === 'WORKING' ? Date.now() : new Date(b.startedAt || b.createdAt).getTime();
+    return allFinalItems.sort((a, b) => {
+      const tA = a.status === 'WORKING' ? Date.now() : a.st || (a.startedAt ? new Date(a.startedAt).getTime() : 0);
+      const tB = b.status === 'WORKING' ? Date.now() : b.st || (b.startedAt ? new Date(b.startedAt).getTime() : 0);
       return tB - tA;
     });
   }, [taskReports, logs, dateFilter, customFrom, customTo, employee]);
@@ -869,25 +910,37 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                                 </div>
                               ) : (
                                 <>
-                                  <span
-                                    onClick={() => {
-                                      if (onSelectTask) {
-                                        onSelectTask({
-                                          taskId: task._id,
-                                          title: task.title,
-                                          employee,
-                                        });
-                                      }
-                                    }}
-                                    className="font-semibold text-gray-900 hover:text-indigo-600 cursor-pointer hover:underline inline-flex items-center group-hover:text-indigo-600"
-                                    title="Click to view task details"
-                                  >
-                                    {task.title}
-                                    <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-indigo-500 transition-opacity flex-shrink-0" />
-                                  </span>
+                                  <div className="flex items-center flex-wrap gap-1">
+                                    <span
+                                      onClick={() => {
+                                        if (onSelectTask) {
+                                          onSelectTask({
+                                            taskId: task._id,
+                                            title: task.title,
+                                            employee,
+                                          });
+                                        }
+                                      }}
+                                      className="font-semibold text-gray-900 hover:text-indigo-600 cursor-pointer hover:underline inline-flex items-center group-hover:text-indigo-600"
+                                      title="Click to view task details"
+                                    >
+                                      {task.title}
+                                      <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-indigo-500 transition-opacity flex-shrink-0" />
+                                    </span>
+                                    {task.isResumedTask && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">
+                                        Resumed Work
+                                      </span>
+                                    )}
+                                  </div>
                                   {task.description && (
                                     <p className="text-[11px] text-gray-400 truncate max-w-xs mt-0.5">
                                       {task.description}
+                                    </p>
+                                  )}
+                                  {task.isResumedTask && task.originalStartedAt && (
+                                    <p className="text-[10px] text-indigo-600/80 font-medium truncate max-w-xs mt-0.5">
+                                      Resumed today · Originally started: {formatDateSubtext(task.originalStartedAt)}
                                     </p>
                                   )}
                                 </>
