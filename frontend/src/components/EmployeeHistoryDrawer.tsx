@@ -410,6 +410,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     }
 
     const allFinalItems: TaskReportItem[] = [];
+    const addedItemKeys = new Set<string>();
 
     daysSet.forEach((dateStr) => {
       const d = new Date(dateStr);
@@ -465,7 +466,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             }
             let et = st + Math.max(1, durMins) * 60000;
             const origStart = new Date(t.startedAt || t.createdAt);
-            const isResumed = origStart.toDateString() !== dateStr;
+            const isLunchBreak = t.title?.trim().toLowerCase() === 'lunch break';
+            const isResumed = !isLunchBreak && origStart.toDateString() !== dateStr;
             dayTaskSessions.push({
               task: t,
               st,
@@ -514,7 +516,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             }
 
             if (et <= st) et = st + Math.max(1, t.totalMinutes || 0) * 60000;
-            const isResumed = tStart.toDateString() !== dateStr;
+            const isLunchBreak = t.title?.trim().toLowerCase() === 'lunch break';
+            const isResumed = !isLunchBreak && tStart.toDateString() !== dateStr;
 
             dayTaskSessions.push({
               task: t,
@@ -540,35 +543,43 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           const idleEnd = Math.min(st, limit);
           const durMins = Math.floor((idleEnd - cursor) / 60000);
           if (durMins >= 2) {
-            allFinalItems.push({
-              _id: `idle-${dateStr}-${cursor}`,
-              title: 'IDLE',
-              description: 'No active task being tracked',
-              status: 'IDLE',
-              progress: 0,
-              totalMinutes: durMins,
-              startedAt: new Date(cursor).toISOString(),
-              completedAt: new Date(idleEnd).toISOString(),
-              lastActivity: new Date(idleEnd).toISOString(),
-              logCount: 0,
-              createdAt: new Date(cursor).toISOString(),
-              st: cursor,
-              et: idleEnd,
-            });
+            const idleKey = `idle-${dateStr}-${cursor}`;
+            if (!addedItemKeys.has(idleKey)) {
+              addedItemKeys.add(idleKey);
+              allFinalItems.push({
+                _id: idleKey,
+                title: 'IDLE',
+                description: 'No active task being tracked',
+                status: 'IDLE',
+                progress: 0,
+                totalMinutes: durMins,
+                startedAt: new Date(cursor).toISOString(),
+                completedAt: new Date(idleEnd).toISOString(),
+                lastActivity: new Date(idleEnd).toISOString(),
+                logCount: 0,
+                createdAt: new Date(cursor).toISOString(),
+                st: cursor,
+                et: idleEnd,
+              });
+            }
           }
         }
 
-        allFinalItems.push({
-          ...session.task,
-          _id: `${session.task._id}-session-${dateStr}-${session.st}`,
-          startedAt: new Date(session.st).toISOString(),
-          completedAt: session.task.status === 'WORKING' && isToday ? undefined : new Date(session.et).toISOString(),
-          totalMinutes: session.sessionMinutes || session.task.totalMinutes,
-          isResumedTask: session.isResumed,
-          originalStartedAt: session.originalStartedAt,
-          st: session.st,
-          et: session.et,
-        });
+        const itemKey = `${session.task._id}-session-${dateStr}-${session.st}`;
+        if (!addedItemKeys.has(itemKey)) {
+          addedItemKeys.add(itemKey);
+          allFinalItems.push({
+            ...session.task,
+            _id: itemKey,
+            startedAt: new Date(session.st).toISOString(),
+            completedAt: session.task.status === 'WORKING' && isToday ? undefined : new Date(session.et).toISOString(),
+            totalMinutes: session.sessionMinutes || session.task.totalMinutes,
+            isResumedTask: session.isResumed,
+            originalStartedAt: session.originalStartedAt,
+            st: session.st,
+            et: session.et,
+          });
+        }
 
         cursor = Math.max(cursor, et);
       });
@@ -576,21 +587,25 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       if (cursor + 120000 < limit) {
         const durMins = Math.floor((limit - cursor) / 60000);
         if (durMins >= 2) {
-          allFinalItems.push({
-            _id: `idle-${dateStr}-${cursor}-end`,
-            title: 'IDLE',
-            description: 'No active task being tracked',
-            status: 'IDLE',
-            progress: 0,
-            totalMinutes: durMins,
-            startedAt: new Date(cursor).toISOString(),
-            completedAt: new Date(limit).toISOString(),
-            lastActivity: new Date(limit).toISOString(),
-            logCount: 0,
-            createdAt: new Date(cursor).toISOString(),
-            st: cursor,
-            et: limit,
-          });
+          const idleEndKey = `idle-${dateStr}-${cursor}-end`;
+          if (!addedItemKeys.has(idleEndKey)) {
+            addedItemKeys.add(idleEndKey);
+            allFinalItems.push({
+              _id: idleEndKey,
+              title: 'IDLE',
+              description: 'No active task being tracked',
+              status: 'IDLE',
+              progress: 0,
+              totalMinutes: durMins,
+              startedAt: new Date(cursor).toISOString(),
+              completedAt: new Date(limit).toISOString(),
+              lastActivity: new Date(limit).toISOString(),
+              logCount: 0,
+              createdAt: new Date(cursor).toISOString(),
+              st: cursor,
+              et: limit,
+            });
+          }
         }
       }
     });
