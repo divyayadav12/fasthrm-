@@ -568,12 +568,12 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           }
         }
 
-        const itemKey = `${session.task._id}-session-${dateStr}-${session.st}`;
+        const itemKey = `${session.task.title.trim().toLowerCase()}-${dateStr}-${session.st}-${session.et}`;
         if (!addedItemKeys.has(itemKey)) {
           addedItemKeys.add(itemKey);
           allFinalItems.push({
             ...session.task,
-            _id: itemKey,
+            _id: `${session.task._id}-session-${dateStr}-${session.st}`,
             startedAt: new Date(session.st).toISOString(),
             completedAt: session.task.status === 'WORKING' && isToday ? undefined : new Date(session.et).toISOString(),
             totalMinutes: session.sessionMinutes || session.task.totalMinutes,
