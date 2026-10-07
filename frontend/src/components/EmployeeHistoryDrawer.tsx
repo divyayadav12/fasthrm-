@@ -427,19 +427,11 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
       if (isToday && Date.now() < shiftStart.getTime()) return;
 
-      interface SessionData {
-        task: TaskReportItem;
-        st: number;
-        et: number;
-        isResumed: boolean;
-        originalStartedAt?: string;
-        sessionMinutes: number;
-      }
-
-      const dayTaskSessions: SessionData[] = [];
+      const rawWorkIntervals: { st: number; et: number }[] = [];
 
       uniqueBaseTasks.forEach((t) => {
         const isLunchBreak = t.title?.trim().toLowerCase() === 'lunch break';
+
         const matchingLogs = logs.filter((l) => {
           const lTaskId = typeof l.taskId === 'object' ? l.taskId?._id : l.taskId;
           if (lTaskId && t._id && lTaskId.toString() === t._id.toString()) return true;
@@ -454,96 +446,71 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           return false;
         });
 
-        if (logsOnDay.length > 0) {
-          logsOnDay.forEach((l) => {
-            let st = new Date(l.startTime || l.createdAt).getTime();
-            let durMins = l.duration || l.durationMinutes || 0;
-            const isLatestOverall = l._id === logs[0]?._id;
-            if (l.status === 'WORKING' && isLatestOverall) {
-              durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
-            }
-            if (isToday && st < shiftStart.getTime() && l.status === 'WORKING') {
-              st = Math.max(st, shiftStart.getTime());
-            }
-            let et = st + Math.max(1, durMins) * 60000;
-            const origStart = new Date(t.startedAt || t.createdAt);
-            const isLunchBreak = t.title?.trim().toLowerCase() === 'lunch break';
-            const isResumed = !isLunchBreak && origStart.toDateString() !== dateStr;
-            dayTaskSessions.push({
-              task: t,
-              st,
-              et,
-              isResumed,
-              originalStartedAt: t.startedAt || t.createdAt,
-              sessionMinutes: durMins,
+        const tStart = new Date(t.startedAt || t.createdAt);
+        const tComp = t.completedAt ? new Date(t.completedAt) : null;
+        const isTaskCreatedOnDay = tStart.toDateString() === dateStr;
+        const isTaskCompletedOnDay = tComp ? tComp.toDateString() === dateStr : false;
+        const isTaskWorkingToday = t.status === 'WORKING' && isToday;
+
+        const belongsToDay = isLunchBreak
+          ? isTaskCreatedOnDay || isTaskWorkingToday
+          : isTaskCreatedOnDay || isTaskCompletedOnDay || isTaskWorkingToday || logsOnDay.length > 0;
+
+        if (belongsToDay) {
+          const taskKey = `${t._id || t.title}-${dateStr}`;
+          if (!addedItemKeys.has(taskKey)) {
+            addedItemKeys.add(taskKey);
+            allFinalItems.push(t);
+          }
+
+          if (logsOnDay.length > 0) {
+            logsOnDay.forEach((l) => {
+              let st = new Date(l.startTime || l.createdAt).getTime();
+              let durMins = l.duration || l.durationMinutes || 0;
+              const isLatestOverall = l._id === logs[0]?._id;
+              if (l.status === 'WORKING' && isLatestOverall) {
+                durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
+              }
+              let et = st + Math.max(1, durMins) * 60000;
+              rawWorkIntervals.push({ st, et });
             });
-          });
-        } else {
-          const tStart = new Date(t.startedAt || t.createdAt);
-          const tComp = t.completedAt ? new Date(t.completedAt) : null;
-
-          const isTaskCreatedOnDay = tStart.toDateString() === dateStr;
-          const isTaskCompletedOnDay = tComp ? tComp.toDateString() === dateStr : false;
-          const isTaskWorkingToday = t.status === 'WORKING' && isToday;
-
-          // For Lunch Break: ONLY include if created on dateStr or working today!
-          // For Regular Tasks: include if created, completed, or working on dateStr!
-          const belongsToDay = isLunchBreak
-            ? isTaskCreatedOnDay || isTaskWorkingToday
-            : isTaskCreatedOnDay || isTaskCompletedOnDay || isTaskWorkingToday;
-
-          if (belongsToDay) {
+          } else {
+            let st = tStart.getTime();
             let et = isTaskWorkingToday
               ? Date.now()
               : tComp
               ? tComp.getTime()
-              : tStart.getTime() + Math.max(1, t.totalMinutes || 0) * 60000;
+              : st + Math.max(1, t.totalMinutes || 0) * 60000;
 
-            let st = tStart.getTime();
-
-            if (isTaskCreatedOnDay) {
-              if (st < shiftStart.getTime()) {
-                st = shiftStart.getTime();
-              }
-            } else {
-              // Task was created on an EARLIER day and completed today!
-              const prevLogsMins = matchingLogs
-                .filter((l) => new Date(l.startTime || l.createdAt) < shiftStart)
-                .reduce((sum, l) => sum + (l.duration || l.durationMinutes || 0), 0);
-
-              let minsForDay = (t.totalMinutes || 0) - prevLogsMins;
-              if (minsForDay <= 0 || prevLogsMins === 0) {
-                const maxShiftMins = Math.floor((et - shiftStart.getTime()) / 60000);
-                minsForDay = Math.min(t.totalMinutes || 120, maxShiftMins > 0 ? maxShiftMins : 120);
-              }
-              st = Math.max(shiftStart.getTime(), et - minsForDay * 60000);
+            if (!isTaskCreatedOnDay && (isTaskCompletedOnDay || isTaskWorkingToday)) {
+              st = Math.max(shiftStart.getTime(), et - Math.max(1, t.totalMinutes || 60) * 60000);
             }
-
-            if (et <= st) et = st + Math.max(1, t.totalMinutes || 0) * 60000;
-            const isResumed = !isLunchBreak && tStart.toDateString() !== dateStr;
-
-            dayTaskSessions.push({
-              task: t,
-              st,
-              et,
-              isResumed,
-              originalStartedAt: t.startedAt || t.createdAt,
-              sessionMinutes: Math.round((et - st) / 60000),
-            });
+            if (et > st) {
+              rawWorkIntervals.push({ st, et });
+            }
           }
         }
       });
 
-      dayTaskSessions.sort((a, b) => a.st - b.st);
+      rawWorkIntervals.sort((a, b) => a.st - b.st);
+      const mergedWorkIntervals: { st: number; et: number }[] = [];
+      rawWorkIntervals.forEach((interval) => {
+        if (mergedWorkIntervals.length === 0) {
+          mergedWorkIntervals.push({ ...interval });
+        } else {
+          const last = mergedWorkIntervals[mergedWorkIntervals.length - 1];
+          if (interval.st <= last.et + 60000) {
+            last.et = Math.max(last.et, interval.et);
+          } else {
+            mergedWorkIntervals.push({ ...interval });
+          }
+        }
+      });
 
       let cursor = shiftStart.getTime();
-
-      dayTaskSessions.forEach((session) => {
-        const st = session.st;
-        const et = session.et;
-
-        if (st > cursor + 120000 && cursor < limit) {
-          const idleEnd = Math.min(st, limit);
+      mergedWorkIntervals.forEach((session) => {
+        if (session.st > cursor + 120000 && cursor < limit) {
+          const idleEnd = Math.min(session.st, limit);
           const durMins = Math.floor((idleEnd - cursor) / 60000);
           if (durMins >= 2) {
             const idleKey = `idle-${dateStr}-${cursor}`;
@@ -567,24 +534,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             }
           }
         }
-
-        const itemKey = `${session.task.title.trim().toLowerCase()}-${dateStr}-${session.st}-${session.et}`;
-        if (!addedItemKeys.has(itemKey)) {
-          addedItemKeys.add(itemKey);
-          allFinalItems.push({
-            ...session.task,
-            _id: `${session.task._id}-session-${dateStr}-${session.st}`,
-            startedAt: new Date(session.st).toISOString(),
-            completedAt: session.task.status === 'WORKING' && isToday ? undefined : new Date(session.et).toISOString(),
-            totalMinutes: session.sessionMinutes || session.task.totalMinutes,
-            isResumedTask: session.isResumed,
-            originalStartedAt: session.originalStartedAt,
-            st: session.st,
-            et: session.et,
-          });
-        }
-
-        cursor = Math.max(cursor, et);
+        cursor = Math.max(cursor, session.et);
       });
 
       if (cursor + 120000 < limit) {
@@ -614,9 +564,14 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
     });
 
     return allFinalItems.sort((a, b) => {
-      const tA = a.status === 'WORKING' ? Date.now() : a.st || (a.startedAt ? new Date(a.startedAt).getTime() : 0);
-      const tB = b.status === 'WORKING' ? Date.now() : b.st || (b.startedAt ? new Date(b.startedAt).getTime() : 0);
-      return tB - tA;
+      const getTime = (item: TaskReportItem) => {
+        if (item.status === 'WORKING') return Date.now();
+        if (item.st) return item.st;
+        if (item.startedAt) return new Date(item.startedAt).getTime();
+        if (item.createdAt) return new Date(item.createdAt).getTime();
+        return 0;
+      };
+      return getTime(b) - getTime(a);
     });
   }, [taskReports, logs, dateFilter, customFrom, customTo, employee]);
 
@@ -949,20 +904,10 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                                       {task.title}
                                       <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-indigo-500 transition-opacity flex-shrink-0" />
                                     </span>
-                                    {task.isResumedTask && (
-                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">
-                                        Resumed Work
-                                      </span>
-                                    )}
                                   </div>
                                   {task.description && (
                                     <p className="text-[11px] text-gray-400 truncate max-w-xs mt-0.5">
                                       {task.description}
-                                    </p>
-                                  )}
-                                  {task.isResumedTask && task.originalStartedAt && (
-                                    <p className="text-[10px] text-indigo-600/80 font-medium truncate max-w-xs mt-0.5">
-                                      Resumed today · Originally started: {formatDateSubtext(task.originalStartedAt)}
                                     </p>
                                   )}
                                 </>
