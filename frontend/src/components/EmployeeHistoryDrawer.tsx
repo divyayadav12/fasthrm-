@@ -526,7 +526,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           if (!addedItemKeys.has(normTitle)) {
             addedItemKeys.add(normTitle);
 
-            // Calculate precise dayMinutes for today / selected day across ALL sessions
+            // Calculate precise dayMinutes for today / selected day across ALL sessions without double-counting cumulative DB durations
             let dayMins = 0;
             const logsOnToday = matchingLogs.filter((l) => {
               const lTime = new Date(l.startTime || l.createdAt);
@@ -536,18 +536,48 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             let firstTodaySt = tStart.getTime();
 
             if (logsOnToday.length > 0) {
-              const logTimes = logsOnToday.map(l => new Date(l.startTime || l.createdAt).getTime());
-              firstTodaySt = Math.min(...logTimes);
-
+              const sessionIntervals: { st: number; et: number }[] = [];
               logsOnToday.forEach((l) => {
                 let st = new Date(l.startTime || l.createdAt).getTime();
-                let durMins = l.duration || l.durationMinutes || 0;
+                let et = l.endTime ? new Date(l.endTime).getTime() : 0;
                 const isLatestOverall = l._id === logs[0]?._id;
                 if (l.status === 'WORKING' && isLatestOverall) {
-                  durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
+                  et = Date.now();
+                } else if (!et) {
+                  let durMins = l.duration || l.durationMinutes || 0;
+                  if (durMins > 0 && durMins < 480) {
+                    et = st + durMins * 60000;
+                  } else {
+                    et = st + 15 * 60000;
+                  }
                 }
-                dayMins += durMins;
+                if (st < shiftStart.getTime()) st = shiftStart.getTime();
+                if (et > Date.now()) et = Date.now();
+                if (et > st) {
+                  sessionIntervals.push({ st, et });
+                }
               });
+
+              if (sessionIntervals.length > 0) {
+                sessionIntervals.sort((a, b) => a.st - b.st);
+                firstTodaySt = sessionIntervals[0].st;
+
+                const mergedToday: { st: number; et: number }[] = [];
+                sessionIntervals.forEach((item) => {
+                  if (mergedToday.length === 0) {
+                    mergedToday.push({ ...item });
+                  } else {
+                    const last = mergedToday[mergedToday.length - 1];
+                    if (item.st <= last.et + 60000) {
+                      last.et = Math.max(last.et, item.et);
+                    } else {
+                      mergedToday.push({ ...item });
+                    }
+                  }
+                });
+
+                dayMins = mergedToday.reduce((sum, item) => sum + Math.floor((item.et - item.st) / 60000), 0);
+              }
             } else if (t.status === 'WORKING') {
               const activeLog = logs.find((l) => l.status === 'WORKING');
               let activeSt = Date.now();
@@ -564,6 +594,10 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             } else if (tStart.toDateString() === todayStr) {
               dayMins = t.totalMinutes || 0;
             }
+
+            // Clamping safety: dayMins for today can never exceed total elapsed shift time so far!
+            const maxPossibleShiftMins = Math.max(1, Math.floor((Date.now() - shiftStart.getTime()) / 60000));
+            dayMins = Math.min(dayMins, maxPossibleShiftMins);
 
             let calculatedTotalMinutes = t.totalMinutes || 0;
             if (t.status === 'WORKING' && dayMins > 0) {
