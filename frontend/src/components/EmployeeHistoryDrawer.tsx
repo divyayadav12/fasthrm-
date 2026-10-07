@@ -469,8 +469,6 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           : isTaskCreatedOnDay || isTaskCompletedOnDay || isTaskWorkingToday || logsOnDay.length > 0;
 
         if (belongsToDay) {
-          let dayMins = 0;
-
           if (logsOnDay.length > 0) {
             logsOnDay.forEach((l) => {
               let st = new Date(l.startTime || l.createdAt).getTime();
@@ -479,7 +477,6 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               if (l.status === 'WORKING' && isLatestOverall) {
                 durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
               }
-              dayMins += durMins;
               let et = st + Math.max(1, durMins) * 60000;
               rawWorkIntervals.push({ st, et });
             });
@@ -494,15 +491,42 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             if (!isTaskCreatedOnDay && (isTaskCompletedOnDay || isTaskWorkingToday)) {
               st = Math.max(shiftStart.getTime(), et - Math.max(1, t.totalMinutes || 60) * 60000);
             }
-            dayMins = Math.max(1, Math.round((et - st) / 60000));
             if (et > st) {
               rawWorkIntervals.push({ st, et });
             }
           }
 
-          const taskKey = `${t.title.trim().toLowerCase()}-${dateStr}`;
-          if (!addedItemKeys.has(taskKey)) {
-            addedItemKeys.add(taskKey);
+          const normTitle = t.title.trim().toLowerCase();
+          if (!addedItemKeys.has(normTitle)) {
+            addedItemKeys.add(normTitle);
+
+            // Calculate precise dayMinutes for today / selected day
+            let dayMins = 0;
+            const logsOnToday = matchingLogs.filter((l) => {
+              const lTime = new Date(l.startTime || l.createdAt);
+              return lTime.toDateString() === todayStr || (l.status === 'WORKING' && isToday);
+            });
+
+            if (logsOnToday.length > 0) {
+              logsOnToday.forEach((l) => {
+                let st = new Date(l.startTime || l.createdAt).getTime();
+                let durMins = l.duration || l.durationMinutes || 0;
+                const isLatestOverall = l._id === logs[0]?._id;
+                if (l.status === 'WORKING' && isLatestOverall) {
+                  durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
+                }
+                dayMins += durMins;
+              });
+            } else if (t.status === 'WORKING') {
+              const activeLog = logs.find((l) => l.status === 'WORKING');
+              const activeSt = activeLog
+                ? new Date(activeLog.startTime || activeLog.createdAt).getTime()
+                : tStart.getTime();
+              dayMins = Math.max(1, Math.floor((Date.now() - activeSt) / 60000));
+            } else if (tStart.toDateString() === todayStr) {
+              dayMins = t.totalMinutes || 0;
+            }
+
             allFinalItems.push({
               ...t,
               dayMinutes: dayMins,
