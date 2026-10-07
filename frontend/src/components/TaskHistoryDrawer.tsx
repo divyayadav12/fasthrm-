@@ -117,25 +117,57 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
   const metrics = useMemo(() => {
     let totalMinutes = 0;
     const employeesMap = new Map<string, any>();
+    const sessionIntervals: { st: number; et: number }[] = [];
 
     logs.forEach((log) => {
-      const dur = log.duration ?? log.durationMinutes;
-      if (dur) totalMinutes += Number(dur);
       if (log.employeeId) {
         const id = log.employeeId?._id || log.employeeId?.name || log.employeeId;
         employeesMap.set(id, log.employeeId);
       }
+
+      let st = log.startTime ? new Date(log.startTime).getTime() : new Date(log.createdAt).getTime();
+      let et = log.endTime ? new Date(log.endTime).getTime() : 0;
+      
+      const isLatestWorking = log._id === logs[0]?._id && log.status === 'WORKING';
+      if (isLatestWorking) {
+        et = Date.now();
+      }
+
+      if (!et) {
+        const ownDur = log.duration || log.durationMinutes || 0;
+        if (ownDur > 0 && ownDur < 480) {
+          et = st + ownDur * 60000;
+        } else {
+          et = st;
+        }
+      }
+
+      if (et > st) {
+        sessionIntervals.push({ st, et });
+      }
     });
 
-    const activeTaskObj = taskDetails || task;
-    if (activeTaskObj?.totalDuration) {
-      totalMinutes = Math.max(totalMinutes, activeTaskObj.totalDuration);
+    if (sessionIntervals.length > 0) {
+      sessionIntervals.sort((a, b) => a.st - b.st);
+      const merged: { st: number; et: number }[] = [];
+      sessionIntervals.forEach((item) => {
+        if (merged.length === 0) {
+          merged.push({ ...item });
+        } else {
+          const last = merged[merged.length - 1];
+          if (item.st <= last.et + 60000) {
+            last.et = Math.max(last.et, item.et);
+          } else {
+            merged.push({ ...item });
+          }
+        }
+      });
+      totalMinutes = merged.reduce((sum, item) => sum + Math.floor((item.et - item.st) / 60000), 0);
     }
-    if (activeTaskObj) {
-      const liveMinutes = getTaskLiveMinutes(activeTaskObj);
-      if (liveMinutes > totalMinutes) {
-        totalMinutes = liveMinutes;
-      }
+
+    const activeTaskObj = taskDetails || task;
+    if (activeTaskObj?.totalDuration && activeTaskObj.totalDuration > 0 && activeTaskObj.totalDuration < 3000) {
+      totalMinutes = Math.max(totalMinutes, activeTaskObj.totalDuration);
     }
 
     const formattedDuration = formatDuration(totalMinutes);
@@ -151,7 +183,7 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
       currentStatus: latestLog?.status || task?.status || 'IN_PROGRESS',
       contributingEmployees: Array.from(employeesMap.values()),
     };
-  }, [logs, task]);
+  }, [logs, task, taskDetails]);
 
   if (!isOpen || !task) return null;
 
