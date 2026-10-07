@@ -535,6 +535,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
             let firstTodaySt = tStart.getTime();
 
+            const isLunch = t.title?.trim().toLowerCase().includes('lunch');
+
             if (logsOnToday.length > 0) {
               const sessionIntervals: { st: number; et: number }[] = [];
               logsOnToday.forEach((l) => {
@@ -562,21 +564,26 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                 sessionIntervals.sort((a, b) => a.st - b.st);
                 firstTodaySt = sessionIntervals[0].st;
 
-                const mergedToday: { st: number; et: number }[] = [];
-                sessionIntervals.forEach((item) => {
-                  if (mergedToday.length === 0) {
-                    mergedToday.push({ ...item });
-                  } else {
-                    const last = mergedToday[mergedToday.length - 1];
-                    if (item.st <= last.et + 60000) {
-                      last.et = Math.max(last.et, item.et);
-                    } else {
+                if (isLunch) {
+                  const minSt = sessionIntervals[0].st;
+                  const maxEt = Math.max(...sessionIntervals.map(i => i.et));
+                  dayMins = Math.max(1, Math.floor((maxEt - minSt) / 60000));
+                } else {
+                  const mergedToday: { st: number; et: number }[] = [];
+                  sessionIntervals.forEach((item) => {
+                    if (mergedToday.length === 0) {
                       mergedToday.push({ ...item });
+                    } else {
+                      const last = mergedToday[mergedToday.length - 1];
+                      if (item.st <= last.et + 60000) {
+                        last.et = Math.max(last.et, item.et);
+                      } else {
+                        mergedToday.push({ ...item });
+                      }
                     }
-                  }
-                });
-
-                dayMins = mergedToday.reduce((sum, item) => sum + Math.floor((item.et - item.st) / 60000), 0);
+                  });
+                  dayMins = mergedToday.reduce((sum, item) => sum + Math.floor((item.et - item.st) / 60000), 0);
+                }
               }
             } else if (t.status === 'WORKING') {
               const activeLog = logs.find((l) => l.status === 'WORKING');
@@ -600,7 +607,9 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             dayMins = Math.min(dayMins, maxPossibleShiftMins);
 
             let calculatedTotalMinutes = t.totalMinutes || 0;
-            if (t.status === 'WORKING' && dayMins > 0) {
+            if (isLunch) {
+              calculatedTotalMinutes = dayMins;
+            } else if (t.status === 'WORKING' && dayMins > 0) {
               calculatedTotalMinutes = Math.max(calculatedTotalMinutes, dayMins);
             }
 
