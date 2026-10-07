@@ -173,6 +173,7 @@ export default function StudentInquiries() {
   const [callTypeFilter, setCallTypeFilter] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
   const [followUpDateFilter, setFollowUpDateFilter] = useState('');
+  const [attendedByFilter, setAttendedByFilter] = useState('ALL');
   const [page, setPage] = useState(1);
   const limit = 30;
 
@@ -191,6 +192,10 @@ export default function StudentInquiries() {
   };
   const handleFollowUpDateChange = (val: string) => {
     setFollowUpDateFilter(val);
+    setPage(1);
+  };
+  const handleAttendedByChange = (val: string) => {
+    setAttendedByFilter(val);
     setPage(1);
   };
 
@@ -230,6 +235,7 @@ export default function StudentInquiries() {
     if (statusFilter !== 'ALL') params.status = statusFilter;
     if (callTypeFilter !== 'ALL') params.callType = callTypeFilter;
     if (followUpDateFilter) params.followUpDate = followUpDateFilter;
+    if (attendedByFilter !== 'ALL') params.attendedBy = attendedByFilter;
 
     if (dateFilter === 'TODAY') {
       const today = new Date().toISOString().split('T')[0];
@@ -258,7 +264,7 @@ export default function StudentInquiries() {
     if (isAuthorized) {
       loadData();
     }
-  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter, followUpDateFilter, page]);
+  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter, followUpDateFilter, attendedByFilter, page]);
 
   // Debounced search
   useEffect(() => {
@@ -783,8 +789,8 @@ export default function StudentInquiries() {
           </div>
         </div>
 
-        {/* Second Row: Follow-Up Date Filter Picker under Search Box */}
-        <div className="flex items-center gap-2.5 pt-1 border-t border-gray-100">
+        {/* Second Row: Follow-Up Date & Attended By Filters under Search Box */}
+        <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-gray-100">
           <div className="relative flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 border border-gray-200 rounded-xl px-3 h-10 shadow-2xs transition-colors">
             <span className="text-xs font-medium text-gray-600 flex items-center gap-1.5 shrink-0">
               <Calendar className="w-3.5 h-3.5 text-amber-600" />
@@ -808,13 +814,44 @@ export default function StudentInquiries() {
             )}
           </div>
 
+          {/* Attended By Dropdown Filter */}
+          <div className="relative flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 border border-gray-200 rounded-xl px-3 h-10 shadow-2xs transition-colors">
+            <span className="text-xs font-medium text-gray-600 flex items-center gap-1.5 shrink-0">
+              <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+              Attended By:
+            </span>
+            <select
+              value={attendedByFilter}
+              onChange={(e) => handleAttendedByChange(e.target.value)}
+              title="Filter by Staff Member who attended"
+              className="text-xs font-semibold text-gray-800 bg-transparent border-none focus:outline-hidden cursor-pointer py-1 pr-1 max-w-[160px] truncate"
+            >
+              <option value="ALL">All Staff</option>
+              {itSupportEmployees.map((emp: any) => (
+                <option key={emp._id || emp.name} value={emp.name}>
+                  {emp.name}
+                </option>
+              ))}
+            </select>
+            {attendedByFilter !== 'ALL' && (
+              <button
+                onClick={() => handleAttendedByChange('ALL')}
+                className="p-0.5 text-gray-400 hover:text-red-500 rounded-full shrink-0"
+                title="Clear Attended By filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           {/* Reset Filter Button if active */}
-          {(callTypeFilter !== 'ALL' || statusFilter !== 'ALL' || followUpDateFilter !== '') && (
+          {(callTypeFilter !== 'ALL' || statusFilter !== 'ALL' || followUpDateFilter !== '' || attendedByFilter !== 'ALL') && (
             <button
               onClick={() => {
                 setCallTypeFilter('ALL');
                 setStatusFilter('ALL');
                 setFollowUpDateFilter('');
+                setAttendedByFilter('ALL');
               }}
               className="h-10 inline-flex items-center px-3 text-xs text-red-600 hover:text-red-700 font-semibold bg-red-50 hover:bg-red-100 rounded-xl transition-colors border border-red-100 whitespace-nowrap cursor-pointer"
             >

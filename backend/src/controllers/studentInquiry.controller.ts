@@ -165,6 +165,7 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
       status,
       callType,
       addedBy,
+      attendedBy,
       dateFrom,
       dateTo,
       followUpDate,
@@ -200,6 +201,27 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
 
     if (addedBy && addedBy !== 'ALL') {
       query.addedBy = addedBy;
+    }
+
+    if (attendedBy && attendedBy !== 'ALL' && typeof attendedBy === 'string' && attendedBy.trim()) {
+      const att = attendedBy.trim();
+      const escapeReg = att.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const attRegex = new RegExp(escapeReg, 'i');
+      
+      const attendedCond = [
+        { addedByName: { $regex: attRegex } },
+        { forwardedTo: { $regex: attRegex } },
+        { forwardedBy: { $regex: attRegex } },
+      ];
+
+      if (query.$or) {
+        query.$and = query.$and || [];
+        query.$and.push({ $or: query.$or });
+        delete query.$or;
+        query.$and.push({ $or: attendedCond });
+      } else {
+        query.$or = attendedCond;
+      }
     }
 
     if (followUpDate && typeof followUpDate === 'string' && followUpDate.trim()) {
