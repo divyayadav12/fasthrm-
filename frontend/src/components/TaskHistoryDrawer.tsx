@@ -113,6 +113,35 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
     });
   }, [logs, sortAsc]);
 
+  // Precompute cumulative totals for each log ID
+  const logsWithCumulative = useMemo(() => {
+    const map = new Map<string, number>();
+    const chronological = [...logs].sort((a, b) => {
+      const tA = new Date(a.startTime || a.createdAt).getTime();
+      const tB = new Date(b.startTime || b.createdAt).getTime();
+      return tA - tB;
+    });
+
+    let runningTotal = 0;
+    chronological.forEach((l, idx) => {
+      let dur = l.duration || l.durationMinutes || 0;
+      const isLatestWorking = idx === chronological.length - 1 && l.status === 'WORKING';
+      if (isLatestWorking) {
+        const st = new Date(l.startTime || l.createdAt).getTime();
+        dur = Math.max(1, Math.floor((Date.now() - st) / 60000));
+      } else if (!dur && l.startTime && l.endTime) {
+        dur = Math.max(1, Math.floor((new Date(l.endTime).getTime() - new Date(l.startTime).getTime()) / 60000));
+      }
+      if (dur > 480) dur = 60; // fallback safety
+      runningTotal += dur;
+      if (l._id) {
+        map.set(l._id, runningTotal);
+      }
+    });
+
+    return map;
+  }, [logs]);
+
   // Derived Task Metrics
   const metrics = useMemo(() => {
     let totalMinutes = 0;
@@ -354,7 +383,8 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Date</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Start Time</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">End Time</th>
-                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Time Spent</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Session Time</th>
+                      <th scope="col" className="px-4 py-3 whitespace-nowrap">Total Time</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Employee</th>
                       <th scope="col" className="px-4 py-3">Description</th>
                       <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
@@ -458,7 +488,7 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                             )}
                           </td>
 
-                          {/* Time Spent */}
+                          {/* Session Time */}
                           <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
                             {(() => {
                               if (isCurrentlyActive) {
@@ -480,7 +510,6 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                                 );
                               }
 
-                              // If it's a starting log with 0 recorded duration
                               if (log.status === 'WORKING') {
                                 return (
                                   <div className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md font-medium">
@@ -490,7 +519,6 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                                 );
                               }
 
-                              // Default fallback
                               const totalTaskMin = taskDetails?.totalDuration || task?.totalDuration || 0;
                               return (
                                 <div className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md font-medium">
@@ -499,6 +527,14 @@ export const TaskHistoryDrawer: React.FC<TaskHistoryDrawerProps> = ({
                                 </div>
                               );
                             })()}
+                          </td>
+
+                          {/* Total Time */}
+                          <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
+                            <div className="inline-flex items-center gap-1 text-xs text-indigo-700 font-bold bg-indigo-50/70 px-2.5 py-1 rounded-lg border border-indigo-100">
+                              <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                              {formatDuration(logsWithCumulative.get(log._id) || (isCurrentlyActive ? activeElapsed : resolvedDuration))}
+                            </div>
                           </td>
 
                           {/* Employee */}
