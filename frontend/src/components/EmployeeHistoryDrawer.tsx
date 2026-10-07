@@ -474,7 +474,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
         const matchingLogs = logs.filter((l) => {
           const lTaskId = typeof l.taskId === 'object' ? l.taskId?._id : l.taskId;
           if (lTaskId && t._id && lTaskId.toString() === t._id.toString()) return true;
-          if (l.customTaskTitle && t.title && l.customTaskTitle.trim().toLowerCase() === t.title.trim().toLowerCase()) return true;
+          const logTitle = typeof l.taskId === 'object' && l.taskId?.title ? l.taskId.title : l.customTaskTitle;
+          if (logTitle && t.title && logTitle.trim().toLowerCase() === t.title.trim().toLowerCase()) return true;
           return false;
         });
 
@@ -525,14 +526,19 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           if (!addedItemKeys.has(normTitle)) {
             addedItemKeys.add(normTitle);
 
-            // Calculate precise dayMinutes for today / selected day
+            // Calculate precise dayMinutes for today / selected day across ALL sessions
             let dayMins = 0;
             const logsOnToday = matchingLogs.filter((l) => {
               const lTime = new Date(l.startTime || l.createdAt);
               return lTime.toDateString() === todayStr || (l.status === 'WORKING' && isToday);
             });
 
+            let firstTodaySt = tStart.getTime();
+
             if (logsOnToday.length > 0) {
+              const logTimes = logsOnToday.map(l => new Date(l.startTime || l.createdAt).getTime());
+              firstTodaySt = Math.min(...logTimes);
+
               logsOnToday.forEach((l) => {
                 let st = new Date(l.startTime || l.createdAt).getTime();
                 let durMins = l.duration || l.durationMinutes || 0;
@@ -554,6 +560,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                 activeSt = tStart.getTime();
               }
               dayMins = Math.max(1, Math.floor((Date.now() - activeSt) / 60000));
+              firstTodaySt = activeSt;
             } else if (tStart.toDateString() === todayStr) {
               dayMins = t.totalMinutes || 0;
             }
@@ -567,6 +574,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               ...t,
               dayMinutes: dayMins,
               totalMinutes: calculatedTotalMinutes,
+              startedAt: isToday && firstTodaySt ? new Date(firstTodaySt).toISOString() : t.startedAt,
             });
           }
         }
