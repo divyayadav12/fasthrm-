@@ -537,7 +537,15 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
             const isLunch = t.title?.trim().toLowerCase().includes('lunch');
 
-            if (logsOnToday.length > 0) {
+            // If task is completed and has exact startedAt & completedAt on dateStr, use direct difference
+            if (t.status !== 'WORKING' && tStart && tComp && tStart.toDateString() === dateStr) {
+              const exactDiff = Math.floor((tComp.getTime() - tStart.getTime()) / 60000);
+              if (exactDiff > 0 && exactDiff < 480) {
+                dayMins = exactDiff;
+              }
+            }
+
+            if (dayMins === 0 && logsOnToday.length > 0) {
               const sessionIntervals: { st: number; et: number }[] = [];
               logsOnToday.forEach((l) => {
                 let st = new Date(l.startTime || l.createdAt).getTime();
@@ -565,9 +573,15 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                 firstTodaySt = sessionIntervals[0].st;
 
                 if (isLunch) {
-                  const minSt = sessionIntervals[0].st;
-                  const maxEt = Math.max(...sessionIntervals.map(i => i.et));
-                  dayMins = Math.max(1, Math.floor((maxEt - minSt) / 60000));
+                  if (tStart && tComp) {
+                    const diff = Math.floor((tComp.getTime() - tStart.getTime()) / 60000);
+                    dayMins = (diff > 0 && diff < 240) ? diff : 30;
+                  } else {
+                    const minSt = sessionIntervals[0].st;
+                    const maxEt = sessionIntervals[sessionIntervals.length - 1].et;
+                    const diff = Math.floor((maxEt - minSt) / 60000);
+                    dayMins = (diff > 0 && diff < 240) ? diff : 30;
+                  }
                 } else {
                   const mergedToday: { st: number; et: number }[] = [];
                   sessionIntervals.forEach((item) => {
@@ -585,7 +599,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                   dayMins = mergedToday.reduce((sum, item) => sum + Math.floor((item.et - item.st) / 60000), 0);
                 }
               }
-            } else if (t.status === 'WORKING') {
+            } else if (dayMins === 0 && t.status === 'WORKING') {
               const activeLog = logs.find((l) => l.status === 'WORKING');
               let activeSt = Date.now();
               if (activeLog && (activeLog.startTime || activeLog.createdAt)) {
@@ -598,7 +612,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               }
               dayMins = Math.max(1, Math.floor((Date.now() - activeSt) / 60000));
               firstTodaySt = activeSt;
-            } else if (tStart.toDateString() === todayStr) {
+            } else if (dayMins === 0 && tStart.toDateString() === todayStr) {
               dayMins = t.totalMinutes || 0;
             }
 
