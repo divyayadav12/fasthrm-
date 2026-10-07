@@ -402,6 +402,35 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
         }
       }
     });
+
+    // Also include task logs (e.g. Lunch Break) not present in taskReports
+    logs.forEach((l) => {
+      const title = l.taskId?.title || l.customTaskTitle;
+      if (!title) return;
+      const normTitle = title.trim().toLowerCase();
+      const lTime = new Date(l.startTime || l.createdAt);
+
+      if (!taskMap.has(normTitle)) {
+        let dur = l.duration || l.durationMinutes || 0;
+        if (l.status === 'WORKING') {
+          dur = Math.max(1, Math.floor((Date.now() - lTime.getTime()) / 60000));
+        }
+        taskMap.set(normTitle, {
+          _id: l.taskId?._id || `log-task-${normTitle}`,
+          title: title,
+          description: l.description || (normTitle === 'lunch break' ? 'Meal and rest break' : ''),
+          status: l.status || 'COMPLETED',
+          progress: l.status === 'COMPLETED' ? 100 : 50,
+          totalMinutes: dur,
+          startedAt: lTime.toISOString(),
+          completedAt: l.endTime ? new Date(l.endTime).toISOString() : undefined,
+          lastActivity: lTime.toISOString(),
+          logCount: 1,
+          createdAt: lTime.toISOString(),
+        });
+      }
+    });
+
     const uniqueBaseTasks = Array.from(taskMap.values());
 
     const daysSet = new Set<string>();
@@ -442,8 +471,6 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
       const rawWorkIntervals: { st: number; et: number }[] = [];
 
       uniqueBaseTasks.forEach((t) => {
-        const isLunchBreak = t.title?.trim().toLowerCase() === 'lunch break';
-
         const matchingLogs = logs.filter((l) => {
           const lTaskId = typeof l.taskId === 'object' ? l.taskId?._id : l.taskId;
           if (lTaskId && t._id && lTaskId.toString() === t._id.toString()) return true;
@@ -464,9 +491,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
         const isTaskCompletedOnDay = tComp ? tComp.toDateString() === dateStr : false;
         const isTaskWorkingToday = t.status === 'WORKING' && isToday;
 
-        const belongsToDay = isLunchBreak
-          ? isTaskCreatedOnDay || isTaskWorkingToday
-          : isTaskCreatedOnDay || isTaskCompletedOnDay || isTaskWorkingToday || logsOnDay.length > 0;
+        const belongsToDay = isTaskCreatedOnDay || isTaskCompletedOnDay || isTaskWorkingToday || logsOnDay.length > 0;
 
         if (belongsToDay) {
           if (logsOnDay.length > 0) {
@@ -519,17 +544,29 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               });
             } else if (t.status === 'WORKING') {
               const activeLog = logs.find((l) => l.status === 'WORKING');
-              const activeSt = activeLog
-                ? new Date(activeLog.startTime || activeLog.createdAt).getTime()
-                : tStart.getTime();
+              let activeSt = Date.now();
+              if (activeLog && (activeLog.startTime || activeLog.createdAt)) {
+                const logTime = new Date(activeLog.startTime || activeLog.createdAt).getTime();
+                if (new Date(logTime).toDateString() === todayStr) {
+                  activeSt = logTime;
+                }
+              } else if (tStart && tStart.toDateString() === todayStr) {
+                activeSt = tStart.getTime();
+              }
               dayMins = Math.max(1, Math.floor((Date.now() - activeSt) / 60000));
             } else if (tStart.toDateString() === todayStr) {
               dayMins = t.totalMinutes || 0;
             }
 
+            let calculatedTotalMinutes = t.totalMinutes || 0;
+            if (t.status === 'WORKING' && dayMins > 0) {
+              calculatedTotalMinutes = Math.max(calculatedTotalMinutes, dayMins);
+            }
+
             allFinalItems.push({
               ...t,
               dayMinutes: dayMins,
+              totalMinutes: calculatedTotalMinutes,
             });
           }
         }
