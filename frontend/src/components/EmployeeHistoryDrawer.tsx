@@ -40,6 +40,7 @@ interface TaskReportItem {
   createdAt: string;
   isResumedTask?: boolean;
   originalStartedAt?: string;
+  dayMinutes?: number;
   st?: number;
   et?: number;
 }
@@ -386,8 +387,19 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
     const taskMap = new Map<string, TaskReportItem>();
     rawTasks.forEach((t) => {
-      if (t._id && !taskMap.has(t._id)) {
-        taskMap.set(t._id, t);
+      const normTitle = (t.title || '').trim().toLowerCase();
+      if (!normTitle) return;
+      if (!taskMap.has(normTitle)) {
+        taskMap.set(normTitle, { ...t });
+      } else {
+        const existing = taskMap.get(normTitle)!;
+        existing.totalMinutes = (existing.totalMinutes || 0) + (t.totalMinutes || 0);
+        if (t.startedAt && (!existing.startedAt || new Date(t.startedAt) < new Date(existing.startedAt))) {
+          existing.startedAt = t.startedAt;
+        }
+        if (t.status === 'WORKING') {
+          existing.status = 'WORKING';
+        }
       }
     });
     const uniqueBaseTasks = Array.from(taskMap.values());
@@ -457,11 +469,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
           : isTaskCreatedOnDay || isTaskCompletedOnDay || isTaskWorkingToday || logsOnDay.length > 0;
 
         if (belongsToDay) {
-          const taskKey = `${t._id || t.title}-${dateStr}`;
-          if (!addedItemKeys.has(taskKey)) {
-            addedItemKeys.add(taskKey);
-            allFinalItems.push(t);
-          }
+          let dayMins = 0;
 
           if (logsOnDay.length > 0) {
             logsOnDay.forEach((l) => {
@@ -471,6 +479,7 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
               if (l.status === 'WORKING' && isLatestOverall) {
                 durMins = Math.max(1, Math.floor((Date.now() - st) / 60000));
               }
+              dayMins += durMins;
               let et = st + Math.max(1, durMins) * 60000;
               rawWorkIntervals.push({ st, et });
             });
@@ -485,9 +494,19 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
             if (!isTaskCreatedOnDay && (isTaskCompletedOnDay || isTaskWorkingToday)) {
               st = Math.max(shiftStart.getTime(), et - Math.max(1, t.totalMinutes || 60) * 60000);
             }
+            dayMins = Math.max(1, Math.round((et - st) / 60000));
             if (et > st) {
               rawWorkIntervals.push({ st, et });
             }
+          }
+
+          const taskKey = `${t.title.trim().toLowerCase()}-${dateStr}`;
+          if (!addedItemKeys.has(taskKey)) {
+            addedItemKeys.add(taskKey);
+            allFinalItems.push({
+              ...t,
+              dayMinutes: dayMins,
+            });
           }
         }
       });
@@ -838,7 +857,8 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Start Time</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">End Time</th>
-                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Time Spent</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Today's Time</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Total Time</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap w-36">Time Bar</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Last Activity</th>
                         <th scope="col" className="px-4 py-3 whitespace-nowrap">Progress</th>
@@ -904,6 +924,12 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                                       {task.title}
                                       <ExternalLink className="h-3.5 w-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-indigo-500 transition-opacity flex-shrink-0" />
                                     </span>
+                                    {task.status !== 'IDLE' && taskStart && new Date(taskStart).toDateString() !== (new Date()).toDateString() && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 inline-flex items-center gap-1 flex-shrink-0">
+                                        <Calendar className="w-2.5 h-2.5 text-amber-600" />
+                                        Started {formatDateSubtext(taskStart)}
+                                      </span>
+                                    )}
                                   </div>
                                   {task.description && (
                                     <p className="text-[11px] text-gray-400 truncate max-w-xs mt-0.5">
@@ -960,18 +986,30 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
                               </div>
                             </td>
 
-                            {/* Time Spent */}
+                            {/* Today's Time */}
                             <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
                               {isWorking ? (
                                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md font-bold">
                                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
-                                  {formattedDur} (LIVE)
+                                  {formatDuration(task.dayMinutes || task.totalMinutes)} (LIVE)
                                 </span>
                               ) : task.status === 'IDLE' ? (
                                 <span className="inline-flex items-center gap-1 text-gray-500 font-medium italic">
                                   <Clock className="w-3.5 h-3.5 text-gray-400" />
                                   {formattedDur}
                                 </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-indigo-700 font-bold bg-indigo-50/70 px-2 py-0.5 rounded-md border border-indigo-100">
+                                  <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                                  {formatDuration(task.dayMinutes || task.totalMinutes)}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Total Time */}
+                            <td className="px-4 py-3.5 whitespace-nowrap font-medium text-gray-700">
+                              {task.status === 'IDLE' ? (
+                                <span className="text-gray-400 font-medium italic">-</span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-gray-800 font-semibold">
                                   <Clock className="w-3.5 h-3.5 text-gray-400" />
