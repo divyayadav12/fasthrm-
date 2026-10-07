@@ -79,21 +79,22 @@ export const dispatchDailyWorkReport = async (targetDate?: Date): Promise<{
 };
 
 /**
- * Starts the automated 10:00 PM (22:00 IST) Cron Job
+ * Starts the automated Cron Jobs:
+ * 1. Morning 10:00 AM IST (10:00 IST) - Sends Yesterday's complete daily staff work report PDF
+ * 2. Evening 10:00 PM IST (22:00 IST) - Sends Today's daily staff work report PDF
  */
 export const startDailyReportCronJob = () => {
-  // 10:00 PM Indian Standard Time (22:00 IST)
-  // Standard cron for 22:00 every day
-  const cronExpression = '0 22 * * *';
-
+  // Morning 10:00 AM IST Cron Job for Yesterday's Work Report
   cron.schedule(
-    cronExpression,
+    '0 10 * * *',
     async () => {
-      console.log(`[Daily Report Cron] Triggering 10:00 PM automated daily work report...`);
+      console.log(`[Daily Report Cron] Triggering 10:00 AM automated morning report for Yesterday...`);
       try {
-        await dispatchDailyWorkReport();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        await dispatchDailyWorkReport(yesterday);
       } catch (err: any) {
-        console.error('[Daily Report Cron Error]:', err?.message || err);
+        console.error('[Daily Report Morning Cron Error]:', err?.message || err);
       }
     },
     {
@@ -101,5 +102,21 @@ export const startDailyReportCronJob = () => {
     }
   );
 
-  console.log('✅ Daily Report Cron Job initialized (Scheduled for 10:00 PM IST every day).');
+  // Evening 10:00 PM IST Cron Job for Today's Work Report
+  cron.schedule(
+    '0 22 * * *',
+    async () => {
+      console.log(`[Daily Report Cron] Triggering 10:00 PM automated evening report for Today...`);
+      try {
+        await dispatchDailyWorkReport();
+      } catch (err: any) {
+        console.error('[Daily Report Evening Cron Error]:', err?.message || err);
+      }
+    },
+    {
+      timezone: 'Asia/Kolkata',
+    }
+  );
+
+  console.log('✅ Daily Report Cron Jobs initialized (Scheduled for 10:00 AM IST [Yesterday Report] & 10:00 PM IST [Today Report]).');
 };

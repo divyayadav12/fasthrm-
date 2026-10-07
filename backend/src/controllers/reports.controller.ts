@@ -266,7 +266,14 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
 export const sendDailyReportEmailHandler = async (req: Request, res: Response) => {
   try {
     const { date } = req.body || req.query || {};
-    const targetDate = date ? new Date(date as string) : new Date();
+    let targetDate = new Date();
+
+    if (date === 'yesterday') {
+      targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - 1);
+    } else if (date && typeof date === 'string') {
+      targetDate = new Date(date);
+    }
 
     const { dispatchDailyWorkReport } = await import('../jobs/dailyReportCron');
 
