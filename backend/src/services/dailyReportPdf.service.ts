@@ -89,6 +89,29 @@ export const collectDailyWorkData = async (targetDate?: Date): Promise<DailyRepo
     logsByEmp.get(empIdStr)!.push(log);
   }
 
+  // Sort all staff by department hierarchy (IT & Support, Career, Editor DTP, HR, Faculty, Others)
+  const deptOrder: Record<string, number> = {
+    'it and support': 1,
+    'it & support': 1,
+    'career': 2,
+    'careear': 2,
+    'editor dtp': 3,
+    'hr': 4,
+    'faculty': 5,
+    'others': 6,
+    'management': 7,
+    'admin': 8,
+  };
+
+  staffList.sort((a, b) => {
+    const deptA = ((a.department || a.designation || 'others').toLowerCase().trim());
+    const deptB = ((b.department || b.designation || 'others').toLowerCase().trim());
+    const orderA = deptOrder[deptA] || (deptA.includes('it') ? 1 : (deptA.includes('career') ? 2 : (deptA.includes('editor') || deptA.includes('dtp') ? 3 : 6)));
+    const orderB = deptOrder[deptB] || (deptB.includes('it') ? 1 : (deptB.includes('career') ? 2 : (deptB.includes('editor') || deptB.includes('dtp') ? 3 : 6)));
+    if (orderA !== orderB) return orderA - orderB;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
   const employeeData: EmployeeDailyData[] = [];
   let totalTeamMinutes = 0;
   let totalCompletedTasks = 0;
@@ -281,9 +304,31 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
         return y + 18;
       };
 
-      // --- EMPLOYEE SECTIONS ---
+      // --- EMPLOYEE SECTIONS GROUPED BY DEPARTMENT ---
+      let lastDepartment = '';
       for (let i = 0; i < summary.employeeData.length; i++) {
         const emp = summary.employeeData[i];
+        const rawDept = (emp.employee?.department || emp.employee?.designation || 'OTHERS').toUpperCase();
+        let displayDept = rawDept;
+        if (rawDept.includes('IT') || rawDept.includes('SUPPORT')) displayDept = 'IT & SUPPORT';
+        else if (rawDept.includes('CAREER')) displayDept = 'CAREER';
+        else if (rawDept.includes('EDITOR') || rawDept.includes('DTP')) displayDept = 'EDITOR DTP';
+        else if (rawDept.includes('HR')) displayDept = 'HR DEPARTMENT';
+        else if (rawDept.includes('FACULTY') || rawDept.includes('EDUCATION')) displayDept = 'FACULTY & EDUCATION';
+        else if (rawDept.includes('ADMIN') || rawDept.includes('MANAGEMENT')) displayDept = 'ADMIN & MANAGEMENT';
+
+        // Render Department Banner when department changes
+        if (displayDept !== lastDepartment) {
+          lastDepartment = displayDept;
+          if (startY > 680) {
+            doc.addPage();
+            drawHeader(false);
+            startY = 66;
+          }
+          doc.rect(leftMargin, startY, pageWidth, 22).fill('#0F172A');
+          doc.fillColor('#38BDF8').fontSize(9.5).font('Helvetica-Bold').text(`🏢 DEPARTMENT: ${displayDept}`, leftMargin + 10, startY + 6);
+          startY += 26;
+        }
 
         // Check if employee block will fit on page (need at least 60pt)
         if (startY > 720) {
@@ -293,23 +338,23 @@ export const generateDailyReportPdfBuffer = async (summary: DailyReportSummary):
         }
 
         // Employee Header Bar
-        doc.rect(leftMargin, startY, pageWidth, 24).fill('#EEF2FF');
-        doc.rect(leftMargin, startY, pageWidth, 24).stroke('#C7D2FE');
+        doc.rect(leftMargin, startY, pageWidth, 22).fill('#EEF2FF');
+        doc.rect(leftMargin, startY, pageWidth, 22).stroke('#C7D2FE');
 
         const empName = (emp.employee?.name || 'Staff Member').toUpperCase();
         const role = emp.employee?.designation || emp.employee?.department || 'Staff';
         const totalDur = formatMinutesToDuration(emp.totalMinutes);
 
-        doc.fillColor('#312E81').fontSize(9).font('Helvetica-Bold').text(`👤  ${empName} (${role})`, leftMargin + 10, startY + 7);
-        doc.fillColor('#4338CA').fontSize(8.5).font('Helvetica-Bold').text(`Total Worked Today: ${totalDur}`, leftMargin + pageWidth - 180, startY + 7, { align: 'right', width: 170 });
+        doc.fillColor('#312E81').fontSize(8.5).font('Helvetica-Bold').text(`👤  ${empName} (${role})`, leftMargin + 10, startY + 6);
+        doc.fillColor('#4338CA').fontSize(8).font('Helvetica-Bold').text(`Total Worked Today: ${totalDur}`, leftMargin + pageWidth - 180, startY + 6, { align: 'right', width: 170 });
 
-        startY += 26;
+        startY += 24;
 
         if (emp.logs.length === 0) {
           doc.rect(leftMargin, startY, pageWidth, 18).fill('#FFFFFF');
           doc.rect(leftMargin, startY, pageWidth, 18).stroke(borderGray);
-          doc.fillColor(grayColor).fontSize(7.5).font('Helvetica-Oblique').text('No activity recorded for this employee today.', leftMargin + 10, startY + 5);
-          startY += 24;
+          doc.fillColor('#64748B').fontSize(7.5).font('Helvetica').text('⚪ No work logged / Offline for this date (0h 0m)', leftMargin + 10, startY + 5);
+          startY += 22;
         } else {
           startY = drawTableHeader(startY);
 
