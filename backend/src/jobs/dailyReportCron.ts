@@ -21,13 +21,18 @@ export const getReportRecipients = (): string[] => {
 /**
  * Dispatch Daily Report Email with PDF Attachment to all configured recipients
  */
-export const dispatchDailyWorkReport = async (targetDate?: Date): Promise<{
+export const dispatchDailyWorkReport = async (
+  targetDate?: Date,
+  customRecipients?: string[]
+): Promise<{
   success: boolean;
   recipients: string[];
   summary: DailyReportSummary;
   message: string;
 }> => {
-  const recipients = getReportRecipients();
+  const recipients = (customRecipients && customRecipients.length > 0)
+    ? customRecipients
+    : getReportRecipients();
   console.log(`[Daily Report] Starting daily report generation for ${recipients.join(', ')}...`);
 
   const summary = await collectDailyWorkData(targetDate);

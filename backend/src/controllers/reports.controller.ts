@@ -265,7 +265,7 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
 
 export const sendDailyReportEmailHandler = async (req: Request, res: Response) => {
   try {
-    const { date } = req.body || req.query || {};
+    const { date, to, email } = req.body || req.query || {};
     let targetDate = new Date();
 
     if (date === 'yesterday') {
@@ -275,10 +275,16 @@ export const sendDailyReportEmailHandler = async (req: Request, res: Response) =
       targetDate = new Date(date);
     }
 
+    let customRecipients: string[] | undefined = undefined;
+    const recipientParam = to || email;
+    if (recipientParam && typeof recipientParam === 'string') {
+      customRecipients = recipientParam.split(',').map((e: string) => e.trim()).filter(Boolean);
+    }
+
     const { dispatchDailyWorkReport } = await import('../jobs/dailyReportCron');
 
-    // Await complete PDF generation and email sending (takes 2-3s when server is kept awake)
-    const result = await dispatchDailyWorkReport(targetDate);
+    // Ultra-fast PDF generation and email sending
+    const result = await dispatchDailyWorkReport(targetDate, customRecipients);
     res.json(result);
   } catch (error: any) {
     console.error('Error in sendDailyReportEmailHandler:', error);

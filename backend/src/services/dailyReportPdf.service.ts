@@ -65,17 +65,10 @@ export const collectDailyWorkData = async (targetDate?: Date): Promise<DailyRepo
   });
   const dateStr = date.toISOString().split('T')[0];
 
-  // Fetch all registered staff / users across all roles (so NO employee is missed)
-  const staffList = await User.find({}).sort({ name: 1 });
-
-  const employeeData: EmployeeDailyData[] = [];
-  let totalTeamMinutes = 0;
-  let totalCompletedTasks = 0;
-  let activeEmployeesCount = 0;
-
-  for (const emp of staffList) {
-    const logs = await WorkLog.find({
-      employeeId: emp._id,
+  // Fetch all registered staff & all work logs for the date in parallel (1 query instead of N+1)
+  const [staffList, allLogs] = await Promise.all([
+    User.find({}).sort({ name: 1 }),
+    WorkLog.find({
       $or: [
         { createdAt: { $gte: startOfDay, $lte: endOfDay } },
         { startTime: { $gte: startOfDay, $lte: endOfDay } },
@@ -83,7 +76,26 @@ export const collectDailyWorkData = async (targetDate?: Date): Promise<DailyRepo
       ],
     })
       .populate('taskId', 'title description status')
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 }),
+  ]);
+
+  // Group logs by employeeId in memory for ultra-fast lookup
+  const logsByEmp = new Map<string, any[]>();
+  for (const log of (allLogs as any[])) {
+    const empIdStr = log.employeeId ? log.employeeId.toString() : '';
+    if (!logsByEmp.has(empIdStr)) {
+      logsByEmp.set(empIdStr, []);
+    }
+    logsByEmp.get(empIdStr)!.push(log);
+  }
+
+  const employeeData: EmployeeDailyData[] = [];
+  let totalTeamMinutes = 0;
+  let totalCompletedTasks = 0;
+  let activeEmployeesCount = 0;
+
+  for (const emp of staffList) {
+    const logs = logsByEmp.get(emp._id.toString()) || [];
 
     let empTotalMinutes = 0;
     const taskTitles = new Set<string>();
