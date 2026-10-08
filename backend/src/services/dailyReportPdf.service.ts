@@ -49,21 +49,29 @@ export const formatMinutesToDuration = (totalMinutes: number): string => {
  * Collect all daily work data for all employees on a given date (default today)
  */
 export const collectDailyWorkData = async (targetDate?: Date): Promise<DailyReportSummary> => {
-  const date = targetDate ? new Date(targetDate) : new Date();
+  const baseDate = targetDate ? new Date(targetDate) : new Date();
   
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  const formattedDate = date.toLocaleDateString('en-IN', {
+  // Format formatted date string in Indian Standard Time (IST)
+  const formattedDate = baseDate.toLocaleDateString('en-IN', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Asia/Kolkata',
   });
-  const dateStr = date.toISOString().split('T')[0];
+  
+  // Get date parts in IST (YYYY-MM-DD)
+  const istFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const dateStr = istFormatter.format(baseDate);
+
+  // Exact 00:00:00 to 23:59:59.999 bounds in IST (+05:30)
+  const startOfDay = new Date(`${dateStr}T00:00:00.000+05:30`);
+  const endOfDay = new Date(`${dateStr}T23:59:59.999+05:30`);
 
   // Fetch all registered staff & all work logs for the date in parallel (1 query instead of N+1)
   const [staffList, allLogs] = await Promise.all([
