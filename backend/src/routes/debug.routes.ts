@@ -15,5 +15,18 @@ router.get('/all-users', async (req, res) => {
   const users = await User.find({}).select('name email role department designation isActive');
   res.json({ total: users.length, users });
 });
+router.get('/all-recent-activity', async (req, res) => {
+  const Task = (await import('../models/Task')).default;
+  const [tasks, logs] = await Promise.all([
+    Task.find({}).populate('assignedTo', 'name email department').sort({ updatedAt: -1 }).limit(100),
+    WorkLog.find({}).populate('employeeId', 'name email department').populate('taskId', 'title').sort({ createdAt: -1 }).limit(100),
+  ]);
+  res.json({
+    totalTasks: tasks.length,
+    tasks: tasks.map(t => ({ title: t.title, assignedTo: (t.assignedTo as any)?.name, status: t.status, totalDuration: t.totalDuration, updatedAt: t.updatedAt })),
+    totalLogs: logs.length,
+    logs: logs.map(l => ({ employee: (l.employeeId as any)?.name, task: (l.taskId as any)?.title || l.customTaskTitle, status: l.status, duration: l.duration, desc: l.description, createdAt: l.createdAt })),
+  });
+});
 router.get('/fix-old-logs', fixOldLogs);
 export default router;
