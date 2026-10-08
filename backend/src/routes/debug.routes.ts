@@ -10,5 +10,10 @@ router.get('/fix-desc', async (req, res) => {
   await WorkLog.updateMany({ description: 'Resumed after lunch' }, { $set: { description: 'working on career app' } });
   res.json({ message: 'Fixed descriptions' });
 });
+router.get('/all-users', async (req, res) => {
+  const User = (await import('../models/User')).default;
+  const users = await User.find({}).select('name email role department designation isActive');
+  res.json({ total: users.length, users });
+});
 router.get('/fix-old-logs', fixOldLogs);
 export default router;
