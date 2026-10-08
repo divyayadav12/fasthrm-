@@ -23,9 +23,9 @@ router.get('/all-recent-activity', async (req, res) => {
   ]);
   res.json({
     totalTasks: tasks.length,
-    tasks: tasks.map(t => ({ title: t.title, assignedTo: (t.assignedTo as any)?.name, status: t.status, totalDuration: t.totalDuration, updatedAt: t.updatedAt })),
+    tasks: tasks.map(t => ({ title: t.title, assignedTo: (t.assignedTo as any)?.name, status: t.status, totalDuration: t.totalDuration, updatedAt: (t as any).updatedAt })),
     totalLogs: logs.length,
-    logs: logs.map(l => ({ employee: (l.employeeId as any)?.name, task: (l.taskId as any)?.title || l.customTaskTitle, status: l.status, duration: l.duration, desc: l.description, createdAt: l.createdAt })),
+    logs: logs.map(l => ({ employee: (l.employeeId as any)?.name, task: (l.taskId as any)?.title || l.customTaskTitle, status: l.status, duration: l.duration, desc: l.description, createdAt: (l as any).createdAt })),
   });
 });
 router.get('/fix-old-logs', fixOldLogs);
