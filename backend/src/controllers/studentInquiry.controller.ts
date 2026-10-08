@@ -567,3 +567,52 @@ export const sendStudentFeedback = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: error.message || 'Failed to send feedback message' });
   }
 };
+
+/**
+ * @desc    Get dynamic subject suggestions based on previous inquiries
+ * @route   GET /api/student-inquiries/subject-suggestions
+ * @access  Private (Support / Admin)
+ */
+export const getSubjectSuggestions = async (req: AuthRequest, res: Response) => {
+  try {
+    const search = String(req.query.q || req.query.search || '').trim();
+
+    const matchStage: any = {
+      subject: { $exists: true, $ne: '' },
+    };
+
+    if (search) {
+      matchStage.subject = { $regex: search, $options: 'i' };
+    }
+
+    const results = await StudentInquiry.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: { $trim: { input: '$subject' } },
+          count: { $sum: 1 },
+          lastUsed: { $max: '$createdAt' },
+        },
+      },
+      { $match: { _id: { $ne: '' } } },
+      { $sort: { count: -1, lastUsed: -1 } },
+      { $limit: 20 },
+      {
+        $project: {
+          _id: 0,
+          subject: '$_id',
+          count: 1,
+        },
+      },
+    ]);
+
+    res.json({
+      success: true,
+      suggestions: results,
+    });
+  } catch (error: any) {
+    console.error('Error fetching subject suggestions:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch subject suggestions' });
+  }
+};
+

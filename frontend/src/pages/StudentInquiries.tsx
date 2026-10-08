@@ -235,6 +235,42 @@ export default function StudentInquiries() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Subject Suggestions State
+  const [subjectSuggestions, setSubjectSuggestions] = useState<{ subject: string; count: number }[]>([]);
+  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  const [isSubjectLoading, setIsSubjectLoading] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
+  const fetchSubjectSuggestions = async (query: string) => {
+    try {
+      setIsSubjectLoading(true);
+      const token = user?.token || localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const res = await axios.get(
+        `${API_URL}/student-inquiries/subject-suggestions?q=${encodeURIComponent(query)}`,
+        config
+      );
+      if (res.data?.success && Array.isArray(res.data?.suggestions)) {
+        setSubjectSuggestions(res.data.suggestions);
+      }
+    } catch (err) {
+      console.error('Error fetching subject suggestions:', err);
+    } finally {
+      setIsSubjectLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAddModalOpen) {
+      setShowSubjectDropdown(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchSubjectSuggestions(formData.subject || '');
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [formData.subject, isAddModalOpen]);
+
   // Load Inquiries on Mount & Filter Change
   const loadData = () => {
     const params: any = { page, limit };
@@ -387,6 +423,8 @@ export default function StudentInquiries() {
     setFormErrors({});
     setEditingInquiry(null);
     dispatch(clearLookupResult());
+    setShowSubjectDropdown(false);
+    setSelectedSuggestionIndex(-1);
   };
 
   const handleOpenAddModal = () => {
@@ -1483,18 +1521,104 @@ export default function StudentInquiries() {
                 </div>
               </div>
 
-              {/* Subject / Topic */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Subject / Topic
-                </label>
-                <input
-                  type="text"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  placeholder="e.g. Video player issue / Book tracking / Course details"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
+              {/* Subject / Topic with Smart Suggestions */}
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Subject / Topic
+                  </label>
+                  {subjectSuggestions.length > 0 && showSubjectDropdown && (
+                    <span className="text-[11px] font-semibold text-indigo-600 flex items-center gap-1 animate-pulse">
+                      <Sparkles className="w-3 h-3 text-indigo-500" />
+                      Staff suggestions available
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.subject}
+                    onChange={(e) => {
+                      setFormData({ ...formData, subject: e.target.value });
+                      setShowSubjectDropdown(true);
+                      setSelectedSuggestionIndex(-1);
+                    }}
+                    onFocus={() => {
+                      setShowSubjectDropdown(true);
+                      fetchSubjectSuggestions(formData.subject || '');
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowSubjectDropdown(false), 250);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!showSubjectDropdown || subjectSuggestions.length === 0) return;
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setSelectedSuggestionIndex((prev) =>
+                          prev < subjectSuggestions.length - 1 ? prev + 1 : 0
+                        );
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setSelectedSuggestionIndex((prev) =>
+                          prev > 0 ? prev - 1 : subjectSuggestions.length - 1
+                        );
+                      } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+                        e.preventDefault();
+                        const picked = subjectSuggestions[selectedSuggestionIndex];
+                        if (picked) {
+                          setFormData({ ...formData, subject: picked.subject });
+                          setShowSubjectDropdown(false);
+                        }
+                      } else if (e.key === 'Escape') {
+                        setShowSubjectDropdown(false);
+                      }
+                    }}
+                    placeholder="e.g. Video player issue / Book tracking / Course details"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+                  {isSubjectLoading && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <RefreshCw className="w-3.5 h-3.5 text-indigo-500 animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Suggestions Dropdown Popup */}
+                {showSubjectDropdown && subjectSuggestions.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-xl border border-indigo-100 shadow-xl overflow-hidden max-h-56 overflow-y-auto divide-y divide-gray-100">
+                    <div className="px-3 py-1.5 bg-indigo-50/80 border-b border-indigo-100 flex items-center justify-between text-[11px] font-semibold text-indigo-900 sticky top-0 z-10 backdrop-blur-xs">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-indigo-600" />
+                        Staff Topics ({subjectSuggestions.length})
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-normal">Click or Enter to select</span>
+                    </div>
+                    {subjectSuggestions.map((item, idx) => (
+                      <button
+                        type="button"
+                        key={idx}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setFormData({ ...formData, subject: item.subject });
+                          setShowSubjectDropdown(false);
+                        }}
+                        className={`w-full text-left px-3.5 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                          selectedSuggestionIndex === idx
+                            ? 'bg-indigo-50 text-indigo-900 font-semibold'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                        }`}
+                      >
+                        <span className="truncate flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0"></span>
+                          <span className="truncate">{item.subject}</span>
+                        </span>
+                        <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50/80 border border-indigo-100 px-2 py-0.5 rounded-full ml-2 shrink-0">
+                          {item.count} {item.count === 1 ? 'call' : 'calls'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Details */}
