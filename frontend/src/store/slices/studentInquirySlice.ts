@@ -11,7 +11,7 @@ export interface StudentInquiry {
   mobileNumber: string;
   alternateNumber?: string;
   email?: string;
-  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Others';
+  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Device Changing' | 'Extension' | 'Others';
   subject?: string;
   details?: string;
   remark?: string;

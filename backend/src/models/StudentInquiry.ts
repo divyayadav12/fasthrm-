@@ -6,7 +6,7 @@ export interface IStudentInquiry extends Document {
   mobileNumber: string;
   alternateNumber?: string;
   email?: string;
-  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Others';
+  callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Device Changing' | 'Extension' | 'Others';
   subject?: string;
   details?: string;
   remark?: string;
@@ -58,7 +58,7 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
     },
     callType: {
       type: String,
-      enum: ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchased', 'Others'],
+      enum: ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchased', 'Device Changing', 'Extension', 'Others'],
       default: 'Enquiry',
       required: true,
     },

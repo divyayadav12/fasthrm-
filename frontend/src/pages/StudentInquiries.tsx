@@ -44,6 +44,7 @@ import {
   Info,
   Send,
   UserCheck,
+  Smartphone,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
@@ -64,14 +65,20 @@ export const canAccessStudentInquiry = (user: any): boolean => {
   return isAdminOrManager || isSupportOrIT;
 };
 
-const CALL_TYPES = ['Enquiry', 'Tech Issue', 'Dispatch Related', 'Purchased', 'Others'] as const;
+const CALL_TYPES = [
+  'Enquiry',
+  'Tech Issue',
+  'Dispatch Related',
+  'Purchased',
+  'Device Changing',
+  'Extension',
+  'Others',
+] as const;
 const STATUS_TYPES = [
   'Solved',
   'Follow Up',
   'Purchased',
   'Pending',
-  'FAST Education App',
-  'FAST Education 2.0 App',
   'Others',
 ] as const;
 
@@ -312,8 +319,12 @@ export default function StudentInquiries() {
       setFormData((prev) => ({
         ...prev,
         studentName: selectedPrevInquiry.studentName || prev.studentName,
-        callType: selectedPrevInquiry.callType || 'Enquiry',
-        status: selectedPrevInquiry.status || 'Pending',
+        callType: (CALL_TYPES as readonly string[]).includes(selectedPrevInquiry.callType)
+          ? (selectedPrevInquiry.callType as (typeof CALL_TYPES)[number])
+          : 'Enquiry',
+        status: (STATUS_TYPES as readonly string[]).includes(selectedPrevInquiry.status)
+          ? (selectedPrevInquiry.status as (typeof STATUS_TYPES)[number])
+          : 'Pending',
         subject: selectedPrevInquiry.subject || '',
         details: selectedPrevInquiry.details || '',
         remark: selectedPrevInquiry.remark || '',
@@ -458,11 +469,15 @@ export default function StudentInquiries() {
       mobileNumber: inquiry.mobileNumber || '',
       alternateNumber: inquiry.alternateNumber || '',
       email: inquiry.email || '',
-      callType: inquiry.callType || 'Enquiry',
+      callType: (CALL_TYPES as readonly string[]).includes(inquiry.callType)
+        ? (inquiry.callType as (typeof CALL_TYPES)[number])
+        : 'Enquiry',
       subject: inquiry.subject || '',
       details: inquiry.details || '',
       remark: inquiry.remark || '',
-      status: inquiry.status || 'Pending',
+      status: (STATUS_TYPES as readonly string[]).includes(inquiry.status)
+        ? (inquiry.status as (typeof STATUS_TYPES)[number])
+        : 'Others',
       forwardedBy: inquiry.forwardedBy || user?.name || '',
       forwardedTo: inquiry.forwardedTo || '',
       previousInquiryId: inquiry.previousInquiryId || '',
@@ -593,6 +608,10 @@ export default function StudentInquiries() {
         return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'Purchased':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'Device Changing':
+        return 'bg-teal-50 text-teal-700 border-teal-200';
+      case 'Extension':
+        return 'bg-violet-50 text-violet-700 border-violet-200';
       case 'Enquiry':
         return 'bg-sky-50 text-sky-700 border-sky-200';
       default:
@@ -737,6 +756,32 @@ export default function StudentInquiries() {
             >
               <Truck className="w-3.5 h-3.5 text-purple-500" />
               <span>Dispatch</span>
+            </button>
+
+            {/* Quick "Device Changing" Filter Button */}
+            <button
+              onClick={() => setCallTypeFilter(callTypeFilter === 'Device Changing' ? 'ALL' : 'Device Changing')}
+              className={`h-9 inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+                callTypeFilter === 'Device Changing'
+                  ? 'bg-teal-600 text-white border-teal-600 shadow-teal-600/25 ring-2 ring-teal-500/20'
+                  : 'bg-white text-gray-700 border-gray-200/90 hover:bg-teal-50/60 hover:text-teal-600 hover:border-teal-200'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5 text-teal-500" />
+              <span>Device Changing</span>
+            </button>
+
+            {/* Quick "Extension" Filter Button */}
+            <button
+              onClick={() => setCallTypeFilter(callTypeFilter === 'Extension' ? 'ALL' : 'Extension')}
+              className={`h-9 inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap cursor-pointer active:scale-95 ${
+                callTypeFilter === 'Extension'
+                  ? 'bg-violet-600 text-white border-violet-600 shadow-violet-600/25 ring-2 ring-violet-500/20'
+                  : 'bg-white text-gray-700 border-gray-200/90 hover:bg-violet-50/60 hover:text-violet-600 hover:border-violet-200'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 text-violet-500" />
+              <span>Extension</span>
             </button>
 
             {/* Quick "Follow Up" Filter Button */}
