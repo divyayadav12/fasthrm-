@@ -29,4 +29,25 @@ router.get('/all-recent-activity', async (req, res) => {
   });
 });
 router.get('/fix-old-logs', fixOldLogs);
+router.get('/fix-purchased', async (req, res) => {
+  try {
+    const StudentInquiry = (await import('../models/StudentInquiry')).default;
+    const statusRes = await StudentInquiry.updateMany(
+      { status: { $regex: /^purchases?$/i } },
+      { $set: { status: 'Purchased' } }
+    );
+    const callTypeRes = await StudentInquiry.updateMany(
+      { callType: { $regex: /^purchases?$/i } },
+      { $set: { callType: 'Purchased' } }
+    );
+    res.json({
+      success: true,
+      message: 'All "Purchases" records updated to "Purchased"',
+      statusUpdatedCount: statusRes.modifiedCount,
+      callTypeUpdatedCount: callTypeRes.modifiedCount,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 export default router;

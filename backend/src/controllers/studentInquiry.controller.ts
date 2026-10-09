@@ -299,7 +299,7 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
       const key = st._id ? st._id.toString().toLowerCase() : 'others';
       if (key === 'solved') statsMap.solved = st.count;
       else if (key === 'follow up' || key === 'followup') statsMap.followUp = st.count;
-      else if (key === 'purchases' || key === 'purchase') statsMap.purchases = st.count;
+      else if (key === 'purchased' || key === 'purchases' || key === 'purchase') statsMap.purchases = st.count;
       else if (key === 'pending') statsMap.pending = st.count;
       else statsMap.others += st.count;
     });

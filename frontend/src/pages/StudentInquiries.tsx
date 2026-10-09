@@ -972,6 +972,7 @@ export default function StudentInquiries() {
                   <th className="px-5 py-3.5">Call Type</th>
                   <th className="px-5 py-3.5">Subject & Details</th>
                   <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Follow-Up Date</th>
                   <th className="px-5 py-3.5">Attended By</th>
                   <th className="px-5 py-3.5">Reference ID</th>
                   <th className="px-5 py-3.5">Date & Time</th>
@@ -1082,6 +1083,24 @@ export default function StudentInquiries() {
                       >
                         {inq.status}
                       </span>
+                    </td>
+
+                    {/* Follow-Up Date */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {inq.followUpDate ? (
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80 max-w-fit">
+                          <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>
+                            {new Date(inq.followUpDate).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">-</span>
+                      )}
                     </td>
 
                     {/* Attended By (Staff Name) */}
