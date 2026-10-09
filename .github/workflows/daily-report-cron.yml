@@ -1,10 +1,21 @@
-name: Automated 10:00 PM Daily Work Report Dispatcher
+name: Automated Daily Work Report Dispatcher (10:00 PM & 10:00 AM IST)
 
 on:
   schedule:
-    # 16:30 UTC = 10:00 PM IST (Indian Standard Time) every day
+    # 16:30 UTC = 10:00 PM IST (Indian Standard Time) - Sends Today's daily work report
     - cron: '30 16 * * *'
-  workflow_dispatch: # Allows manual 1-click trigger from GitHub Actions tab
+    # 04:30 UTC = 10:00 AM IST (Indian Standard Time) - Sends Yesterday's daily work report
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'Report Date to Generate ("today" or "yesterday")'
+        required: false
+        default: 'today'
+        type: choice
+        options:
+          - today
+          - yesterday
 
 jobs:
   dispatch-daily-report:
@@ -14,8 +25,8 @@ jobs:
       - name: 1. Wake up and Poll Backend until Ready
         run: |
           echo "Waking up FAST HRM Render backend..."
-          for i in {1..12}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://fasthrm.onrender.com/ || echo "000")
+          for i in {1..15}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://fasthrm.onrender.com/ || echo "000")
             echo "Attempt $i: HTTP Status $STATUS"
             if [ "$STATUS" = "200" ]; then
               echo "✅ Backend is awake and responsive!"
@@ -24,14 +35,25 @@ jobs:
             sleep 10
           done
 
-      - name: 2. Trigger Daily Work Report PDF Email Dispatch (10:00 PM IST)
+      - name: 2. Trigger Daily Work Report PDF Email Dispatch
         run: |
-          echo "Dispatching 10:00 PM Daily Staff Work Report..."
-          RESPONSE=$(curl -s --max-time 180 https://fasthrm.onrender.com/api/reports/send-daily-email-test || echo '{"success":false,"message":"Timeout or network error"}')
+          # Determine if morning (yesterday's report) or evening (today's report)
+          HOUR_UTC=$(date -u +%H)
+          REPORT_DATE="today"
+          
+          if [ "${{ github.event.inputs.target_date }}" != "" ]; then
+            REPORT_DATE="${{ github.event.inputs.target_date }}"
+          elif [ "$HOUR_UTC" -lt "12" ]; then
+            REPORT_DATE="yesterday"
+          fi
+
+          echo "Dispatching Daily Staff Work Report (target: $REPORT_DATE)..."
+          RESPONSE=$(curl -s --max-time 180 "https://fasthrm.onrender.com/api/reports/send-daily-email-test?date=$REPORT_DATE" || echo '{"success":false,"message":"Timeout or network error"}')
           echo "Server Response: $RESPONSE"
           
           if echo "$RESPONSE" | grep -q '"success":true'; then
             echo "✅ Daily Staff Work Report successfully emailed to all recipients!"
           else
-            echo "⚠️ Dispatch response received. Backend handled the request."
+            echo "⚠️ Dispatch response received: $RESPONSE"
           fi
+

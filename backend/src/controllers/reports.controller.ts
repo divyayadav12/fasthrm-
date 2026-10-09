@@ -265,7 +265,8 @@ export const getMyTaskReport = async (req: Request, res: Response) => {
 
 export const sendDailyReportEmailHandler = async (req: Request, res: Response) => {
   try {
-    const { date, to, email } = req.body || req.query || {};
+    const params = { ...(req.query || {}), ...(req.body || {}) };
+    const { date, to, email } = params;
     let targetDate = new Date();
 
     if (date === 'yesterday') {

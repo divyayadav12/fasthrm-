@@ -20,12 +20,52 @@ export const sendEmail = async (options: {
   const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || `"FAST HRM - Work Reports" <${user}>`;
   const cleanPass = pass.replace(/\s+/g, '');
 
-  let overallSuccess = true;
+  const sendToRecipient = async (recipient: string): Promise<boolean> => {
+    // Strategy 1: Google Apps Script Web App (Fastest & 100% reliable on cloud without SMTP port blocks)
+    const scriptUrl =
+      process.env.GMAIL_SCRIPT_URL ||
+      'https://script.google.com/macros/s/AKfycbySSRoh5lgjv5ieQFFJ-_3IH4RJ0NNAcmUyotN2iB5xfnGqjxd_EEVH5eLcgITmWJvdNg/exec';
 
-  for (const recipient of recipientsList) {
-    let sent = false;
+    if (scriptUrl) {
+      try {
+        const payload: any = {
+          to: recipient,
+          subject: options.subject,
+          html: options.html || options.text,
+          text: options.text,
+        };
+        if (options.attachments && options.attachments.length > 0) {
+          payload.attachments = options.attachments.map((a) => ({
+            filename: a.filename,
+            content: typeof a.content === 'string' ? a.content : (a.content as Buffer).toString('base64'),
+            contentType: a.contentType || 'application/pdf',
+          }));
+        }
 
-    // Strategy 1: Direct Port 465 SSL with Gmail SMTP (most reliable from cloud & local)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+        const response = await fetch(scriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          redirect: 'follow',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const resText = await response.text();
+        console.log(`[Email Service - WebApp POST] Status: ${response.status}, Response: ${resText.substring(0, 100)}`);
+        if (response.ok || response.status === 200 || response.status === 302 || resText.includes('success') || resText.includes('ok')) {
+          console.log(`[Email Service - WebApp] Successfully dispatched to ${recipient}`);
+          return true;
+        }
+      } catch (scriptError: any) {
+        console.warn(`[Email Service - WebApp failed for ${recipient}]:`, scriptError?.message);
+      }
+    }
+
+    // Strategy 2: Direct Port 465 SSL with Gmail SMTP fallback
     try {
       const transporter465 = nodemailer.createTransport({
         host: 'smtp.gmail.com',
@@ -33,9 +73,9 @@ export const sendEmail = async (options: {
         secure: true,
         auth: { user: user.trim(), pass: cleanPass },
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 25000,
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 12000,
       });
 
       const info = await transporter465.sendMail({
@@ -47,110 +87,40 @@ export const sendEmail = async (options: {
         attachments: options.attachments,
       });
       console.log(`[Email Service - Port 465 SSL] Successfully sent to ${recipient}: ${info.messageId || 'OK'}`);
-      sent = true;
+      return true;
     } catch (err1: any) {
       console.warn(`[Email Service - Port 465 SSL failed for ${recipient}]:`, err1?.message);
     }
 
-    // Strategy 2: Gmail Service transporter
-    if (!sent) {
-      try {
-        const transporterGmail = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user: user.trim(), pass: cleanPass },
-          tls: { rejectUnauthorized: false },
-          connectionTimeout: 15000,
-          greetingTimeout: 15000,
-          socketTimeout: 25000,
-        });
-        const info = await transporterGmail.sendMail({
-          from,
-          to: recipient,
-          subject: options.subject,
-          text: options.text,
-          html: options.html || options.text,
-          attachments: options.attachments,
-        });
-        console.log(`[Email Service - Gmail Service] Successfully sent to ${recipient}: ${info.messageId || 'OK'}`);
-        sent = true;
-      } catch (err2: any) {
-        console.warn(`[Email Service - Gmail Service failed for ${recipient}]:`, err2?.message);
-      }
-    }
-
     // Strategy 3: Port 587 STARTTLS
-    if (!sent) {
-      try {
-        const transporter587 = nodemailer.createTransport({
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          auth: { user: user.trim(), pass: cleanPass },
-          tls: { rejectUnauthorized: false },
-          connectionTimeout: 15000,
-          greetingTimeout: 15000,
-          socketTimeout: 25000,
-        });
-        const info = await transporter587.sendMail({
-          from,
-          to: recipient,
-          subject: options.subject,
-          text: options.text,
-          html: options.html || options.text,
-          attachments: options.attachments,
-        });
-        console.log(`[Email Service - SMTP 587] Successfully sent to ${recipient}: ${info.messageId || 'OK'}`);
-        sent = true;
-      } catch (err3: any) {
-        console.warn(`[Email Service - SMTP 587 failed for ${recipient}]:`, err3?.message);
-      }
+    try {
+      const transporter587 = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: { user: user.trim(), pass: cleanPass },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 12000,
+      });
+      const info = await transporter587.sendMail({
+        from,
+        to: recipient,
+        subject: options.subject,
+        text: options.text,
+        html: options.html || options.text,
+        attachments: options.attachments,
+      });
+      console.log(`[Email Service - SMTP 587] Successfully sent to ${recipient}: ${info.messageId || 'OK'}`);
+      return true;
+    } catch (err3: any) {
+      console.warn(`[Email Service - SMTP 587 failed for ${recipient}]:`, err3?.message);
     }
 
-    // Strategy 4: Google Apps Script Web App fallback
-    if (!sent) {
-      const scriptUrl =
-        process.env.GMAIL_SCRIPT_URL ||
-        'https://script.google.com/macros/s/AKfycbySSRoh5lgjv5ieQFFJ-_3IH4RJ0NNAcmUyotN2iB5xfnGqjxd_EEVH5eLcgITmWJvdNg/exec';
+    return false;
+  };
 
-      if (scriptUrl) {
-        try {
-          const payload: any = {
-            to: recipient,
-            subject: options.subject,
-            html: options.html || options.text,
-            text: options.text,
-          };
-          if (options.attachments && options.attachments.length > 0) {
-            payload.attachments = options.attachments.map((a) => ({
-              filename: a.filename,
-              content: typeof a.content === 'string' ? a.content : (a.content as Buffer).toString('base64'),
-              contentType: a.contentType || 'application/pdf',
-            }));
-          }
-
-          const response = await fetch(scriptUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            redirect: 'follow',
-          });
-
-          const resText = await response.text();
-          console.log(`[Email Service - WebApp POST] Status: ${response.status}, Response: ${resText.substring(0, 100)}`);
-          if (response.ok || response.status === 200 || response.status === 302 || resText.includes('success') || resText.includes('ok')) {
-            console.log(`[Email Service - WebApp] Successfully dispatched to ${recipient}`);
-            sent = true;
-          }
-        } catch (scriptError: any) {
-          console.warn(`[Email Service - WebApp failed for ${recipient}]:`, scriptError?.message);
-        }
-      }
-    }
-
-    if (!sent) {
-      overallSuccess = false;
-    }
-  }
-
-  return overallSuccess;
+  const results = await Promise.all(recipientsList.map((r) => sendToRecipient(r)));
+  return results.some((r) => r === true);
 };
