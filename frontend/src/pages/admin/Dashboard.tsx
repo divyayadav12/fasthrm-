@@ -169,17 +169,72 @@ const AdminDashboard = () => {
   };
 
   const filteredActivity = useMemo(() => {
+    // 1. Index active tasks from backend stats
+    const activeTasksMap = new Map<string, any>();
+    const activeTasksMapByName = new Map<string, any>();
+    if (stats?.activeTasks && Array.isArray(stats.activeTasks)) {
+      stats.activeTasks.forEach((t: any) => {
+        const empId = t.employeeId || t.assignedTo?._id || t.assignedTo;
+        if (empId && t.status === 'WORKING') {
+          activeTasksMap.set(empId.toString(), t);
+        }
+        if (t.assignedTo?.name) {
+          activeTasksMapByName.set(t.assignedTo.name.toLowerCase().trim(), t);
+        }
+      });
+    }
+
+    // 2. Index logs by employee to identify active WORKING logs and latest logs
     const latestLogsPerEmployee = new Map();
+    const activeWorkingLogsPerEmployee = new Map();
+
+    // Group logs by employee
+    const logsByEmp = new Map<string, any[]>();
     liveActivity.forEach((log) => {
-      const empId = log.employeeId?._id || log.employeeId?.name || (typeof log.employeeId === 'string' ? log.employeeId : null);
-      if (empId && log.status) {
-        if (!latestLogsPerEmployee.has(empId)) {
-          latestLogsPerEmployee.set(empId, log);
-        } else {
-          const existingLog = latestLogsPerEmployee.get(empId);
-          const timeDiff = new Date(existingLog.createdAt).getTime() - new Date(log.createdAt).getTime();
-          if (timeDiff >= 0 && timeDiff <= 2000 && log.status === 'WORKING' && existingLog.status !== 'WORKING') {
-            latestLogsPerEmployee.set(empId, log);
+      const empId = log.employeeId?._id || (typeof log.employeeId === 'string' ? log.employeeId : null);
+      const empName = log.employeeId?.name ? log.employeeId.name.toLowerCase().trim() : null;
+      const key = empId || empName;
+      if (key && log.status) {
+        if (!logsByEmp.has(key)) logsByEmp.set(key, []);
+        logsByEmp.get(key)!.push(log);
+      }
+    });
+
+    const todayStr = new Date().toDateString();
+
+    logsByEmp.forEach((empLogs, empKey) => {
+      // Sort newest first
+      empLogs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      if (empLogs.length > 0) {
+        latestLogsPerEmployee.set(empKey, empLogs[0]);
+      }
+
+      // Check if employee has an active WORKING log from today that was NOT subsequently stopped
+      for (const log of empLogs) {
+        const logDate = new Date(log.createdAt).toDateString();
+        if (log.status === 'WORKING' && logDate === todayStr) {
+          // Check if there is any newer log for THIS SAME task that completed/paused it
+          const logTaskId = log.taskId?._id?.toString() || log.taskId?.toString() || log.customTaskTitle;
+          const wasStopped = empLogs.some((newerLog) => {
+            const isNewer = new Date(newerLog.createdAt).getTime() > new Date(log.createdAt).getTime();
+            if (!isNewer) return false;
+
+            const newerTaskId = newerLog.taskId?._id?.toString() || newerLog.taskId?.toString() || newerLog.customTaskTitle;
+            // A task is stopped if:
+            // 1. The same task was marked COMPLETED, PENDING, or ON_HOLD
+            if (newerTaskId && logTaskId && newerTaskId === logTaskId && newerLog.status !== 'WORKING') {
+              return true;
+            }
+            // 2. A DIFFERENT task was started as WORKING (auto-pauses previous task)
+            if (newerLog.status === 'WORKING' && newerTaskId !== logTaskId) {
+              return true;
+            }
+            return false;
+          });
+
+          if (!wasStopped) {
+            activeWorkingLogsPerEmployee.set(empKey, log);
+            break;
           }
         }
       }
@@ -195,23 +250,52 @@ const AdminDashboard = () => {
     const currentLiveActivity: any[] = [];
     const processedEmpIds = new Set();
 
-    employees.forEach(emp => {
+    employees.forEach((emp) => {
       processedEmpIds.add(emp._id);
-      const latestLog = latestLogsPerEmployee.get(emp._id);
+      const empIdStr = emp._id?.toString();
+      const empNameClean = emp.name?.toLowerCase().trim();
+
+      const activeTask = activeTasksMap.get(empIdStr) || (empNameClean ? activeTasksMapByName.get(empNameClean) : null);
+      const activeWorkingLog = activeWorkingLogsPerEmployee.get(empIdStr) || (empNameClean ? activeWorkingLogsPerEmployee.get(empNameClean) : null);
+      const latestLog = latestLogsPerEmployee.get(empIdStr) || (empNameClean ? latestLogsPerEmployee.get(empNameClean) : null);
+
       const inOffice = isWithinOfficeHours(emp.officeStartTime || '10:05', emp.officeEndTime || '19:05');
-      
+
       let status = 'NOT_STARTED';
-      if (latestLog) {
+      let effectiveLog = latestLog;
+      let effectiveTask = null;
+      let effectiveTitle = 'No active task';
+
+      if (activeTask) {
+        status = 'WORKING';
+        effectiveTask = activeTask;
+        effectiveTitle = activeTask.title;
+        effectiveLog = activeWorkingLog || latestLog || {
+          _id: `active-${activeTask._id}`,
+          status: 'WORKING',
+          createdAt: activeTask.startedAt || activeTask.updatedAt || new Date().toISOString(),
+          taskId: activeTask,
+          customTaskTitle: activeTask.title,
+        };
+      } else if (activeWorkingLog) {
+        status = 'WORKING';
+        effectiveLog = activeWorkingLog;
+        effectiveTask = activeWorkingLog.taskId;
+        effectiveTitle = activeWorkingLog.taskId?.title || activeWorkingLog.customTaskTitle || 'Working';
+      } else if (latestLog) {
         const logDate = new Date(latestLog.createdAt).toDateString();
-        const todayStr = new Date().toDateString();
-        
+
         if (logDate !== todayStr) {
           status = inOffice ? 'IDLE' : 'NOT_STARTED';
         } else if (latestLog.status !== 'WORKING' && inOffice) {
-          // Finished previous task today, haven't started a new one yet
           status = 'IDLE';
         } else {
           status = latestLog.status;
+        }
+
+        if (status === 'WORKING') {
+          effectiveTask = latestLog.taskId;
+          effectiveTitle = latestLog.taskId?.title || latestLog.customTaskTitle || 'Working';
         }
       } else if (inOffice) {
         status = 'IDLE';
@@ -219,22 +303,21 @@ const AdminDashboard = () => {
         status = 'NOT_STARTED';
       }
 
-      const isRealLog = latestLog && status === latestLog.status;
-
       currentLiveActivity.push({
-        ...(latestLog || {}),
-        _id: latestLog?._id || `dummy-${emp._id}`,
+        ...(effectiveLog || {}),
+        _id: effectiveLog?._id || `dummy-${emp._id}`,
         employeeId: emp,
         status: status,
-        taskId: isRealLog ? latestLog.taskId : null,
-        customTaskTitle: isRealLog ? (latestLog.customTaskTitle || '') : 'No active task',
-        createdAt: latestLog?.createdAt || new Date().toISOString(),
+        taskId: status === 'WORKING' ? effectiveTask : null,
+        customTaskTitle: status === 'WORKING' ? effectiveTitle : 'No active task',
+        createdAt: effectiveLog?.createdAt || new Date().toISOString(),
       });
     });
 
     // Add any others who are WORKING but weren't in the employees array
-    latestLogsPerEmployee.forEach((log, empId) => {
-      if (!processedEmpIds.has(empId) && log.status === 'WORKING') {
+    activeWorkingLogsPerEmployee.forEach((log, key) => {
+      const logEmpId = log.employeeId?._id?.toString() || log.employeeId;
+      if (!processedEmpIds.has(logEmpId) && log.status === 'WORKING') {
         currentLiveActivity.push(log);
       }
     });
@@ -591,7 +674,7 @@ const AdminDashboard = () => {
                             department: empRole || log.employeeId?.department,
                             designation: employeeObj?.designation || log.employeeId?.designation,
                             status: log.status,
-                            currentTask: taskTitle !== '-' ? taskTitle : undefined,
+                            currentTask: log.status === 'WORKING' && taskTitle !== '-' && taskTitle !== 'No active task' ? taskTitle : undefined,
                           })}
                           className="flex items-center cursor-pointer group/emp w-fit"
                           title="Click to view employee profile & complete history"
@@ -646,7 +729,7 @@ const AdminDashboard = () => {
                               department: log.employeeId?.department,
                               designation: log.employeeId?.designation,
                               status: log.status,
-                              currentTask: taskTitle !== '-' ? taskTitle : undefined,
+                              currentTask: log.status === 'WORKING' && taskTitle !== '-' && taskTitle !== 'No active task' ? taskTitle : undefined,
                             })}
                             className="px-2.5 py-1 text-xs font-medium rounded-lg text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100 transition-colors flex items-center"
                             title="View Employee History"

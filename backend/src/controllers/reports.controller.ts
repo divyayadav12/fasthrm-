@@ -125,22 +125,45 @@ export const getProductivityStats = async (req: Request, res: Response) => {
 
     const completedTasksToday = Math.max(uniqueCompletedFromLogs, completedFromTasks);
 
-    const currentlyWorking = await WorkLog.aggregate([
-      { $match: { createdAt: { $gte: today }, ...workLogScope } },
-      { $sort: { createdAt: -1 } },
-      {
-        $group: {
-          _id: '$employeeId',
-          latestStatus: { $first: '$status' }
-        }
-      },
-      { $match: { latestStatus: 'WORKING' } }
-    ]);
+    // 1. Get all currently WORKING tasks from Task collection
+    const activeTasks = await Task.find({
+      ...taskScope,
+      status: 'WORKING',
+    }).populate('assignedTo', 'name email department designation');
+
+    // 2. Also check worklogs today for any active WORKING logs
+    const activeWorkLogs = await WorkLog.find({
+      ...workLogScope,
+      status: 'WORKING',
+      createdAt: { $gte: today },
+    }).populate('employeeId', 'name email department designation');
+
+    const workingEmployeeIds = new Set<string>();
+    activeTasks.forEach((t: any) => {
+      const empId = t.assignedTo?._id?.toString() || t.assignedTo?.toString();
+      if (empId) workingEmployeeIds.add(empId);
+    });
+    activeWorkLogs.forEach((l: any) => {
+      const empId = l.employeeId?._id?.toString() || l.employeeId?.toString();
+      if (empId) workingEmployeeIds.add(empId);
+    });
+
+    const activeTasksList = activeTasks.map((t: any) => ({
+      _id: t._id,
+      title: t.title,
+      description: t.description,
+      status: t.status,
+      assignedTo: t.assignedTo,
+      employeeId: t.assignedTo?._id?.toString() || t.assignedTo?.toString(),
+      startedAt: t.startedAt || t.updatedAt,
+      totalDuration: t.totalDuration || 0,
+    }));
 
     res.json({
       activeProjects,
       completedTasksToday,
-      currentlyWorking: currentlyWorking.length
+      currentlyWorking: workingEmployeeIds.size,
+      activeTasks: activeTasksList,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });

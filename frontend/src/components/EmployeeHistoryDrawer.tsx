@@ -770,10 +770,34 @@ export const EmployeeHistoryDrawer: React.FC<EmployeeHistoryDrawerProps> = ({
 
   if (!isOpen || !employee) return null;
 
-  // Latest status and task
-  const latestLog = logs[0];
-  const currentStatus = employee?.status || latestLog?.status || 'OFFLINE';
-  const currentTaskTitle = employee?.currentTask || latestLog?.taskId?.title || latestLog?.customTaskTitle || null;
+  // Latest status and task detection (robustly handles active tasks even if prior task was completed)
+  const activeTaskFromReports = taskReports.find((t) => t.status === 'WORKING');
+  const todayStr = new Date().toDateString();
+  const activeLogFromLogs = logs.find((l) => {
+    const isToday = new Date(l.createdAt || l.startTime).toDateString() === todayStr;
+    return l.status === 'WORKING' && isToday;
+  });
+
+  const isActivelyWorking =
+    employee?.status === 'WORKING' ||
+    Boolean(activeTaskFromReports) ||
+    Boolean(activeLogFromLogs && activeLogFromLogs.status === 'WORKING');
+
+  const currentStatus = isActivelyWorking
+    ? 'WORKING'
+    : (employee?.status && employee.status !== 'WORKING'
+        ? employee.status
+        : logs[0]?.status || 'OFFLINE');
+
+  const rawTaskTitle =
+    (isActivelyWorking && activeTaskFromReports?.title) ||
+    (employee?.currentTask && employee.currentTask !== 'No active task' ? employee.currentTask : null) ||
+    (isActivelyWorking && (activeLogFromLogs?.taskId?.title || activeLogFromLogs?.customTaskTitle)) ||
+    (logs[0]?.taskId?.title || logs[0]?.customTaskTitle || null);
+
+  const currentTaskTitle = (isActivelyWorking && rawTaskTitle && rawTaskTitle !== 'No active task' && rawTaskTitle !== '-')
+    ? rawTaskTitle
+    : null;
 
   const getStatusBadge = (status: string, taskTitle?: string) => {
     const styles: Record<string, string> = {

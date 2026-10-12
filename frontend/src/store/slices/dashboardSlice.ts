@@ -8,6 +8,7 @@ interface DashboardStats {
   activeProjects: number;
   completedTasksToday: number;
   currentlyWorking: number;
+  activeTasks?: any[];
 }
 
 interface DashboardState {
