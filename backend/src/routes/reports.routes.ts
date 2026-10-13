@@ -15,4 +15,8 @@ router.get('/my-tasks', protect, getMyTaskReport);
 router.post('/send-daily-email', protect, adminOnly, sendDailyReportEmailHandler);
 router.get('/send-daily-email-test', sendDailyReportEmailHandler);
 
+// External Cron Trigger (for cron-job.org or UptimeRobot) - secured with CRON_SECRET
+router.get('/cron-trigger-daily-report', sendDailyReportEmailHandler);
+
+
 export default router;
