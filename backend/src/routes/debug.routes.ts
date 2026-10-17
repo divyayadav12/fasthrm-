@@ -50,4 +50,24 @@ router.get('/fix-purchased', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+router.get('/reset-neha-password', async (req, res) => {
+  try {
+    const User = (await import('../models/User')).default;
+    const user = await User.findOne({ email: { $regex: /^fastnehalakhera@gmail\.com$/i } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const newPass = (req.query.pass as string) || 'Fast@1234';
+    user.password = newPass; // pre('save') will hash it automatically!
+    await user.save();
+    return res.json({
+      success: true,
+      message: `Password reset successfully for ${user.name} (${user.email})`,
+      newPassword: newPass,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
 export default router;
