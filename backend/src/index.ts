@@ -29,11 +29,34 @@ connectDB();
 const app = express();
 const httpServer = createServer(app);
 
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://hrm.coachingfast.in',
+  'http://hrm.coachingfast.in',
+  'http://localhost:3000',
+  'http://localhost:5173',
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 // Socket.io setup
 export const io = new Server(httpServer, {
   cors: {
-    origin: '*', // Set to frontend URL in production
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
   },
 });
 
@@ -45,7 +68,8 @@ io.on('connection', (socket) => {
   });
 });
 
-app.use(cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
 app.use(express.json());
 
 app.get('/', (req, res) => {
