@@ -7,7 +7,7 @@ import axios from 'axios';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 import { formatDuration } from '../../utils/timeFormat';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
 
 const WorkHistory = () => {
   const navigate = useNavigate();

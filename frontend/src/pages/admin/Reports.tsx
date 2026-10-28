@@ -7,7 +7,7 @@ import axios from 'axios';
 import { formatDuration, getTaskLiveMinutes } from '../../utils/timeFormat';
 import { TaskHistoryDrawer } from '../../components/TaskHistoryDrawer';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
 
 const STATUS_COLORS: Record<string, string> = {
   'Working': '#3B82F6',

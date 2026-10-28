@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { formatDuration, getTaskLiveMinutes } from '../utils/timeFormat';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
 
 interface EmployeeHistoryDrawerProps {
   isOpen: boolean;

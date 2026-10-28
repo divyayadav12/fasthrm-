@@ -47,7 +47,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
 
 export const canAccessStudentInquiry = (user: any): boolean => {
   if (!user) return false;

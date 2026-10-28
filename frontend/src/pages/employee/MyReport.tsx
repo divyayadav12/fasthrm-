@@ -5,7 +5,7 @@ import { Clock, BarChart2, Calendar, AlertCircle, Search } from 'lucide-react';
 import axios from 'axios';
 import { getTaskLiveMinutes, formatDuration } from '../../utils/timeFormat';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
 
 const getStatusStyle = (status: string) => {
   const map: Record<string, string> = {

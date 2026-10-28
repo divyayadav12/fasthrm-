@@ -6,7 +6,7 @@ import { RootState, AppDispatch } from '../../store';
 import { ArrowLeft, Briefcase, Mail, Phone, Calendar, MapPin, Building, Activity, Clock, FileText } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
 
 const EmployeeDetails = () => {
   const { id } = useParams<{ id: string }>();

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeOff, KeyRound, Mail, CheckCircle2, ArrowLeft, ShieldCheck, Lock } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();

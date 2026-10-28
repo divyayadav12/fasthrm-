@@ -94,7 +94,7 @@ httpServer.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 
   // Self-ping to prevent Render Free tier from sleeping
-  const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || 'https://fasthrm.onrender.com';
+  const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || 'https://fasthrm-1l03.onrender.com';
   setInterval(() => {
     try {
       const https = require('https');
