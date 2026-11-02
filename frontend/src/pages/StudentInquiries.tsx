@@ -263,6 +263,7 @@ export default function StudentInquiries() {
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userManuallyDeselectedLink, setUserManuallyDeselectedLink] = useState(false);
 
   // Subject Suggestions State
   const [subjectSuggestions, setSubjectSuggestions] = useState<{ subject: string; count: number }[]>([]);
@@ -360,16 +361,6 @@ export default function StudentInquiries() {
     }
   }, [formData.mobileNumber, dispatch]);
 
-  // When mobile number lookup succeeds, auto-fill ONLY student name (keep fields blank and previousInquiryId empty for fresh inquiry)
-  useEffect(() => {
-    if (editingInquiry) return;
-    if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
-      if (!formData.studentName.trim() && lookupResult.studentName) {
-        setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
-      }
-    }
-  }, [lookupResult, editingInquiry]);
-
   const availableInquiriesForDropdown = useMemo(() => {
     const map = new Map<string, any>();
     if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
@@ -408,12 +399,15 @@ export default function StudentInquiries() {
   // Explicit handler when user selects a previous inquiry from dropdown or checkbox
   const handleSelectPreviousInquiry = (inqId: string) => {
     if (!inqId) {
+      setUserManuallyDeselectedLink(true);
       setFormData((prev) => ({
         ...prev,
         previousInquiryId: '',
       }));
       return;
     }
+
+    setUserManuallyDeselectedLink(false);
 
     if (inqId === 'CUSTOM') {
       setFormData((prev) => ({
@@ -543,6 +537,19 @@ export default function StudentInquiries() {
       followUpDate: targetInq?.followUpDate ? targetInq.followUpDate.split('T')[0] : prev.followUpDate,
     }));
   };
+
+  // When mobile number lookup succeeds, auto-fill student name AND auto-link latest inquiry
+  useEffect(() => {
+    if (editingInquiry) return;
+    if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
+      if (!formData.studentName.trim() && lookupResult.studentName) {
+        setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
+      }
+      if (!userManuallyDeselectedLink && !formData.previousInquiryId) {
+        handleSelectPreviousInquiry(lookupResult.latestInquiry.inquiryId);
+      }
+    }
+  }, [lookupResult, editingInquiry, userManuallyDeselectedLink, formData.previousInquiryId]);
 
   // Compute all 4 prior call history cards for display under Reference section
   const priorCallsList = useMemo(() => {
@@ -751,6 +758,7 @@ export default function StudentInquiries() {
 
   const handleOpenAddModal = () => {
     resetForm();
+    setUserManuallyDeselectedLink(false);
     setIsAddModalOpen(true);
   };
 
@@ -806,6 +814,11 @@ export default function StudentInquiries() {
         targetLinkedDoc = allInqs.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
       }
 
+      // Safety fallback: If student was found via phone lookup and user didn't explicitly deselect, link to latest inquiry
+      if (!targetLinkedDoc && !userManuallyDeselectedLink && lookupResult?.found && lookupResult?.latestInquiry) {
+        targetLinkedDoc = lookupResult.latestInquiry;
+      }
+
       if (editingInquiry && editingInquiry._id) {
         // User clicked edit on existing record: update it
         const resultAction = await dispatch(
@@ -827,20 +840,33 @@ export default function StudentInquiries() {
       } else if (targetLinkedDoc && targetLinkedDoc._id) {
         // LINKED INQUIRY: UPDATE THE EXISTING INQUIRY (NO DUPLICATE ROW CREATED)
         const updatedSubData = { ...submissionData };
-        // If targetLinkedDoc already had call 1 remark and user typed the new remark into actionTaken1:
-        const prevCall1 = targetLinkedDoc.actionTaken1 || targetLinkedDoc.remark || '';
-        if (prevCall1 && !updatedSubData.actionTaken2 && !targetLinkedDoc.actionTaken2) {
-          if (updatedSubData.actionTaken1 && updatedSubData.actionTaken1.trim() !== prevCall1.trim()) {
-            updatedSubData.actionTaken2 = updatedSubData.actionTaken1;
-            updatedSubData.actionTaken2Date = new Date().toISOString();
-            updatedSubData.actionTaken2By = user?.name || 'Staff';
-            updatedSubData.actionTaken2Status = formData.status || 'Follow Up';
 
-            updatedSubData.actionTaken1 = prevCall1;
-            updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date || targetLinkedDoc.createdAt;
-            updatedSubData.actionTaken1By = targetLinkedDoc.actionTaken1By || targetLinkedDoc.addedByName;
-            updatedSubData.actionTaken1Status = targetLinkedDoc.actionTaken1Status || targetLinkedDoc.status;
-          }
+        const oldSlots = [
+          targetLinkedDoc.actionTaken1 || targetLinkedDoc.remark || '',
+          targetLinkedDoc.actionTaken2 || '',
+          targetLinkedDoc.actionTaken3 || '',
+          targetLinkedDoc.actionTaken4 || '',
+        ];
+        const newSlots = [
+          (updatedSubData.actionTaken1 || '').trim(),
+          (updatedSubData.actionTaken2 || '').trim(),
+          (updatedSubData.actionTaken3 || '').trim(),
+          (updatedSubData.actionTaken4 || '').trim(),
+        ];
+
+        // Shift slots intelligently if user entered their new remark into an earlier slot
+        if (oldSlots[0] && newSlots[0] && newSlots[0] !== oldSlots[0].trim() && !newSlots[1]) {
+          updatedSubData.actionTaken2 = newSlots[0];
+          updatedSubData.actionTaken2Date = new Date().toISOString();
+          updatedSubData.actionTaken2By = user?.name || 'Staff';
+          updatedSubData.actionTaken2Status = formData.status || 'Follow Up';
+          updatedSubData.actionTaken1 = oldSlots[0];
+        } else if (oldSlots[1] && newSlots[1] && newSlots[1] !== oldSlots[1].trim() && !newSlots[2]) {
+          updatedSubData.actionTaken3 = newSlots[1];
+          updatedSubData.actionTaken3Date = new Date().toISOString();
+          updatedSubData.actionTaken3By = user?.name || 'Staff';
+          updatedSubData.actionTaken3Status = formData.status || 'Follow Up';
+          updatedSubData.actionTaken2 = oldSlots[1];
         }
 
         // Ensure final remark is the latest active actionTaken
@@ -917,7 +943,7 @@ export default function StudentInquiries() {
     const act4Status = inquiry.actionTaken4Status || hist[3]?.status || '';
 
     const highest = act4 ? 4 : (act3 ? 3 : (act2 ? 2 : 1));
-    setMaxFollowUpSlotVisible(highest);
+    setMaxFollowUpSlotVisible(Math.min(4, Math.max(highest + 1, 2)));
 
     setFormData({
       studentName: inquiry.studentName || '',
