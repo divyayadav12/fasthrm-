@@ -820,6 +820,15 @@ export default function StudentInquiries() {
         actionTaken4Status: formData.actionTaken4Status || (formData.actionTaken4 ? formData.status : ''),
       };
 
+      // Check if user has linked an existing inquiry
+      const targetLinkedDoc =
+        selectedPrevInquiry ||
+        (formData.previousInquiryId && formData.previousInquiryId !== 'CUSTOM'
+          ? (availableInquiriesForDropdown.find(
+              (i) => i.inquiryId?.toUpperCase() === formData.previousInquiryId.trim().toUpperCase()
+            ) || inquiries.find((i) => i.inquiryId?.toUpperCase() === formData.previousInquiryId.trim().toUpperCase()))
+          : null);
+
       if (editingInquiry && editingInquiry._id) {
         // User clicked edit on existing record: update it
         const resultAction = await dispatch(
@@ -838,8 +847,38 @@ export default function StudentInquiries() {
             text: (resultAction.payload as string) || 'Failed to update student record',
           });
         }
+      } else if (targetLinkedDoc && targetLinkedDoc._id) {
+        // LINKED INQUIRY: UPDATE THE EXISTING INQUIRY (NO DUPLICATE ROW CREATED)
+        const updatedSubData = { ...submissionData };
+        // If targetLinkedDoc already had actionTaken1 and new remark was typed in actionTaken1:
+        if (targetLinkedDoc.actionTaken1 && !updatedSubData.actionTaken2 && !targetLinkedDoc.actionTaken2) {
+          if (updatedSubData.actionTaken1 !== targetLinkedDoc.actionTaken1) {
+            updatedSubData.actionTaken2 = updatedSubData.actionTaken1 || updatedSubData.remark;
+            updatedSubData.actionTaken1 = targetLinkedDoc.actionTaken1;
+            updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date || targetLinkedDoc.createdAt;
+            updatedSubData.actionTaken1By = targetLinkedDoc.actionTaken1By || targetLinkedDoc.addedByName;
+            updatedSubData.actionTaken1Status = targetLinkedDoc.actionTaken1Status || targetLinkedDoc.status;
+          }
+        }
+
+        const resultAction = await dispatch(
+          updateStudentInquiry({ id: targetLinkedDoc._id, data: updatedSubData })
+        );
+        if (updateStudentInquiry.fulfilled.match(resultAction)) {
+          setNotificationMsg({
+            type: 'success',
+            text: `Inquiry ${targetLinkedDoc.inquiryId} updated with linked follow-up successfully!`,
+          });
+          handleCloseAddModal();
+          loadData();
+        } else {
+          setNotificationMsg({
+            type: 'error',
+            text: (resultAction.payload as string) || 'Failed to update linked inquiry',
+          });
+        }
       } else {
-        // "+ Add Student Inquiry": Always create a new entry (fresh or connected follow-up)
+        // "+ Add Student Inquiry": Fresh inquiry
         const resultAction = await dispatch(createStudentInquiry(submissionData));
         if (createStudentInquiry.fulfilled.match(resultAction)) {
           setNotificationMsg({

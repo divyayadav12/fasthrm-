@@ -317,8 +317,14 @@ export const studentInquirySlice = createSlice({
       // Create Inquiry
       .addCase(createStudentInquiry.fulfilled, (state, action) => {
         if (action.payload.inquiry) {
-          state.inquiries.unshift(action.payload.inquiry);
-          state.total += 1;
+          const updated = action.payload.inquiry;
+          const index = state.inquiries.findIndex((i) => i._id === updated._id);
+          if (index !== -1) {
+            state.inquiries[index] = updated;
+          } else {
+            state.inquiries.unshift(updated);
+            state.total += 1;
+          }
         }
       })
 
