@@ -396,180 +396,153 @@ export default function StudentInquiries() {
   const selectedPrevInquiry = useMemo(() => {
     if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') return null;
     const targetId = formData.previousInquiryId.trim().toUpperCase();
-    if (availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0) {
-      const match = availableInquiriesForDropdown.find((i) => i.inquiryId?.toUpperCase() === targetId);
-      if (match) return match;
+    const allInqs = [
+      ...(availableInquiriesForDropdown || []),
+      ...(lookupResult?.inquiries || []),
+      ...inquiries,
+    ];
+    if (lookupResult?.latestInquiry) allInqs.push(lookupResult.latestInquiry);
+    return allInqs.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
+  }, [formData.previousInquiryId, availableInquiriesForDropdown, lookupResult, inquiries]);
+
+  // Explicit handler when user selects a previous inquiry from dropdown or checkbox
+  const handleSelectPreviousInquiry = (inqId: string) => {
+    if (!inqId) {
+      setFormData((prev) => ({
+        ...prev,
+        previousInquiryId: '',
+      }));
+      return;
     }
-    return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
-  }, [formData.previousInquiryId, availableInquiriesForDropdown, inquiries]);
 
-  // Auto-fill fields ONLY when an existing inquiry ID is explicitly selected from the dropdown
-  useEffect(() => {
-    if (editingInquiry) return;
-    if (selectedPrevInquiry) {
-      // Find all inquiries in lookupResult for this student in ascending order
-      const ascInquiries = lookupResult?.inquiries && lookupResult.inquiries.length > 0
-        ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-        : [selectedPrevInquiry];
+    if (inqId === 'CUSTOM') {
+      setFormData((prev) => ({
+        ...prev,
+        previousInquiryId: 'CUSTOM',
+      }));
+      return;
+    }
 
-      let r1 = '';
-      let r1Date = '';
-      let r1By = '';
-      let r1Status = '';
+    const targetId = inqId.trim().toUpperCase();
+    const allInqs = [
+      ...(availableInquiriesForDropdown || []),
+      ...(lookupResult?.inquiries || []),
+      ...inquiries,
+    ];
+    if (lookupResult?.latestInquiry) allInqs.push(lookupResult.latestInquiry);
+    const targetInq = allInqs.find((i) => i.inquiryId?.toUpperCase() === targetId);
 
-      let r2 = '';
-      let r2Date = '';
-      let r2By = '';
-      let r2Status = '';
+    const ascInquiries = lookupResult?.inquiries && lookupResult.inquiries.length > 0
+      ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      : (targetInq ? [targetInq] : []);
 
-      let r3 = '';
-      let r3Date = '';
-      let r3By = '';
-      let r3Status = '';
+    let r1 = '';
+    let r1Date = '';
+    let r1By = '';
+    let r1Status = '';
 
-      let r4 = '';
-      let r4Date = '';
-      let r4By = '';
-      let r4Status = '';
+    let r2 = '';
+    let r2Date = '';
+    let r2By = '';
+    let r2Status = '';
 
-      if (ascInquiries.length > 1) {
-        // Multiple separate inquiries linked in student's thread
-        // Slot 1 is ALWAYS the 1st inquiry in the thread
-        r1 = ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark || '';
-        r1Date = ascInquiries[0]?.actionTaken1Date || (ascInquiries[0]?.createdAt ? new Date(ascInquiries[0].createdAt).toISOString() : '');
-        r1By = ascInquiries[0]?.actionTaken1By || ascInquiries[0]?.addedByName || '';
-        r1Status = ascInquiries[0]?.actionTaken1Status || ascInquiries[0]?.status || '';
+    let r3 = '';
+    let r3Date = '';
+    let r3By = '';
+    let r3Status = '';
 
-        // Slot 2 is ALWAYS the 2nd inquiry in the thread
-        r2 = ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.actionTaken1 || ascInquiries[1]?.remark || '';
-        r2Date = ascInquiries[1]?.actionTaken2Date || (ascInquiries[1]?.createdAt ? new Date(ascInquiries[1].createdAt).toISOString() : '');
-        r2By = ascInquiries[1]?.actionTaken2By || ascInquiries[1]?.addedByName || '';
-        r2Status = ascInquiries[1]?.actionTaken2Status || ascInquiries[1]?.status || '';
+    let r4 = '';
+    let r4Date = '';
+    let r4By = '';
+    let r4Status = '';
 
-        // Slot 3 is the 3rd inquiry (if exists) or actionTaken3
-        if (ascInquiries.length > 2) {
-          r3 = ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark || '';
-          r3Date = ascInquiries[2]?.actionTaken3Date || (ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
-          r3By = ascInquiries[2]?.actionTaken3By || ascInquiries[2]?.addedByName || '';
-          r3Status = ascInquiries[2]?.actionTaken3Status || ascInquiries[2]?.status || '';
-        } else {
-          r3 = ascInquiries[0]?.actionTaken3 || ascInquiries[1]?.actionTaken3 || '';
-          r3Date = ascInquiries[0]?.actionTaken3Date || ascInquiries[1]?.actionTaken3Date || '';
-          r3By = ascInquiries[0]?.actionTaken3By || ascInquiries[1]?.actionTaken3By || '';
-          r3Status = ascInquiries[0]?.actionTaken3Status || ascInquiries[1]?.actionTaken3Status || '';
-        }
+    if (ascInquiries.length > 1) {
+      r1 = ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark || '';
+      r1Date = ascInquiries[0]?.actionTaken1Date || (ascInquiries[0]?.createdAt ? new Date(ascInquiries[0].createdAt).toISOString() : '');
+      r1By = ascInquiries[0]?.actionTaken1By || ascInquiries[0]?.addedByName || '';
+      r1Status = ascInquiries[0]?.actionTaken1Status || ascInquiries[0]?.status || '';
 
-        // Slot 4 is the 4th inquiry (if exists) or actionTaken4
-        if (ascInquiries.length > 3) {
-          r4 = ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark || '';
-          r4Date = ascInquiries[3]?.actionTaken4Date || (ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
-          r4By = ascInquiries[3]?.actionTaken4By || ascInquiries[3]?.addedByName || '';
-          r4Status = ascInquiries[3]?.actionTaken4Status || ascInquiries[3]?.status || '';
-        } else {
-          r4 = ascInquiries[0]?.actionTaken4 || ascInquiries[1]?.actionTaken4 || '';
-          r4Date = ascInquiries[0]?.actionTaken4Date || ascInquiries[1]?.actionTaken4Date || '';
-          r4By = ascInquiries[0]?.actionTaken4By || ascInquiries[1]?.actionTaken4By || '';
-          r4Status = ascInquiries[0]?.actionTaken4Status || ascInquiries[1]?.actionTaken4Status || '';
-        }
-      } else {
-        const single = ascInquiries[0] || selectedPrevInquiry;
+      r2 = ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.actionTaken1 || ascInquiries[1]?.remark || '';
+      r2Date = ascInquiries[1]?.actionTaken2Date || (ascInquiries[1]?.createdAt ? new Date(ascInquiries[1].createdAt).toISOString() : '');
+      r2By = ascInquiries[1]?.actionTaken2By || ascInquiries[1]?.addedByName || '';
+      r2Status = ascInquiries[1]?.actionTaken2Status || ascInquiries[1]?.status || '';
 
-        r1 = single?.actionTaken1 || single?.remark || '';
-        r1Date = single?.actionTaken1Date || (single?.createdAt ? new Date(single.createdAt).toISOString() : '');
-        r1By = single?.actionTaken1By || single?.addedByName || '';
-        r1Status = single?.actionTaken1Status || single?.status || '';
-
-        r2 = single?.actionTaken2 || '';
-        r2Date = single?.actionTaken2Date || '';
-        r2By = single?.actionTaken2By || '';
-        r2Status = single?.actionTaken2Status || '';
-
-        r3 = single?.actionTaken3 || '';
-        r3Date = single?.actionTaken3Date || '';
-        r3By = single?.actionTaken3By || '';
-        r3Status = single?.actionTaken3Status || '';
-
-        r4 = single?.actionTaken4 || '';
-        r4Date = single?.actionTaken4Date || '';
-        r4By = single?.actionTaken4By || '';
-        r4Status = single?.actionTaken4Status || '';
+      if (ascInquiries.length > 2) {
+        r3 = ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark || '';
+        r3Date = ascInquiries[2]?.actionTaken3Date || (ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
+        r3By = ascInquiries[2]?.actionTaken3By || ascInquiries[2]?.addedByName || '';
+        r3Status = ascInquiries[2]?.actionTaken3Status || ascInquiries[2]?.status || '';
       }
+      if (ascInquiries.length > 3) {
+        r4 = ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark || '';
+        r4Date = ascInquiries[3]?.actionTaken4Date || (ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
+        r4By = ascInquiries[3]?.actionTaken4By || ascInquiries[3]?.addedByName || '';
+        r4Status = ascInquiries[3]?.actionTaken4Status || ascInquiries[3]?.status || '';
+      }
+    } else if (targetInq) {
+      r1 = targetInq.actionTaken1 || targetInq.remark || '';
+      r1Date = targetInq.actionTaken1Date || (targetInq.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
+      r1By = targetInq.actionTaken1By || targetInq.addedByName || '';
+      r1Status = targetInq.actionTaken1Status || targetInq.status || '';
 
-      const activeSlotsCount = r4 ? 4 : (r3 ? 3 : (r2 ? 2 : 1));
-      // Ready next slot for follow-up entry
-      setMaxFollowUpSlotVisible(Math.min(4, activeSlotsCount + 1));
+      r2 = targetInq.actionTaken2 || '';
+      r2Date = targetInq.actionTaken2Date || '';
+      r2By = targetInq.actionTaken2By || '';
+      r2Status = targetInq.actionTaken2Status || '';
 
-      setFormData((prev) => ({
-        ...prev,
-        studentName: selectedPrevInquiry.studentName || prev.studentName,
-        callType: (CALL_TYPES as readonly string[]).includes(selectedPrevInquiry.callType)
-          ? (selectedPrevInquiry.callType as (typeof CALL_TYPES)[number])
-          : 'Enquiry',
-        status: (STATUS_TYPES as readonly string[]).includes(selectedPrevInquiry.status)
-          ? (selectedPrevInquiry.status as (typeof STATUS_TYPES)[number])
-          : 'Pending',
-        subject: selectedPrevInquiry.subject || '',
-        details: selectedPrevInquiry.details || '',
-        details2: selectedPrevInquiry.details2 || '',
-        details3: selectedPrevInquiry.details3 || '',
-        details4: selectedPrevInquiry.details4 || '',
-        remark: selectedPrevInquiry.remark || '',
-        actionTaken1: r1,
-        actionTaken1Date: r1Date,
-        actionTaken1By: r1By,
-        actionTaken1Status: r1Status,
-        actionTaken2: r2,
-        actionTaken2Date: r2Date,
-        actionTaken2By: r2By,
-        actionTaken2Status: r2Status,
-        actionTaken3: r3,
-        actionTaken3Date: r3Date,
-        actionTaken3By: r3By,
-        actionTaken3Status: r3Status,
-        actionTaken4: r4,
-        actionTaken4Date: r4Date,
-        actionTaken4By: r4By,
-        actionTaken4Status: r4Status,
-        forwardedBy: selectedPrevInquiry.forwardedBy || prev.forwardedBy,
-        forwardedTo: selectedPrevInquiry.forwardedTo || '',
-        alternateNumber: selectedPrevInquiry.alternateNumber || prev.alternateNumber,
-        email: selectedPrevInquiry.email || prev.email,
-        followUpDate: selectedPrevInquiry.followUpDate ? selectedPrevInquiry.followUpDate.split('T')[0] : '',
-      }));
-    } else {
-      // If -- None (Fresh Inquiry) -- is selected (or previousInquiryId is empty), reset details/subject/remark/status for fresh entry
-      setMaxFollowUpSlotVisible(1);
-      setFormData((prev) => ({
-        ...prev,
-        subject: '',
-        details: '',
-        details2: '',
-        details3: '',
-        details4: '',
-        remark: '',
-        actionTaken1: '',
-        actionTaken1Date: '',
-        actionTaken1By: '',
-        actionTaken1Status: '',
-        actionTaken2: '',
-        actionTaken2Date: '',
-        actionTaken2By: '',
-        actionTaken2Status: '',
-        actionTaken3: '',
-        actionTaken3Date: '',
-        actionTaken3By: '',
-        actionTaken3Status: '',
-        actionTaken4: '',
-        actionTaken4Date: '',
-        actionTaken4By: '',
-        actionTaken4Status: '',
-        forwardedTo: '',
-        callType: 'Enquiry',
-        status: 'Pending',
-        followUpDate: '',
-      }));
+      r3 = targetInq.actionTaken3 || '';
+      r3Date = targetInq.actionTaken3Date || '';
+      r3By = targetInq.actionTaken3By || '';
+      r3Status = targetInq.actionTaken3Status || '';
+
+      r4 = targetInq.actionTaken4 || '';
+      r4Date = targetInq.actionTaken4Date || '';
+      r4By = targetInq.actionTaken4By || '';
+      r4Status = targetInq.actionTaken4Status || '';
     }
-  }, [selectedPrevInquiry, lookupResult, editingInquiry]);
+
+    const filledCount = r4 ? 4 : (r3 ? 3 : (r2 ? 2 : (r1 ? 1 : 0)));
+    setMaxFollowUpSlotVisible(Math.min(4, Math.max(filledCount + 1, 2)));
+
+    setFormData((prev) => ({
+      ...prev,
+      previousInquiryId: inqId,
+      studentName: targetInq?.studentName || prev.studentName,
+      callType: (CALL_TYPES as readonly string[]).includes(targetInq?.callType)
+        ? (targetInq.callType as (typeof CALL_TYPES)[number])
+        : prev.callType,
+      status: (STATUS_TYPES as readonly string[]).includes(targetInq?.status)
+        ? (targetInq.status as (typeof STATUS_TYPES)[number])
+        : prev.status,
+      subject: targetInq?.subject || prev.subject,
+      details: targetInq?.details || prev.details,
+      details2: targetInq?.details2 || prev.details2,
+      details3: targetInq?.details3 || prev.details3,
+      details4: targetInq?.details4 || prev.details4,
+      remark: targetInq?.remark || prev.remark,
+      actionTaken1: r1,
+      actionTaken1Date: r1Date,
+      actionTaken1By: r1By,
+      actionTaken1Status: r1Status,
+      actionTaken2: r2,
+      actionTaken2Date: r2Date,
+      actionTaken2By: r2By,
+      actionTaken2Status: r2Status,
+      actionTaken3: r3,
+      actionTaken3Date: r3Date,
+      actionTaken3By: r3By,
+      actionTaken3Status: r3Status,
+      actionTaken4: r4,
+      actionTaken4Date: r4Date,
+      actionTaken4By: r4By,
+      actionTaken4Status: r4Status,
+      forwardedBy: targetInq?.forwardedBy || prev.forwardedBy,
+      forwardedTo: targetInq?.forwardedTo || prev.forwardedTo,
+      alternateNumber: targetInq?.alternateNumber || prev.alternateNumber,
+      email: targetInq?.email || prev.email,
+      followUpDate: targetInq?.followUpDate ? targetInq.followUpDate.split('T')[0] : prev.followUpDate,
+    }));
+  };
 
   // Compute all 4 prior call history cards for display under Reference section
   const priorCallsList = useMemo(() => {
@@ -821,13 +794,17 @@ export default function StudentInquiries() {
       };
 
       // Check if user has linked an existing inquiry
-      const targetLinkedDoc =
-        selectedPrevInquiry ||
-        (formData.previousInquiryId && formData.previousInquiryId !== 'CUSTOM'
-          ? (availableInquiriesForDropdown.find(
-              (i) => i.inquiryId?.toUpperCase() === formData.previousInquiryId.trim().toUpperCase()
-            ) || inquiries.find((i) => i.inquiryId?.toUpperCase() === formData.previousInquiryId.trim().toUpperCase()))
-          : null);
+      const targetId = formData.previousInquiryId?.trim().toUpperCase();
+      let targetLinkedDoc = selectedPrevInquiry;
+      if (!targetLinkedDoc && targetId && targetId !== 'CUSTOM') {
+        const allInqs = [
+          ...(lookupResult?.inquiries || []),
+          ...(availableInquiriesForDropdown || []),
+          ...inquiries,
+        ];
+        if (lookupResult?.latestInquiry) allInqs.push(lookupResult.latestInquiry);
+        targetLinkedDoc = allInqs.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
+      }
 
       if (editingInquiry && editingInquiry._id) {
         // User clicked edit on existing record: update it
@@ -850,16 +827,30 @@ export default function StudentInquiries() {
       } else if (targetLinkedDoc && targetLinkedDoc._id) {
         // LINKED INQUIRY: UPDATE THE EXISTING INQUIRY (NO DUPLICATE ROW CREATED)
         const updatedSubData = { ...submissionData };
-        // If targetLinkedDoc already had actionTaken1 and new remark was typed in actionTaken1:
-        if (targetLinkedDoc.actionTaken1 && !updatedSubData.actionTaken2 && !targetLinkedDoc.actionTaken2) {
-          if (updatedSubData.actionTaken1 !== targetLinkedDoc.actionTaken1) {
-            updatedSubData.actionTaken2 = updatedSubData.actionTaken1 || updatedSubData.remark;
-            updatedSubData.actionTaken1 = targetLinkedDoc.actionTaken1;
+        // If targetLinkedDoc already had call 1 remark and user typed the new remark into actionTaken1:
+        const prevCall1 = targetLinkedDoc.actionTaken1 || targetLinkedDoc.remark || '';
+        if (prevCall1 && !updatedSubData.actionTaken2 && !targetLinkedDoc.actionTaken2) {
+          if (updatedSubData.actionTaken1 && updatedSubData.actionTaken1.trim() !== prevCall1.trim()) {
+            updatedSubData.actionTaken2 = updatedSubData.actionTaken1;
+            updatedSubData.actionTaken2Date = new Date().toISOString();
+            updatedSubData.actionTaken2By = user?.name || 'Staff';
+            updatedSubData.actionTaken2Status = formData.status || 'Follow Up';
+
+            updatedSubData.actionTaken1 = prevCall1;
             updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date || targetLinkedDoc.createdAt;
             updatedSubData.actionTaken1By = targetLinkedDoc.actionTaken1By || targetLinkedDoc.addedByName;
             updatedSubData.actionTaken1Status = targetLinkedDoc.actionTaken1Status || targetLinkedDoc.status;
           }
         }
+
+        // Ensure final remark is the latest active actionTaken
+        updatedSubData.remark =
+          updatedSubData.actionTaken4?.trim() ||
+          updatedSubData.actionTaken3?.trim() ||
+          updatedSubData.actionTaken2?.trim() ||
+          updatedSubData.actionTaken1?.trim() ||
+          updatedSubData.remark?.trim() ||
+          '';
 
         const resultAction = await dispatch(
           updateStudentInquiry({ id: targetLinkedDoc._id, data: updatedSubData })
@@ -1532,9 +1523,9 @@ export default function StudentInquiries() {
                       ) : (
                         <div className="text-xs text-gray-400 italic">No description</div>
                       )}
-                      {inq.remark && (
+                      {(inq.remark || inq.actionTaken4 || inq.actionTaken3 || inq.actionTaken2 || inq.actionTaken1) && (
                         <div className="text-[11px] text-amber-700 bg-amber-50/60 px-2 py-0.5 rounded-md mt-1 inline-block border border-amber-100">
-                          Remark: {inq.remark}
+                          Remark: {inq.actionTaken4 || inq.actionTaken3 || inq.actionTaken2 || inq.actionTaken1 || inq.remark}
                         </div>
                       )}
                       {inq.forwardedTo && (
@@ -1813,7 +1804,7 @@ export default function StudentInquiries() {
                       <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
                       <select
                         value={formData.previousInquiryId}
-                        onChange={(e) => setFormData({ ...formData, previousInquiryId: e.target.value })}
+                        onChange={(e) => handleSelectPreviousInquiry(e.target.value)}
                         className="w-full pl-10 pr-10 py-2.5 bg-indigo-50/60 border border-indigo-200 rounded-xl text-xs sm:text-sm font-medium text-gray-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer shadow-2xs"
                       >
                         <option value="">-- None (Fresh Inquiry / No Connection) --</option>
@@ -1971,12 +1962,11 @@ export default function StudentInquiries() {
                       id="linkRefCheck"
                       checked={!!formData.previousInquiryId}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          previousInquiryId: e.target.checked
+                        handleSelectPreviousInquiry(
+                          e.target.checked
                             ? lookupResult.latestInquiry?.inquiryId || ''
-                            : '',
-                        })
+                            : ''
+                        )
                       }
                       className="rounded text-indigo-600 focus:ring-indigo-500"
                     />
