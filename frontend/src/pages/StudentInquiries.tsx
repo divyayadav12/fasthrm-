@@ -551,7 +551,7 @@ export default function StudentInquiries() {
     }
   }, [lookupResult, editingInquiry, userManuallyDeselectedLink, formData.previousInquiryId]);
 
-  // Compute all 4 prior call history cards for display under Reference section (Call 1 to 4)
+  // Compute prior call history cards: ONLY show calls that actually have content or are being typed
   const priorCallsList = useMemo(() => {
     const inqMap = new Map<string, any>();
     if (availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0) {
@@ -589,7 +589,6 @@ export default function StudentInquiries() {
 
     const inqId = baseInq.inquiryId || formData.previousInquiryId || 'INQ-REF';
     const subj = baseInq.subject || formData.subject || 'Student Inquiry';
-    const baseDetails = baseInq.details || formData.details || '';
     const baseStaff = baseInq.addedByName || baseInq.actionTaken1By || user?.name || 'Staff';
     const formatDate = (d: any) =>
       d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
@@ -606,28 +605,31 @@ export default function StudentInquiries() {
     const date1 = baseInq.actionTaken1Date || hist[0]?.date || baseInq.createdAt;
 
     // Slot 2
-    const r2 = (formData.actionTaken2 || '').trim() || baseInq.actionTaken2 || hist[1]?.remark || (sortedInquiries.length > 1 ? (sortedInquiries[1]?.actionTaken1 || sortedInquiries[1]?.remark) : '') || '';
-    const d2 = (formData.actionTaken2 || '').trim() ? (formData.details || baseDetails) : (baseInq.details2 || hist[1]?.details || baseDetails);
+    const r2 = (formData.actionTaken2 || '').trim() || baseInq.actionTaken2 || hist[1]?.remark || (sortedInquiries.length > 1 ? (sortedInquiries[1]?.actionTaken2 || sortedInquiries[1]?.actionTaken1 || sortedInquiries[1]?.remark) : '') || '';
+    const d2 = baseInq.details2 || hist[1]?.details || (r2 ? '2nd Follow-up discussion' : '');
     const by2 = (formData.actionTaken2 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken2By || hist[1]?.attendedBy || (sortedInquiries.length > 1 ? sortedInquiries[1]?.addedByName : '') || 'Staff');
     const status2 = (formData.actionTaken2 || '').trim() ? (formData.actionTaken2Status || formData.status || 'Follow Up') : (baseInq.actionTaken2Status || hist[1]?.status || 'Follow Up');
     const date2 = baseInq.actionTaken2Date || hist[1]?.date || (sortedInquiries.length > 1 ? sortedInquiries[1]?.createdAt : null) || (formData.actionTaken2 ? new Date() : null);
 
     // Slot 3
-    const r3 = (formData.actionTaken3 || '').trim() || baseInq.actionTaken3 || hist[2]?.remark || (sortedInquiries.length > 2 ? (sortedInquiries[2]?.actionTaken1 || sortedInquiries[2]?.remark) : '') || '';
-    const d3 = (formData.actionTaken3 || '').trim() ? (formData.details || baseDetails) : (baseInq.details3 || hist[2]?.details || baseDetails);
+    const r3 = (formData.actionTaken3 || '').trim() || baseInq.actionTaken3 || hist[2]?.remark || (sortedInquiries.length > 2 ? (sortedInquiries[2]?.actionTaken3 || sortedInquiries[2]?.actionTaken1 || sortedInquiries[2]?.remark) : '') || '';
+    const d3 = baseInq.details3 || hist[2]?.details || (r3 ? '3rd Follow-up discussion' : '');
     const by3 = (formData.actionTaken3 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken3By || hist[2]?.attendedBy || (sortedInquiries.length > 2 ? sortedInquiries[2]?.addedByName : '') || 'Staff');
     const status3 = (formData.actionTaken3 || '').trim() ? (formData.actionTaken3Status || formData.status || 'Follow Up') : (baseInq.actionTaken3Status || hist[2]?.status || 'Follow Up');
     const date3 = baseInq.actionTaken3Date || hist[2]?.date || (sortedInquiries.length > 2 ? sortedInquiries[2]?.createdAt : null) || (formData.actionTaken3 ? new Date() : null);
 
     // Slot 4
-    const r4 = (formData.actionTaken4 || '').trim() || baseInq.actionTaken4 || hist[3]?.remark || (sortedInquiries.length > 3 ? (sortedInquiries[3]?.actionTaken1 || sortedInquiries[3]?.remark) : '') || '';
-    const d4 = (formData.actionTaken4 || '').trim() ? (formData.details || baseDetails) : (baseInq.details4 || hist[3]?.details || baseDetails);
+    const r4 = (formData.actionTaken4 || '').trim() || baseInq.actionTaken4 || hist[3]?.remark || (sortedInquiries.length > 3 ? (sortedInquiries[3]?.actionTaken4 || sortedInquiries[3]?.actionTaken1 || sortedInquiries[3]?.remark) : '') || '';
+    const d4 = baseInq.details4 || hist[3]?.details || (r4 ? '4th Follow-up discussion' : '');
     const by4 = (formData.actionTaken4 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken4By || hist[3]?.attendedBy || (sortedInquiries.length > 3 ? sortedInquiries[3]?.addedByName : '') || 'Staff');
     const status4 = (formData.actionTaken4 || '').trim() ? (formData.actionTaken4Status || formData.status || 'Follow Up') : (baseInq.actionTaken4Status || hist[3]?.status || 'Follow Up');
     const date4 = baseInq.actionTaken4Date || hist[3]?.date || (sortedInquiries.length > 3 ? sortedInquiries[3]?.createdAt : null) || (formData.actionTaken4 ? new Date() : null);
 
-    return [
-      {
+    const list: Array<any> = [];
+
+    // Call #1 is always displayed if inquiry exists or Call 1 remark entered
+    if (r1 || d1) {
+      list.push({
         key: `call-1-${inqId}`,
         callNumber: 1,
         inquiryId: inqId,
@@ -639,51 +641,61 @@ export default function StudentInquiries() {
         callType: baseInq.callType || formData.callType || 'Enquiry',
         attendedBy: by1,
         isCurrentRef: true,
-        isPendingSlot: false,
-      },
-      {
+      });
+    }
+
+    // Call #2: ONLY shown if Call 2 has been entered/saved or currently typed in form
+    if (r2.trim() || baseInq.details2?.trim()) {
+      list.push({
         key: `call-2-${inqId}`,
         callNumber: 2,
         inquiryId: inqId,
-        dateStr: formatDate(date2) || (r2 ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+        dateStr: formatDate(date2) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
         subject: subj,
-        details: d2 || (r2 ? baseDetails : 'Follow-up discussion notes pending'),
-        remark: r2 || 'Pending 2nd follow up (type below in Action Taken 2)',
+        details: d2 || '2nd Follow-up discussion',
+        remark: r2,
         status: status2,
         callType: 'Follow Up',
         attendedBy: by2,
         isCurrentRef: false,
-        isPendingSlot: !r2,
-      },
-      {
+      });
+    }
+
+    // Call #3: ONLY shown if Call 3 has been entered/saved or currently typed in form
+    if (r3.trim() || baseInq.details3?.trim()) {
+      list.push({
         key: `call-3-${inqId}`,
         callNumber: 3,
         inquiryId: inqId,
-        dateStr: formatDate(date3) || (r3 ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+        dateStr: formatDate(date3) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
         subject: subj,
-        details: d3 || (r3 ? baseDetails : 'Follow-up discussion notes pending'),
-        remark: r3 || 'Pending 3rd follow up (type below in Action Taken 3)',
+        details: d3 || '3rd Follow-up discussion',
+        remark: r3,
         status: status3,
         callType: 'Follow Up',
         attendedBy: by3,
         isCurrentRef: false,
-        isPendingSlot: !r3,
-      },
-      {
+      });
+    }
+
+    // Call #4: ONLY shown if Call 4 has been entered/saved or currently typed in form
+    if (r4.trim() || baseInq.details4?.trim()) {
+      list.push({
         key: `call-4-${inqId}`,
         callNumber: 4,
         inquiryId: inqId,
-        dateStr: formatDate(date4) || (r4 ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+        dateStr: formatDate(date4) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
         subject: subj,
-        details: d4 || (r4 ? baseDetails : 'Follow-up discussion notes pending'),
-        remark: r4 || 'Pending 4th follow up (type below in Action Taken 4)',
+        details: d4 || '4th Follow-up discussion',
+        remark: r4,
         status: status4,
         callType: 'Follow Up',
         attendedBy: by4,
         isCurrentRef: false,
-        isPendingSlot: !r4,
-      },
-    ];
+      });
+    }
+
+    return list;
   }, [
     availableInquiriesForDropdown,
     selectedPrevInquiry,
@@ -834,53 +846,45 @@ export default function StudentInquiries() {
         // LINKED INQUIRY: UPDATE THE EXISTING INQUIRY (NO DUPLICATE ROW CREATED)
         const updatedSubData = { ...submissionData };
 
-        const oldSlots = [
-          targetLinkedDoc.actionTaken1 || targetLinkedDoc.remark || '',
-          targetLinkedDoc.actionTaken2 || '',
-          targetLinkedDoc.actionTaken3 || '',
-          targetLinkedDoc.actionTaken4 || '',
-        ];
-        const newSlots = [
-          (updatedSubData.actionTaken1 || '').trim(),
-          (updatedSubData.actionTaken2 || '').trim(),
-          (updatedSubData.actionTaken3 || '').trim(),
-          (updatedSubData.actionTaken4 || '').trim(),
-        ];
-
-        // Shift slots intelligently if user entered their new remark into an earlier slot
-        if (oldSlots[0] && newSlots[0] && newSlots[0] !== oldSlots[0].trim() && !newSlots[1]) {
-          updatedSubData.actionTaken2 = newSlots[0];
-          updatedSubData.actionTaken2Date = new Date().toISOString();
-          updatedSubData.actionTaken2By = user?.name || 'Staff';
-          updatedSubData.actionTaken2Status = formData.status || 'Follow Up';
-          updatedSubData.actionTaken1 = oldSlots[0];
-        } else if (oldSlots[1] && newSlots[1] && newSlots[1] !== oldSlots[1].trim() && !newSlots[2]) {
-          updatedSubData.actionTaken3 = newSlots[1];
-          updatedSubData.actionTaken3Date = new Date().toISOString();
-          updatedSubData.actionTaken3By = user?.name || 'Staff';
-          updatedSubData.actionTaken3Status = formData.status || 'Follow Up';
-          updatedSubData.actionTaken2 = oldSlots[1];
-        } else if (oldSlots[2] && newSlots[2] && newSlots[2] !== oldSlots[2].trim() && !newSlots[3]) {
-          updatedSubData.actionTaken4 = newSlots[2];
-          updatedSubData.actionTaken4Date = new Date().toISOString();
-          updatedSubData.actionTaken4By = user?.name || 'Staff';
-          updatedSubData.actionTaken4Status = formData.status || 'Follow Up';
-          updatedSubData.actionTaken3 = oldSlots[2];
+        // Keep existing slots if empty in the submission form
+        if (!updatedSubData.actionTaken1?.trim() && targetLinkedDoc.actionTaken1) {
+          updatedSubData.actionTaken1 = targetLinkedDoc.actionTaken1;
+          updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date;
+          updatedSubData.actionTaken1By = targetLinkedDoc.actionTaken1By;
+          updatedSubData.actionTaken1Status = targetLinkedDoc.actionTaken1Status;
+        }
+        if (!updatedSubData.actionTaken2?.trim() && targetLinkedDoc.actionTaken2) {
+          updatedSubData.actionTaken2 = targetLinkedDoc.actionTaken2;
+          updatedSubData.actionTaken2Date = targetLinkedDoc.actionTaken2Date;
+          updatedSubData.actionTaken2By = targetLinkedDoc.actionTaken2By;
+          updatedSubData.actionTaken2Status = targetLinkedDoc.actionTaken2Status;
+        }
+        if (!updatedSubData.actionTaken3?.trim() && targetLinkedDoc.actionTaken3) {
+          updatedSubData.actionTaken3 = targetLinkedDoc.actionTaken3;
+          updatedSubData.actionTaken3Date = targetLinkedDoc.actionTaken3Date;
+          updatedSubData.actionTaken3By = targetLinkedDoc.actionTaken3By;
+          updatedSubData.actionTaken3Status = targetLinkedDoc.actionTaken3Status;
+        }
+        if (!updatedSubData.actionTaken4?.trim() && targetLinkedDoc.actionTaken4) {
+          updatedSubData.actionTaken4 = targetLinkedDoc.actionTaken4;
+          updatedSubData.actionTaken4Date = targetLinkedDoc.actionTaken4Date;
+          updatedSubData.actionTaken4By = targetLinkedDoc.actionTaken4By;
+          updatedSubData.actionTaken4Status = targetLinkedDoc.actionTaken4Status;
         }
 
-        if (updatedSubData.actionTaken1 && !updatedSubData.actionTaken1Date) {
+        if (updatedSubData.actionTaken1?.trim() && !updatedSubData.actionTaken1Date) {
           updatedSubData.actionTaken1Date = new Date().toISOString();
           updatedSubData.actionTaken1By = updatedSubData.actionTaken1By || user?.name || 'Staff';
         }
-        if (updatedSubData.actionTaken2 && !updatedSubData.actionTaken2Date) {
+        if (updatedSubData.actionTaken2?.trim() && !updatedSubData.actionTaken2Date) {
           updatedSubData.actionTaken2Date = new Date().toISOString();
           updatedSubData.actionTaken2By = updatedSubData.actionTaken2By || user?.name || 'Staff';
         }
-        if (updatedSubData.actionTaken3 && !updatedSubData.actionTaken3Date) {
+        if (updatedSubData.actionTaken3?.trim() && !updatedSubData.actionTaken3Date) {
           updatedSubData.actionTaken3Date = new Date().toISOString();
           updatedSubData.actionTaken3By = updatedSubData.actionTaken3By || user?.name || 'Staff';
         }
-        if (updatedSubData.actionTaken4 && !updatedSubData.actionTaken4Date) {
+        if (updatedSubData.actionTaken4?.trim() && !updatedSubData.actionTaken4Date) {
           updatedSubData.actionTaken4Date = new Date().toISOString();
           updatedSubData.actionTaken4By = updatedSubData.actionTaken4By || user?.name || 'Staff';
         }
@@ -1897,9 +1901,7 @@ export default function StudentInquiries() {
                             <div
                               key={callItem.key}
                               className={`p-3 rounded-2xl text-xs space-y-2 border transition-all ${
-                                callItem.isPendingSlot
-                                  ? 'bg-slate-50/70 border-dashed border-gray-300'
-                                  : callItem.isCurrentRef
+                                callItem.isCurrentRef
                                   ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-400/30 shadow-xs'
                                   : 'bg-white border-gray-200 hover:border-indigo-200 shadow-2xs'
                               }`}
@@ -1908,41 +1910,31 @@ export default function StudentInquiries() {
                                 <div className="flex items-center gap-1.5">
                                   <span
                                     className={`font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border shadow-2xs ${
-                                      callItem.isPendingSlot
-                                        ? 'text-gray-500 bg-gray-100 border-gray-200'
-                                        : callItem.isCurrentRef
+                                      callItem.isCurrentRef
                                         ? 'text-indigo-700 bg-white border-indigo-200'
                                         : 'text-gray-700 bg-gray-50 border-gray-200'
                                     }`}
                                   >
-                                    {callItem.isPendingSlot ? '⏳' : '🔗'} Call #{callItem.callNumber}: {callItem.inquiryId}
+                                    🔗 Call #{callItem.callNumber}: {callItem.inquiryId}
                                   </span>
-                                  {callItem.isPendingSlot ? (
-                                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
-                                      Upcoming Call
-                                    </span>
-                                  ) : callItem.isCurrentRef ? (
+                                  {callItem.isCurrentRef ? (
                                     <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">
                                       Connected Ref
                                     </span>
                                   ) : (
                                     <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                                      Completed
+                                      Call #{callItem.callNumber} Recorded
                                     </span>
                                   )}
                                 </div>
                                 <span className="text-[11px] text-gray-500 font-medium">
-                                  {callItem.dateStr || (callItem.isPendingSlot ? 'Slot Available' : '')}
+                                  {callItem.dateStr}
                                 </span>
                               </div>
 
-                              <div className={`p-2.5 rounded-xl border shadow-2xs space-y-1 ${
-                                callItem.isPendingSlot
-                                  ? 'bg-white/80 border-gray-200'
-                                  : 'bg-white/90 border-gray-100 text-gray-800'
-                              }`}>
+                              <div className="text-gray-800 bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-1">
                                 {callItem.subject && (
-                                  <div className={`font-semibold ${callItem.isPendingSlot ? 'text-gray-700' : 'text-gray-900'}`}>
+                                  <div className="font-semibold text-gray-900">
                                     {callItem.subject}
                                   </div>
                                 )}
@@ -1952,12 +1944,8 @@ export default function StudentInquiries() {
                                   </div>
                                 )}
                                 {callItem.remark && (
-                                  <div className={`text-[11px] px-2.5 py-1 rounded-lg border mt-1 ${
-                                    callItem.isPendingSlot
-                                      ? 'text-amber-800 bg-amber-50/70 border-amber-200/60 font-medium italic'
-                                      : 'text-amber-900 bg-amber-50/90 border-amber-200/70 font-medium'
-                                  }`}>
-                                    <strong>{callItem.isPendingSlot ? 'Follow-Up Status:' : 'Previous Remark:'}</strong> {callItem.remark}
+                                  <div className="text-[11px] text-amber-900 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200/70 mt-1 font-medium">
+                                    <strong>Previous Remark:</strong> {callItem.remark}
                                   </div>
                                 )}
                               </div>

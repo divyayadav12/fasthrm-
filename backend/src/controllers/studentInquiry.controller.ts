@@ -268,12 +268,12 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         }
 
         // Link to existing inquiry means updating the existing record (no duplicate DB row)
-        // 1. Assign action taken slots
-        if (act1 && !prevDoc.actionTaken1) {
+        // 1. Assign action taken slots directly
+        if (act1) {
           prevDoc.actionTaken1 = act1;
-          prevDoc.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
-          prevDoc.actionTaken1By = actionTaken1By || user.name;
-          prevDoc.actionTaken1Status = actionTaken1Status || status || 'Follow Up';
+          prevDoc.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : (prevDoc.actionTaken1Date || new Date());
+          prevDoc.actionTaken1By = actionTaken1By || prevDoc.actionTaken1By || user.name;
+          prevDoc.actionTaken1Status = actionTaken1Status || prevDoc.actionTaken1Status || status || 'Follow Up';
         }
         if (act2) {
           prevDoc.actionTaken2 = act2;
@@ -292,26 +292,6 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
           prevDoc.actionTaken4Date = actionTaken4Date ? new Date(actionTaken4Date) : new Date();
           prevDoc.actionTaken4By = actionTaken4By || user.name;
           prevDoc.actionTaken4Status = actionTaken4Status || status || 'Follow Up';
-        }
-
-        // If user submitted remark/act1 as the new note without explicitly setting act2/act3/act4:
-        if (act1 && prevDoc.actionTaken1 && act1 !== prevDoc.actionTaken1 && !act2) {
-          if (!prevDoc.actionTaken2) {
-            prevDoc.actionTaken2 = act1;
-            prevDoc.actionTaken2Date = new Date();
-            prevDoc.actionTaken2By = user.name;
-            prevDoc.actionTaken2Status = status || 'Follow Up';
-          } else if (!prevDoc.actionTaken3) {
-            prevDoc.actionTaken3 = act1;
-            prevDoc.actionTaken3Date = new Date();
-            prevDoc.actionTaken3By = user.name;
-            prevDoc.actionTaken3Status = status || 'Follow Up';
-          } else if (!prevDoc.actionTaken4) {
-            prevDoc.actionTaken4 = act1;
-            prevDoc.actionTaken4Date = new Date();
-            prevDoc.actionTaken4By = user.name;
-            prevDoc.actionTaken4Status = status || 'Follow Up';
-          }
         }
 
         if (studentName) prevDoc.studentName = studentName.trim();
@@ -779,13 +759,7 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
 
     if (actionTaken1 !== undefined) {
       const trimmed1 = actionTaken1.trim();
-      // If user typed a new note into actionTaken1 while actionTaken2 was empty, move new note to actionTaken2
-      if (trimmed1 && inquiry.actionTaken1 && trimmed1 !== inquiry.actionTaken1 && !actionTaken2 && !inquiry.actionTaken2) {
-        inquiry.actionTaken2 = trimmed1;
-        inquiry.actionTaken2Date = new Date();
-        inquiry.actionTaken2By = currentUserName;
-        inquiry.actionTaken2Status = status || inquiry.status || 'Follow Up';
-      } else if (trimmed1 || !inquiry.actionTaken1) {
+      if (trimmed1 || !inquiry.actionTaken1) {
         inquiry.actionTaken1 = trimmed1;
         if (inquiry.actionTaken1 && !inquiry.actionTaken1Date) {
           inquiry.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
