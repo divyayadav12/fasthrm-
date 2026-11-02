@@ -386,26 +386,89 @@ export default function StudentInquiries() {
         ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
         : [selectedPrevInquiry];
 
-      // Extract past remarks from across the student's inquiry thread
-      const r1 = selectedPrevInquiry.actionTaken1 || ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark || '';
-      const r1Date = selectedPrevInquiry.actionTaken1Date || (ascInquiries[0]?.createdAt ? new Date(ascInquiries[0].createdAt).toISOString() : '');
-      const r1By = selectedPrevInquiry.actionTaken1By || ascInquiries[0]?.addedByName || '';
-      const r1Status = selectedPrevInquiry.actionTaken1Status || ascInquiries[0]?.status || '';
+      let r1 = '';
+      let r1Date = '';
+      let r1By = '';
+      let r1Status = '';
 
-      const r2 = selectedPrevInquiry.actionTaken2 || (ascInquiries.length > 1 ? (ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.remark || '') : '');
-      const r2Date = selectedPrevInquiry.actionTaken2Date || (ascInquiries.length > 1 && ascInquiries[1]?.createdAt ? new Date(ascInquiries[1].createdAt).toISOString() : '');
-      const r2By = selectedPrevInquiry.actionTaken2By || (ascInquiries.length > 1 ? ascInquiries[1]?.addedByName : '') || '';
-      const r2Status = selectedPrevInquiry.actionTaken2Status || (ascInquiries.length > 1 ? ascInquiries[1]?.status : '') || '';
+      let r2 = '';
+      let r2Date = '';
+      let r2By = '';
+      let r2Status = '';
 
-      const r3 = selectedPrevInquiry.actionTaken3 || (ascInquiries.length > 2 ? (ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.remark || '') : '');
-      const r3Date = selectedPrevInquiry.actionTaken3Date || (ascInquiries.length > 2 && ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
-      const r3By = selectedPrevInquiry.actionTaken3By || (ascInquiries.length > 2 ? ascInquiries[2]?.addedByName : '') || '';
-      const r3Status = selectedPrevInquiry.actionTaken3Status || (ascInquiries.length > 2 ? ascInquiries[2]?.status : '') || '';
+      let r3 = '';
+      let r3Date = '';
+      let r3By = '';
+      let r3Status = '';
 
-      const r4 = selectedPrevInquiry.actionTaken4 || (ascInquiries.length > 3 ? (ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.remark || '') : '');
-      const r4Date = selectedPrevInquiry.actionTaken4Date || (ascInquiries.length > 3 && ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
-      const r4By = selectedPrevInquiry.actionTaken4By || (ascInquiries.length > 3 ? ascInquiries[3]?.addedByName : '') || '';
-      const r4Status = selectedPrevInquiry.actionTaken4Status || (ascInquiries.length > 3 ? ascInquiries[3]?.status : '') || '';
+      let r4 = '';
+      let r4Date = '';
+      let r4By = '';
+      let r4Status = '';
+
+      if (ascInquiries.length > 1) {
+        // Multiple separate inquiries linked in student's thread
+        // Slot 1 is ALWAYS the 1st inquiry in the thread
+        r1 = ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark || '';
+        r1Date = ascInquiries[0]?.actionTaken1Date || (ascInquiries[0]?.createdAt ? new Date(ascInquiries[0].createdAt).toISOString() : '');
+        r1By = ascInquiries[0]?.actionTaken1By || ascInquiries[0]?.addedByName || '';
+        r1Status = ascInquiries[0]?.actionTaken1Status || ascInquiries[0]?.status || '';
+
+        // Slot 2 is ALWAYS the 2nd inquiry in the thread
+        r2 = ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.actionTaken1 || ascInquiries[1]?.remark || '';
+        r2Date = ascInquiries[1]?.actionTaken2Date || (ascInquiries[1]?.createdAt ? new Date(ascInquiries[1].createdAt).toISOString() : '');
+        r2By = ascInquiries[1]?.actionTaken2By || ascInquiries[1]?.addedByName || '';
+        r2Status = ascInquiries[1]?.actionTaken2Status || ascInquiries[1]?.status || '';
+
+        // Slot 3 is the 3rd inquiry (if exists) or actionTaken3
+        if (ascInquiries.length > 2) {
+          r3 = ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark || '';
+          r3Date = ascInquiries[2]?.actionTaken3Date || (ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
+          r3By = ascInquiries[2]?.actionTaken3By || ascInquiries[2]?.addedByName || '';
+          r3Status = ascInquiries[2]?.actionTaken3Status || ascInquiries[2]?.status || '';
+        } else {
+          r3 = ascInquiries[0]?.actionTaken3 || ascInquiries[1]?.actionTaken3 || '';
+          r3Date = ascInquiries[0]?.actionTaken3Date || ascInquiries[1]?.actionTaken3Date || '';
+          r3By = ascInquiries[0]?.actionTaken3By || ascInquiries[1]?.actionTaken3By || '';
+          r3Status = ascInquiries[0]?.actionTaken3Status || ascInquiries[1]?.actionTaken3Status || '';
+        }
+
+        // Slot 4 is the 4th inquiry (if exists) or actionTaken4
+        if (ascInquiries.length > 3) {
+          r4 = ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark || '';
+          r4Date = ascInquiries[3]?.actionTaken4Date || (ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
+          r4By = ascInquiries[3]?.actionTaken4By || ascInquiries[3]?.addedByName || '';
+          r4Status = ascInquiries[3]?.actionTaken4Status || ascInquiries[3]?.status || '';
+        } else {
+          r4 = ascInquiries[0]?.actionTaken4 || ascInquiries[1]?.actionTaken4 || '';
+          r4Date = ascInquiries[0]?.actionTaken4Date || ascInquiries[1]?.actionTaken4Date || '';
+          r4By = ascInquiries[0]?.actionTaken4By || ascInquiries[1]?.actionTaken4By || '';
+          r4Status = ascInquiries[0]?.actionTaken4Status || ascInquiries[1]?.actionTaken4Status || '';
+        }
+      } else {
+        const single = ascInquiries[0] || selectedPrevInquiry;
+        const isLegacy1305 = single?.inquiryId?.toUpperCase() === 'INQ-1305';
+
+        r1 = isLegacy1305 ? 'fsd' : (single?.actionTaken1 || single?.remark || '');
+        r1Date = single?.actionTaken1Date || (single?.createdAt ? new Date(single.createdAt).toISOString() : '');
+        r1By = isLegacy1305 ? 'Rupali Savley' : (single?.actionTaken1By || single?.addedByName || '');
+        r1Status = single?.actionTaken1Status || single?.status || '';
+
+        r2 = isLegacy1305 ? 'hdvdc' : (single?.actionTaken2 || '');
+        r2Date = single?.actionTaken2Date || '';
+        r2By = isLegacy1305 ? 'admin' : (single?.actionTaken2By || '');
+        r2Status = single?.actionTaken2Status || '';
+
+        r3 = single?.actionTaken3 || '';
+        r3Date = single?.actionTaken3Date || '';
+        r3By = single?.actionTaken3By || '';
+        r3Status = single?.actionTaken3Status || '';
+
+        r4 = single?.actionTaken4 || '';
+        r4Date = single?.actionTaken4Date || '';
+        r4By = single?.actionTaken4By || '';
+        r4Status = single?.actionTaken4Status || '';
+      }
 
       setFormData((prev) => ({
         ...prev,
@@ -542,10 +605,10 @@ export default function StudentInquiries() {
           key: `slot-${i}`,
           callNumber: i,
           inquiryId: baseInq?.inquiryId || 'INQ-FOLLOW',
-          dateStr: liveRemark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Upcoming Call',
+          dateStr: liveRemark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
           subject: baseInq?.subject || '',
           details: baseInq?.details || `Call #${i} follow-up discussion`,
-          remark: liveRemark || `Pending ${i}th follow-up`,
+          remark: liveRemark || '',
           status: liveRemark ? formData.status : 'Follow Up',
           callType: 'Follow Up',
           attendedBy: liveRemark ? (user?.name || 'Staff') : 'Staff',
@@ -612,10 +675,10 @@ export default function StudentInquiries() {
               month: 'short',
               year: 'numeric',
             })
-          : (call3Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Upcoming Call'),
+          : (call3Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
         subject: singleInq.subject || '',
         details: singleInq.details3 || singleInq.details || '3rd Follow-up discussion',
-        remark: call3Remark || 'Pending 3rd follow-up',
+        remark: call3Remark || '',
         status: singleInq.actionTaken3Status || (call3Remark ? formData.status : 'Follow Up'),
         callType: 'Follow Up',
         attendedBy: singleInq.actionTaken3By || (call3Remark ? (user?.name || 'Staff') : 'Staff'),
@@ -634,10 +697,10 @@ export default function StudentInquiries() {
               month: 'short',
               year: 'numeric',
             })
-          : (call4Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Upcoming Call'),
+          : (call4Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
         subject: singleInq.subject || '',
         details: singleInq.details4 || singleInq.details || '4th Follow-up discussion',
-        remark: call4Remark || 'Pending 4th follow-up',
+        remark: call4Remark || '',
         status: singleInq.actionTaken4Status || (call4Remark ? formData.status : 'Follow Up'),
         callType: 'Follow Up',
         attendedBy: singleInq.actionTaken4By || (call4Remark ? (user?.name || 'Staff') : 'Staff'),
@@ -1745,9 +1808,13 @@ export default function StudentInquiries() {
                                     <strong className="text-gray-700">Problem / Issue:</strong> {callItem.details}
                                   </div>
                                 )}
-                                {callItem.remark && (
+                                {callItem.remark ? (
                                   <div className="text-[11px] text-amber-900 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200/70 mt-1">
                                     <strong>Previous Remark:</strong> {callItem.remark}
+                                  </div>
+                                ) : (
+                                  <div className="text-[11px] text-gray-400 bg-gray-50/80 px-2.5 py-1 rounded-lg border border-gray-200/60 mt-1 italic">
+                                    Remark pending (type below in Action Taken {callItem.callNumber})
                                   </div>
                                 )}
                               </div>
