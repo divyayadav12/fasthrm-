@@ -252,78 +252,95 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         inquiryId: previousInquiryId.trim().toUpperCase(),
       });
       if (prevDoc) {
-        previousInquiryRef = prevDoc._id;
+        // Link to existing inquiry means updating the existing record (no duplicate DB row)
+        // 1. Assign action taken slots
+        if (act1 && !prevDoc.actionTaken1) {
+          prevDoc.actionTaken1 = act1;
+          prevDoc.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
+          prevDoc.actionTaken1By = actionTaken1By || user.name;
+          prevDoc.actionTaken1Status = actionTaken1Status || status || 'Follow Up';
+        }
+        if (act2) {
+          prevDoc.actionTaken2 = act2;
+          prevDoc.actionTaken2Date = actionTaken2Date ? new Date(actionTaken2Date) : new Date();
+          prevDoc.actionTaken2By = actionTaken2By || user.name;
+          prevDoc.actionTaken2Status = actionTaken2Status || status || 'Follow Up';
+        }
+        if (act3) {
+          prevDoc.actionTaken3 = act3;
+          prevDoc.actionTaken3Date = actionTaken3Date ? new Date(actionTaken3Date) : new Date();
+          prevDoc.actionTaken3By = actionTaken3By || user.name;
+          prevDoc.actionTaken3Status = actionTaken3Status || status || 'Follow Up';
+        }
+        if (act4) {
+          prevDoc.actionTaken4 = act4;
+          prevDoc.actionTaken4Date = actionTaken4Date ? new Date(actionTaken4Date) : new Date();
+          prevDoc.actionTaken4By = actionTaken4By || user.name;
+          prevDoc.actionTaken4Status = actionTaken4Status || status || 'Follow Up';
+        }
 
-        // Find all inquiries in this student's thread in chronological order
-        const threadDocs = await StudentInquiry.find({
-          $or: [
-            { mobileNumber: prevDoc.mobileNumber },
-            { _id: prevDoc._id },
-            { previousInquiryId: prevDoc.inquiryId },
-            ...(prevDoc.previousInquiryId ? [{ inquiryId: prevDoc.previousInquiryId }] : []),
-          ],
-        }).sort({ createdAt: 1 });
+        // If user submitted remark/act1 as the new note without explicitly setting act2/act3/act4:
+        if (act1 && prevDoc.actionTaken1 && act1 !== prevDoc.actionTaken1 && !act2) {
+          if (!prevDoc.actionTaken2) {
+            prevDoc.actionTaken2 = act1;
+            prevDoc.actionTaken2Date = new Date();
+            prevDoc.actionTaken2By = user.name;
+            prevDoc.actionTaken2Status = status || 'Follow Up';
+          } else if (!prevDoc.actionTaken3) {
+            prevDoc.actionTaken3 = act1;
+            prevDoc.actionTaken3Date = new Date();
+            prevDoc.actionTaken3By = user.name;
+            prevDoc.actionTaken3Status = status || 'Follow Up';
+          } else if (!prevDoc.actionTaken4) {
+            prevDoc.actionTaken4 = act1;
+            prevDoc.actionTaken4Date = new Date();
+            prevDoc.actionTaken4By = user.name;
+            prevDoc.actionTaken4Status = status || 'Follow Up';
+          }
+        }
 
-        // Ensure chronological slot preservation:
-        // Slot 1 is ALWAYS from the 1st inquiry in the thread
-        const call1Remark = threadDocs[0]?.actionTaken1 || threadDocs[0]?.remark || act1;
-        const call1By = threadDocs[0]?.actionTaken1By || threadDocs[0]?.addedByName || 'Staff';
-        const call1Date = threadDocs[0]?.actionTaken1Date || threadDocs[0]?.createdAt || new Date();
-        const call1Status = threadDocs[0]?.actionTaken1Status || threadDocs[0]?.status || 'Follow Up';
+        if (studentName) prevDoc.studentName = studentName.trim();
+        if (alternateNumber) prevDoc.alternateNumber = alternateNumber.trim();
+        if (email) prevDoc.email = email.trim();
+        if (subject) prevDoc.subject = subject.trim();
+        if (details) prevDoc.details = details.trim();
+        if (details2) prevDoc.details2 = details2.trim();
+        if (details3) prevDoc.details3 = details3.trim();
+        if (details4) prevDoc.details4 = details4.trim();
+        if (status) prevDoc.status = status;
+        if (callType) prevDoc.callType = callType;
+        if (forwardedBy) prevDoc.forwardedBy = forwardedBy.trim();
+        if (forwardedTo) prevDoc.forwardedTo = forwardedTo.trim();
+        if (followUpDate) prevDoc.followUpDate = new Date(followUpDate);
+        if (status === 'Solved') prevDoc.resolvedAt = new Date();
+        prevDoc.remark = effectiveRemark || prevDoc.remark;
+        prevDoc.updatedAt = new Date();
 
-        // Slot 2 is ALWAYS from the 2nd inquiry (or existing actionTaken2)
-        const call2Remark = threadDocs.length > 1 ? (threadDocs[1]?.actionTaken2 || threadDocs[1]?.actionTaken1 || threadDocs[1]?.remark || act2) : (threadDocs[0]?.actionTaken2 || act2);
-        const call2By = threadDocs.length > 1 ? (threadDocs[1]?.actionTaken2By || threadDocs[1]?.addedByName || user.name) : (threadDocs[0]?.actionTaken2By || (act2 ? user.name : 'Staff'));
-        const call2Date = threadDocs.length > 1 ? (threadDocs[1]?.actionTaken2Date || threadDocs[1]?.createdAt || new Date()) : (threadDocs[0]?.actionTaken2Date || (act2 ? new Date() : undefined));
-        const call2Status = threadDocs.length > 1 ? (threadDocs[1]?.actionTaken2Status || threadDocs[1]?.status || 'Follow Up') : (threadDocs[0]?.actionTaken2Status || 'Follow Up');
-
-        // Slot 3 is from act3 or 3rd inquiry
-        const call3Remark = act3 || (threadDocs.length > 2 ? (threadDocs[2]?.actionTaken3 || threadDocs[2]?.remark) : threadDocs[0]?.actionTaken3) || '';
-        const call3By = act3 ? user.name : (threadDocs.length > 2 ? threadDocs[2]?.actionTaken3By : threadDocs[0]?.actionTaken3By) || '';
-        const call3Date = act3 ? new Date() : (threadDocs.length > 2 ? threadDocs[2]?.actionTaken3Date : threadDocs[0]?.actionTaken3Date);
-        const call3Status = act3 ? (status || 'Follow Up') : (threadDocs.length > 2 ? threadDocs[2]?.actionTaken3Status : threadDocs[0]?.actionTaken3Status) || '';
-
-        // Slot 4 is from act4 or 4th inquiry
-        const call4Remark = act4 || (threadDocs.length > 3 ? (threadDocs[3]?.actionTaken4 || threadDocs[3]?.remark) : threadDocs[0]?.actionTaken4) || '';
-        const call4By = act4 ? user.name : (threadDocs.length > 3 ? threadDocs[3]?.actionTaken4By : threadDocs[0]?.actionTaken4By) || '';
-        const call4Date = act4 ? new Date() : (threadDocs.length > 3 ? threadDocs[3]?.actionTaken4Date : threadDocs[0]?.actionTaken4Date);
-        const call4Status = act4 ? (status || 'Follow Up') : (threadDocs.length > 3 ? threadDocs[3]?.actionTaken4Status : threadDocs[0]?.actionTaken4Status) || '';
-
-        // Sync slots across all documents in this thread so no document has shifted slots
-        const updatePayload: any = {
-          actionTaken1: call1Remark,
-          actionTaken1By: call1By,
-          actionTaken1Date: call1Date,
-          actionTaken1Status: call1Status,
+        // Push new call history record
+        const callNum = prevDoc.actionTaken4 ? 4 : (prevDoc.actionTaken3 ? 3 : (prevDoc.actionTaken2 ? 2 : 1));
+        prevDoc.history = prevDoc.history || [];
+        prevDoc.history.push({
+          callNumber: callNum,
+          subject: prevDoc.subject,
+          details: details4 || details3 || details2 || details || prevDoc.details,
+          remark: effectiveRemark,
           status: status || prevDoc.status,
-          updatedAt: new Date(),
-        };
-        if (call2Remark) {
-          updatePayload.actionTaken2 = call2Remark;
-          updatePayload.actionTaken2By = call2By;
-          updatePayload.actionTaken2Date = call2Date;
-          updatePayload.actionTaken2Status = call2Status;
-        }
-        if (call3Remark) {
-          updatePayload.actionTaken3 = call3Remark;
-          updatePayload.actionTaken3By = call3By;
-          updatePayload.actionTaken3Date = call3Date;
-          updatePayload.actionTaken3Status = call3Status;
-        }
-        if (call4Remark) {
-          updatePayload.actionTaken4 = call4Remark;
-          updatePayload.actionTaken4By = call4By;
-          updatePayload.actionTaken4Date = call4Date;
-          updatePayload.actionTaken4Status = call4Status;
-        }
-        if (followUpDate) {
-          updatePayload.followUpDate = new Date(followUpDate);
-        }
+          callType: callType || prevDoc.callType,
+          attendedBy: user.name,
+          date: new Date(),
+        });
 
-        await StudentInquiry.updateMany(
-          { _id: { $in: threadDocs.map((d: any) => d._id) } },
-          { $set: updatePayload }
-        );
+        await prevDoc.save();
+
+        const populated = await StudentInquiry.findById(prevDoc._id)
+          .populate('addedBy', 'name email department designation')
+          .populate('previousInquiryRef', 'inquiryId studentName status subject details');
+
+        return res.status(200).json({
+          success: true,
+          message: `Inquiry ${prevDoc.inquiryId} updated with linked follow-up successfully.`,
+          inquiry: populated || prevDoc,
+        });
       }
     }
 

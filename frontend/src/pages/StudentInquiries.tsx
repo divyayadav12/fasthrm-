@@ -223,6 +223,7 @@ export default function StudentInquiries() {
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [sendingFeedbackId, setSendingFeedbackId] = useState<string | null>(null);
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [maxFollowUpSlotVisible, setMaxFollowUpSlotVisible] = useState<number>(1);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -361,14 +362,16 @@ export default function StudentInquiries() {
 
   // When mobile number lookup succeeds, auto-fill ONLY student name (keep fields blank and previousInquiryId empty for fresh inquiry)
   useEffect(() => {
+    if (editingInquiry) return;
     if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
       if (!formData.studentName.trim() && lookupResult.studentName) {
         setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
       }
     }
-  }, [lookupResult]);
+  }, [lookupResult, editingInquiry]);
 
   const selectedPrevInquiry = useMemo(() => {
+    if (editingInquiry) return null;
     if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') return null;
     const targetId = formData.previousInquiryId.trim().toUpperCase();
     if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
@@ -376,10 +379,11 @@ export default function StudentInquiries() {
       if (match) return match;
     }
     return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
-  }, [formData.previousInquiryId, lookupResult, inquiries]);
+  }, [formData.previousInquiryId, lookupResult, inquiries, editingInquiry]);
 
   // Auto-fill fields ONLY when an existing inquiry ID is explicitly selected from the dropdown
   useEffect(() => {
+    if (editingInquiry) return;
     if (selectedPrevInquiry) {
       // Find all inquiries in lookupResult for this student in ascending order
       const ascInquiries = lookupResult?.inquiries && lookupResult.inquiries.length > 0
@@ -447,16 +451,15 @@ export default function StudentInquiries() {
         }
       } else {
         const single = ascInquiries[0] || selectedPrevInquiry;
-        const isLegacy1305 = single?.inquiryId?.toUpperCase() === 'INQ-1305';
 
-        r1 = isLegacy1305 ? 'fsd' : (single?.actionTaken1 || single?.remark || '');
+        r1 = single?.actionTaken1 || single?.remark || '';
         r1Date = single?.actionTaken1Date || (single?.createdAt ? new Date(single.createdAt).toISOString() : '');
-        r1By = isLegacy1305 ? 'Rupali Savley' : (single?.actionTaken1By || single?.addedByName || '');
+        r1By = single?.actionTaken1By || single?.addedByName || '';
         r1Status = single?.actionTaken1Status || single?.status || '';
 
-        r2 = isLegacy1305 ? 'hdvdc' : (single?.actionTaken2 || '');
+        r2 = single?.actionTaken2 || '';
         r2Date = single?.actionTaken2Date || '';
-        r2By = isLegacy1305 ? 'admin' : (single?.actionTaken2By || '');
+        r2By = single?.actionTaken2By || '';
         r2Status = single?.actionTaken2Status || '';
 
         r3 = single?.actionTaken3 || '';
@@ -469,6 +472,10 @@ export default function StudentInquiries() {
         r4By = single?.actionTaken4By || '';
         r4Status = single?.actionTaken4Status || '';
       }
+
+      const activeSlotsCount = r4 ? 4 : (r3 ? 3 : (r2 ? 2 : 1));
+      // Ready next slot for follow-up entry
+      setMaxFollowUpSlotVisible(Math.min(4, activeSlotsCount + 1));
 
       setFormData((prev) => ({
         ...prev,
@@ -509,6 +516,7 @@ export default function StudentInquiries() {
       }));
     } else {
       // If -- None (Fresh Inquiry) -- is selected (or previousInquiryId is empty), reset details/subject/remark/status for fresh entry
+      setMaxFollowUpSlotVisible(1);
       setFormData((prev) => ({
         ...prev,
         subject: '',
@@ -539,7 +547,7 @@ export default function StudentInquiries() {
         followUpDate: '',
       }));
     }
-  }, [selectedPrevInquiry, lookupResult]);
+  }, [selectedPrevInquiry, lookupResult, editingInquiry]);
 
   // Compute all 4 prior call history cards for display under Reference section
   const priorCallsList = useMemo(() => {
@@ -577,6 +585,7 @@ export default function StudentInquiries() {
     // Case A: Multiple separate inquiries exist (e.g. INQ-1064, INQ-1131, etc.)
     if (sortedInquiries.length > 1) {
       sortedInquiries.forEach((inq, idx) => {
+        const rem = inq.remark || inq.actionTaken4 || inq.actionTaken3 || inq.actionTaken2 || inq.actionTaken1 || '';
         list.push({
           key: `inq-${inq._id || inq.inquiryId || idx}`,
           callNumber: idx + 1,
@@ -590,122 +599,113 @@ export default function StudentInquiries() {
             : '',
           subject: inq.subject || '',
           details: inq.details || '',
-          remark: inq.remark || inq.actionTaken4 || inq.actionTaken3 || inq.actionTaken2 || inq.actionTaken1 || '',
+          remark: rem,
           status: inq.status || 'Follow Up',
           callType: inq.callType || 'Enquiry',
           attendedBy: inq.addedByName || inq.forwardedBy || 'Staff',
           isCurrentRef: inq.inquiryId?.toUpperCase() === formData.previousInquiryId?.trim().toUpperCase(),
         });
       });
-      // Pad up to 4 calls if fewer than 4 separate records exist
-      const baseInq = sortedInquiries[sortedInquiries.length - 1];
-      for (let i = list.length + 1; i <= 4; i++) {
-        const liveRemark = i === 3 ? formData.actionTaken3 : (i === 4 ? formData.actionTaken4 : formData.actionTaken2);
-        list.push({
-          key: `slot-${i}`,
-          callNumber: i,
-          inquiryId: baseInq?.inquiryId || 'INQ-FOLLOW',
-          dateStr: liveRemark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-          subject: baseInq?.subject || '',
-          details: baseInq?.details || `Call #${i} follow-up discussion`,
-          remark: liveRemark || '',
-          status: liveRemark ? formData.status : 'Follow Up',
-          callType: 'Follow Up',
-          attendedBy: liveRemark ? (user?.name || 'Staff') : 'Staff',
-          isCurrentRef: false,
-        });
-      }
+      // Do NOT pad empty slots - only display real calls that have taken place
     } else {
       // Case B: Single inquiry record with slots 1 to 4
       const singleInq = sortedInquiries[0];
-      const isLegacy1305 = singleInq.inquiryId?.toUpperCase() === 'INQ-1305';
 
       // Call #1
-      list.push({
-        key: `act-1-${singleInq.inquiryId}`,
-        callNumber: 1,
-        inquiryId: singleInq.inquiryId,
-        dateStr: singleInq.actionTaken1Date || singleInq.createdAt
-          ? new Date(singleInq.actionTaken1Date || singleInq.createdAt).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-          : '',
-        subject: singleInq.subject || '',
-        details: isLegacy1305 ? 'want details' : (singleInq.details || 'Initial discussion'),
-        remark: isLegacy1305 ? 'fsd' : (singleInq.actionTaken1 || singleInq.remark || formData.actionTaken1 || ''),
-        status: singleInq.actionTaken1Status || singleInq.status || 'Follow Up',
-        callType: singleInq.callType || 'Enquiry',
-        attendedBy: isLegacy1305 ? 'Rupali Savley' : (singleInq.actionTaken1By || singleInq.addedByName || 'Staff'),
-        isCurrentRef: true,
-      });
+      const r1 = singleInq.actionTaken1 || singleInq.remark || formData.actionTaken1 || '';
+      if (r1.trim() || singleInq.details?.trim()) {
+        list.push({
+          key: `act-1-${singleInq.inquiryId}`,
+          callNumber: 1,
+          inquiryId: singleInq.inquiryId,
+          dateStr: singleInq.actionTaken1Date || singleInq.createdAt
+            ? new Date(singleInq.actionTaken1Date || singleInq.createdAt).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })
+            : '',
+          subject: singleInq.subject || '',
+          details: singleInq.details || 'Initial discussion',
+          remark: r1,
+          status: singleInq.actionTaken1Status || singleInq.status || 'Follow Up',
+          callType: singleInq.callType || 'Enquiry',
+          attendedBy: singleInq.actionTaken1By || singleInq.addedByName || 'Staff',
+          isCurrentRef: true,
+        });
+      }
 
-      // Call #2
-      const call2Remark = isLegacy1305 ? 'hdvdc' : (singleInq.actionTaken2 || formData.actionTaken2 || (singleInq.remark !== singleInq.actionTaken1 ? singleInq.remark : '') || '');
-      list.push({
-        key: `act-2-${singleInq.inquiryId}`,
-        callNumber: 2,
-        inquiryId: singleInq.inquiryId,
-        dateStr: singleInq.actionTaken2Date || singleInq.updatedAt || singleInq.createdAt
-          ? new Date(singleInq.actionTaken2Date || singleInq.updatedAt || singleInq.createdAt).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-          : '',
-        subject: singleInq.subject || '',
-        details: isLegacy1305 ? 'want details' : (singleInq.details2 || singleInq.details || '2nd Follow-up discussion'),
-        remark: call2Remark || (formData.actionTaken2 ? formData.actionTaken2 : 'Follow-up discussion completed'),
-        status: singleInq.actionTaken2Status || singleInq.status || 'Follow Up',
-        callType: 'Follow Up',
-        attendedBy: isLegacy1305 ? 'admin' : (singleInq.actionTaken2By || (formData.actionTaken2 ? (user?.name || 'Staff') : 'Staff')),
-        isCurrentRef: false,
-      });
+      // Call #2 - ONLY show if it actually has content
+      const call2Remark = singleInq.actionTaken2 || formData.actionTaken2 || '';
+      if (call2Remark.trim() || singleInq.details2?.trim()) {
+        list.push({
+          key: `act-2-${singleInq.inquiryId}`,
+          callNumber: 2,
+          inquiryId: singleInq.inquiryId,
+          dateStr: singleInq.actionTaken2Date || singleInq.updatedAt
+            ? new Date(singleInq.actionTaken2Date || singleInq.updatedAt).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })
+            : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          subject: singleInq.subject || '',
+          details: singleInq.details2 || singleInq.details || '2nd Follow-up discussion',
+          remark: call2Remark,
+          status: singleInq.actionTaken2Status || singleInq.status || 'Follow Up',
+          callType: 'Follow Up',
+          attendedBy: singleInq.actionTaken2By || (formData.actionTaken2 ? (user?.name || 'Staff') : 'Staff'),
+          isCurrentRef: false,
+        });
+      }
 
-      // Call #3
+      // Call #3 - ONLY show if it actually has content
       const call3Remark = singleInq.actionTaken3 || formData.actionTaken3 || '';
-      list.push({
-        key: `act-3-${singleInq.inquiryId}`,
-        callNumber: 3,
-        inquiryId: singleInq.inquiryId,
-        dateStr: singleInq.actionTaken3Date
-          ? new Date(singleInq.actionTaken3Date).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-          : (call3Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-        subject: singleInq.subject || '',
-        details: singleInq.details3 || singleInq.details || '3rd Follow-up discussion',
-        remark: call3Remark || '',
-        status: singleInq.actionTaken3Status || (call3Remark ? formData.status : 'Follow Up'),
-        callType: 'Follow Up',
-        attendedBy: singleInq.actionTaken3By || (call3Remark ? (user?.name || 'Staff') : 'Staff'),
-        isCurrentRef: false,
-      });
+      if (call3Remark.trim() || singleInq.details3?.trim()) {
+        list.push({
+          key: `act-3-${singleInq.inquiryId}`,
+          callNumber: 3,
+          inquiryId: singleInq.inquiryId,
+          dateStr: singleInq.actionTaken3Date
+            ? new Date(singleInq.actionTaken3Date).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })
+            : (call3Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+          subject: singleInq.subject || '',
+          details: singleInq.details3 || singleInq.details || '3rd Follow-up discussion',
+          remark: call3Remark,
+          status: singleInq.actionTaken3Status || (call3Remark ? formData.status : 'Follow Up'),
+          callType: 'Follow Up',
+          attendedBy: singleInq.actionTaken3By || (call3Remark ? (user?.name || 'Staff') : 'Staff'),
+          isCurrentRef: false,
+        });
+      }
 
-      // Call #4
+      // Call #4 - ONLY show if it actually has content
       const call4Remark = singleInq.actionTaken4 || formData.actionTaken4 || '';
-      list.push({
-        key: `act-4-${singleInq.inquiryId}`,
-        callNumber: 4,
-        inquiryId: singleInq.inquiryId,
-        dateStr: singleInq.actionTaken4Date
-          ? new Date(singleInq.actionTaken4Date).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-          : (call4Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-        subject: singleInq.subject || '',
-        details: singleInq.details4 || singleInq.details || '4th Follow-up discussion',
-        remark: call4Remark || '',
-        status: singleInq.actionTaken4Status || (call4Remark ? formData.status : 'Follow Up'),
-        callType: 'Follow Up',
-        attendedBy: singleInq.actionTaken4By || (call4Remark ? (user?.name || 'Staff') : 'Staff'),
-        isCurrentRef: false,
-      });
+      if (call4Remark.trim() || singleInq.details4?.trim()) {
+        list.push({
+          key: `act-4-${singleInq.inquiryId}`,
+          callNumber: 4,
+          inquiryId: singleInq.inquiryId,
+          dateStr: singleInq.actionTaken4Date
+            ? new Date(singleInq.actionTaken4Date).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })
+            : (call4Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+          subject: singleInq.subject || '',
+          details: singleInq.details4 || singleInq.details || '4th Follow-up discussion',
+          remark: call4Remark,
+          status: singleInq.actionTaken4Status || (call4Remark ? formData.status : 'Follow Up'),
+          callType: 'Follow Up',
+          attendedBy: singleInq.actionTaken4By || (call4Remark ? (user?.name || 'Staff') : 'Staff'),
+          isCurrentRef: false,
+        });
+      }
     }
 
     return list.slice(0, 4);
@@ -748,6 +748,7 @@ export default function StudentInquiries() {
     });
     setFormErrors({});
     setEditingInquiry(null);
+    setMaxFollowUpSlotVisible(1);
     dispatch(clearLookupResult());
     setShowSubjectDropdown(false);
     setSelectedSuggestionIndex(-1);
@@ -842,6 +843,30 @@ export default function StudentInquiries() {
 
   const handleOpenEdit = (inquiry: StudentInquiry) => {
     setEditingInquiry(inquiry);
+    const hist = inquiry.history || [];
+    const act1 = inquiry.actionTaken1 || hist[0]?.remark || inquiry.remark || '';
+    const act1Date = inquiry.actionTaken1Date || (hist[0]?.date ? new Date(hist[0].date).toISOString() : '') || (inquiry.createdAt ? new Date(inquiry.createdAt).toISOString() : '');
+    const act1By = inquiry.actionTaken1By || hist[0]?.attendedBy || (typeof inquiry.addedBy === 'object' ? inquiry.addedBy.name : inquiry.addedByName) || '';
+    const act1Status = inquiry.actionTaken1Status || hist[0]?.status || inquiry.status || '';
+
+    const act2 = inquiry.actionTaken2 || hist[1]?.remark || '';
+    const act2Date = inquiry.actionTaken2Date || (hist[1]?.date ? new Date(hist[1].date).toISOString() : '') || '';
+    const act2By = inquiry.actionTaken2By || hist[1]?.attendedBy || '';
+    const act2Status = inquiry.actionTaken2Status || hist[1]?.status || '';
+
+    const act3 = inquiry.actionTaken3 || hist[2]?.remark || '';
+    const act3Date = inquiry.actionTaken3Date || (hist[2]?.date ? new Date(hist[2].date).toISOString() : '') || '';
+    const act3By = inquiry.actionTaken3By || hist[2]?.attendedBy || '';
+    const act3Status = inquiry.actionTaken3Status || hist[2]?.status || '';
+
+    const act4 = inquiry.actionTaken4 || hist[3]?.remark || '';
+    const act4Date = inquiry.actionTaken4Date || (hist[3]?.date ? new Date(hist[3].date).toISOString() : '') || '';
+    const act4By = inquiry.actionTaken4By || hist[3]?.attendedBy || '';
+    const act4Status = inquiry.actionTaken4Status || hist[3]?.status || '';
+
+    const highest = act4 ? 4 : (act3 ? 3 : (act2 ? 2 : 1));
+    setMaxFollowUpSlotVisible(highest);
+
     setFormData({
       studentName: inquiry.studentName || '',
       mobileNumber: inquiry.mobileNumber || '',
@@ -852,26 +877,26 @@ export default function StudentInquiries() {
         : 'Enquiry',
       subject: inquiry.subject || '',
       details: inquiry.details || '',
-      details2: inquiry.details2 || '',
-      details3: inquiry.details3 || '',
-      details4: inquiry.details4 || '',
-      remark: inquiry.remark || '',
-      actionTaken1: inquiry.actionTaken1 || inquiry.remark || '',
-      actionTaken1Date: inquiry.actionTaken1Date || (inquiry.createdAt ? new Date(inquiry.createdAt).toISOString() : ''),
-      actionTaken1By: inquiry.actionTaken1By || (typeof inquiry.addedBy === 'object' ? inquiry.addedBy.name : inquiry.addedByName) || '',
-      actionTaken1Status: inquiry.actionTaken1Status || inquiry.status || '',
-      actionTaken2: inquiry.actionTaken2 || '',
-      actionTaken2Date: inquiry.actionTaken2Date || '',
-      actionTaken2By: inquiry.actionTaken2By || '',
-      actionTaken2Status: inquiry.actionTaken2Status || '',
-      actionTaken3: inquiry.actionTaken3 || '',
-      actionTaken3Date: inquiry.actionTaken3Date || '',
-      actionTaken3By: inquiry.actionTaken3By || '',
-      actionTaken3Status: inquiry.actionTaken3Status || '',
-      actionTaken4: inquiry.actionTaken4 || '',
-      actionTaken4Date: inquiry.actionTaken4Date || '',
-      actionTaken4By: inquiry.actionTaken4By || '',
-      actionTaken4Status: inquiry.actionTaken4Status || '',
+      details2: inquiry.details2 || hist[1]?.details || '',
+      details3: inquiry.details3 || hist[2]?.details || '',
+      details4: inquiry.details4 || hist[3]?.details || '',
+      remark: inquiry.remark || act1 || '',
+      actionTaken1: act1,
+      actionTaken1Date: act1Date,
+      actionTaken1By: act1By,
+      actionTaken1Status: act1Status,
+      actionTaken2: act2,
+      actionTaken2Date: act2Date,
+      actionTaken2By: act2By,
+      actionTaken2Status: act2Status,
+      actionTaken3: act3,
+      actionTaken3Date: act3Date,
+      actionTaken3By: act3By,
+      actionTaken3Status: act3Status,
+      actionTaken4: act4,
+      actionTaken4Date: act4Date,
+      actionTaken4By: act4By,
+      actionTaken4Status: act4Status,
       status: (STATUS_TYPES as readonly string[]).includes(inquiry.status)
         ? (inquiry.status as (typeof STATUS_TYPES)[number])
         : 'Others',
@@ -1658,7 +1683,9 @@ export default function StudentInquiries() {
                   <PhoneCall className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Add Student Inquiry</h3>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {editingInquiry ? `Edit Student Inquiry (${editingInquiry.inquiryId})` : 'Add Student Inquiry'}
+                  </h3>
                   <p className="text-xs text-gray-500">
                     Logged in as: <strong className="text-indigo-600">{user?.name}</strong> ({user?.department || user?.designation || 'Staff'})
                   </p>
@@ -1699,21 +1726,34 @@ export default function StudentInquiries() {
                 )}
               </div>
 
-              {/* Connected / Previous Reference ID Dropdown (MOVED UP HERE) */}
+              {/* Connected / Previous Reference ID */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Previous / Connected Inquiry ID (Optional)
+                    {editingInquiry ? 'Inquiry ID (Editing Record)' : 'Previous / Connected Inquiry ID (Optional)'}
                   </label>
-                  {lookupResult?.inquiries && lookupResult.inquiries.length > 0 && (
+                  {!editingInquiry && lookupResult?.inquiries && lookupResult.inquiries.length > 0 && (
                     <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
                       {lookupResult.inquiries.length} Previous Inquiries Found
                     </span>
                   )}
                 </div>
 
-                {/* If previous inquiries found for this student number, show dropdown */}
-                {lookupResult?.inquiries && lookupResult.inquiries.length > 0 ? (
+                {editingInquiry ? (
+                  <div className="p-3 bg-indigo-50/80 border border-indigo-200 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs bg-indigo-600 text-white px-2.5 py-1 rounded-lg shadow-2xs">
+                        {editingInquiry.inquiryId}
+                      </span>
+                      <span className="text-xs text-indigo-950 font-semibold">
+                        Editing this student record directly
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-indigo-600 font-medium">
+                      All changes will update this inquiry
+                    </span>
+                  </div>
+                ) : lookupResult?.inquiries && lookupResult.inquiries.length > 0 ? (
                   <div className="space-y-2.5">
                     <div className="relative">
                       <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
@@ -1856,13 +1896,15 @@ export default function StudentInquiries() {
                     />
                   </div>
                 )}
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Agar pehle kisi aur ne call attend kiya ho, to dropdown se purani ID select karein taaki history link ho jaye.
-                </p>
+                {!editingInquiry && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Agar pehle kisi aur ne call attend kiya ho, to dropdown se purani ID select karein taaki history link ho jaye.
+                  </p>
+                )}
               </div>
 
               {/* Live Number Lookup Alert Banner */}
-              {lookupResult && lookupResult.found && lookupResult.latestInquiry && (
+              {!editingInquiry && lookupResult && lookupResult.found && lookupResult.latestInquiry && (
                 <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 space-y-2 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-xs">
@@ -2088,13 +2130,13 @@ export default function StudentInquiries() {
                     </p>
                   </div>
                   <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/90 px-2.5 py-0.5 rounded-full border border-indigo-200 shrink-0">
-                    4 Follow-Up Slots
+                    {Math.max(1, maxFollowUpSlotVisible)} Active Slot{maxFollowUpSlotVisible > 1 ? 's' : ''}
                   </span>
                 </div>
 
-                {/* 4 Distinct Action Taken / Follow-Up Cells */}
+                {/* Dynamic Action Taken / Follow-Up Cells (Only show active & filled slots) */}
                 <div className="space-y-3 pt-1">
-                  {/* CELL 1: Action Taken 1 */}
+                  {/* CELL 1: Action Taken 1 (Always visible) */}
                   <div className={`p-3 rounded-xl border transition-all ${
                     formData.actionTaken1
                       ? 'bg-white border-indigo-200 shadow-2xs'
@@ -2124,95 +2166,115 @@ export default function StudentInquiries() {
                     />
                   </div>
 
-                  {/* CELL 2: Action Taken 2 */}
-                  <div className={`p-3 rounded-xl border transition-all ${
-                    formData.actionTaken2
-                      ? 'bg-white border-amber-300 shadow-2xs'
-                      : 'bg-white/70 border-gray-200 hover:border-amber-300'
-                  }`}>
-                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-amber-700 font-bold">Action Taken 2 (Call / Follow-Up #2)</span>
-                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
-                          {formData.actionTaken2Status || 'Follow Up'}
+                  {/* CELL 2: Action Taken 2 (Shown only if filled or user opened slot 2) */}
+                  {(Boolean(formData.actionTaken2?.trim()) || maxFollowUpSlotVisible >= 2) && (
+                    <div className={`p-3 rounded-xl border transition-all animate-in fade-in duration-150 ${
+                      formData.actionTaken2
+                        ? 'bg-white border-amber-300 shadow-2xs'
+                        : 'bg-white/70 border-gray-200 hover:border-amber-300'
+                    }`}>
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-amber-700 font-bold">Action Taken 2 (Call / Follow-Up #2)</span>
+                          <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
+                            {formData.actionTaken2Status || 'Follow Up'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-normal">
+                          {formData.actionTaken2By
+                            ? `By ${formData.actionTaken2By} ${formData.actionTaken2Date ? `on ${new Date(formData.actionTaken2Date).toLocaleDateString('en-IN')}` : ''}`
+                            : formData.actionTaken2
+                            ? `By ${user?.name || 'Staff'}`
+                            : '2nd Follow-Up'}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-500 font-normal">
-                        {formData.actionTaken2By
-                          ? `By ${formData.actionTaken2By} ${formData.actionTaken2Date ? `on ${new Date(formData.actionTaken2Date).toLocaleDateString('en-IN')}` : ''}`
-                          : formData.actionTaken2
-                          ? `By ${user?.name || 'Staff'}`
-                          : '2nd Follow-Up'}
-                      </span>
+                      <input
+                        type="text"
+                        value={formData.actionTaken2}
+                        onChange={(e) => setFormData({ ...formData, actionTaken2: e.target.value })}
+                        placeholder="Call #2 staff action taken / discussion notes..."
+                        className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={formData.actionTaken2}
-                      onChange={(e) => setFormData({ ...formData, actionTaken2: e.target.value })}
-                      placeholder="Call #2 staff action taken / discussion notes..."
-                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
-                    />
-                  </div>
+                  )}
 
-                  {/* CELL 3: Action Taken 3 */}
-                  <div className={`p-3 rounded-xl border transition-all ${
-                    formData.actionTaken3
-                      ? 'bg-white border-purple-300 shadow-2xs'
-                      : 'bg-white/70 border-gray-200 hover:border-purple-300'
-                  }`}>
-                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-purple-700 font-bold">Action Taken 3 (Call / Follow-Up #3)</span>
-                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken3Status || 'Follow Up')}`}>
-                          {formData.actionTaken3Status || 'Follow Up'}
+                  {/* CELL 3: Action Taken 3 (Shown only if filled or user opened slot 3) */}
+                  {(Boolean(formData.actionTaken3?.trim()) || maxFollowUpSlotVisible >= 3) && (
+                    <div className={`p-3 rounded-xl border transition-all animate-in fade-in duration-150 ${
+                      formData.actionTaken3
+                        ? 'bg-white border-purple-300 shadow-2xs'
+                        : 'bg-white/70 border-gray-200 hover:border-purple-300'
+                    }`}>
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-purple-700 font-bold">Action Taken 3 (Call / Follow-Up #3)</span>
+                          <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken3Status || 'Follow Up')}`}>
+                            {formData.actionTaken3Status || 'Follow Up'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-normal">
+                          {formData.actionTaken3By
+                            ? `By ${formData.actionTaken3By} ${formData.actionTaken3Date ? `on ${new Date(formData.actionTaken3Date).toLocaleDateString('en-IN')}` : ''}`
+                            : formData.actionTaken3
+                            ? `By ${user?.name || 'Staff'}`
+                            : '3rd Follow-Up'}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-500 font-normal">
-                        {formData.actionTaken3By
-                          ? `By ${formData.actionTaken3By} ${formData.actionTaken3Date ? `on ${new Date(formData.actionTaken3Date).toLocaleDateString('en-IN')}` : ''}`
-                          : formData.actionTaken3
-                          ? `By ${user?.name || 'Staff'}`
-                          : '3rd Follow-Up'}
-                      </span>
+                      <input
+                        type="text"
+                        value={formData.actionTaken3}
+                        onChange={(e) => setFormData({ ...formData, actionTaken3: e.target.value })}
+                        placeholder="Call #3 staff action taken / student reply notes..."
+                        className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={formData.actionTaken3}
-                      onChange={(e) => setFormData({ ...formData, actionTaken3: e.target.value })}
-                      placeholder="Call #3 staff action taken / student reply notes..."
-                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
-                    />
-                  </div>
+                  )}
 
-                  {/* CELL 4: Action Taken 4 */}
-                  <div className={`p-3 rounded-xl border transition-all ${
-                    formData.actionTaken4
-                      ? 'bg-white border-emerald-300 shadow-2xs'
-                      : 'bg-white/70 border-gray-200 hover:border-emerald-300'
-                  }`}>
-                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-emerald-700 font-bold">Action Taken 4 (Call / Follow-Up #4)</span>
-                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken4Status || formData.status)}`}>
-                          {formData.actionTaken4Status || formData.status}
+                  {/* CELL 4: Action Taken 4 (Shown only if filled or user opened slot 4) */}
+                  {(Boolean(formData.actionTaken4?.trim()) || maxFollowUpSlotVisible >= 4) && (
+                    <div className={`p-3 rounded-xl border transition-all animate-in fade-in duration-150 ${
+                      formData.actionTaken4
+                        ? 'bg-white border-emerald-300 shadow-2xs'
+                        : 'bg-white/70 border-gray-200 hover:border-emerald-300'
+                    }`}>
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-emerald-700 font-bold">Action Taken 4 (Call / Follow-Up #4)</span>
+                          <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken4Status || formData.status)}`}>
+                            {formData.actionTaken4Status || formData.status}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-normal">
+                          {formData.actionTaken4By
+                            ? `By ${formData.actionTaken4By} ${formData.actionTaken4Date ? `on ${new Date(formData.actionTaken4Date).toLocaleDateString('en-IN')}` : ''}`
+                            : formData.actionTaken4
+                            ? `By ${user?.name || 'Staff'}`
+                            : '4th Follow-Up'}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-500 font-normal">
-                        {formData.actionTaken4By
-                          ? `By ${formData.actionTaken4By} ${formData.actionTaken4Date ? `on ${new Date(formData.actionTaken4Date).toLocaleDateString('en-IN')}` : ''}`
-                          : formData.actionTaken4
-                          ? `By ${user?.name || 'Staff'}`
-                          : '4th Follow-Up'}
-                      </span>
+                      <input
+                        type="text"
+                        value={formData.actionTaken4}
+                        onChange={(e) => setFormData({ ...formData, actionTaken4: e.target.value })}
+                        placeholder="Call #4 staff action taken / final confirmation or resolution..."
+                        className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={formData.actionTaken4}
-                      onChange={(e) => setFormData({ ...formData, actionTaken4: e.target.value })}
-                      placeholder="Call #4 staff action taken / final confirmation or resolution..."
-                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    />
-                  </div>
+                  )}
+
+                  {/* Button to reveal next follow-up slot if fewer than 4 are visible */}
+                  {maxFollowUpSlotVisible < 4 && (
+                    <div className="pt-1 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setMaxFollowUpSlotVisible((prev) => Math.min(4, Math.max(prev + 1, 2)))}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs rounded-xl border border-indigo-200 shadow-2xs transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Follow-Up #{Math.min(4, maxFollowUpSlotVisible + 1)}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
