@@ -125,6 +125,12 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
 
     const inquiryId = await generateNextInquiryId();
 
+    const act1 = actionTaken1 !== undefined ? actionTaken1.trim() : (remark ? remark.trim() : '');
+    const act2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
+    const act3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
+    const act4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
+    const effectiveRemark = act4 || act3 || act2 || act1 || (remark ? remark.trim() : '');
+
     let previousInquiryRef: any = undefined;
     if (previousInquiryId && previousInquiryId.trim()) {
       const prevDoc = await StudentInquiry.findOne({
@@ -132,14 +138,33 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       });
       if (prevDoc) {
         previousInquiryRef = prevDoc._id;
+        // Also sync latest follow-up note & status to parent doc and touch updatedAt
+        const latestNote = act4 || act3 || act2 || act1;
+        if (latestNote) {
+          if (!prevDoc.actionTaken2) {
+            prevDoc.actionTaken2 = latestNote;
+            prevDoc.actionTaken2Date = new Date();
+            prevDoc.actionTaken2By = user.name;
+            prevDoc.actionTaken2Status = status || 'Follow Up';
+          } else if (!prevDoc.actionTaken3) {
+            prevDoc.actionTaken3 = latestNote;
+            prevDoc.actionTaken3Date = new Date();
+            prevDoc.actionTaken3By = user.name;
+            prevDoc.actionTaken3Status = status || 'Follow Up';
+          } else if (!prevDoc.actionTaken4) {
+            prevDoc.actionTaken4 = latestNote;
+            prevDoc.actionTaken4Date = new Date();
+            prevDoc.actionTaken4By = user.name;
+            prevDoc.actionTaken4Status = status || 'Follow Up';
+          }
+          prevDoc.remark = latestNote;
+          if (status) prevDoc.status = status;
+          if (followUpDate) prevDoc.followUpDate = new Date(followUpDate);
+          prevDoc.updatedAt = new Date();
+          await prevDoc.save();
+        }
       }
     }
-
-    const act1 = actionTaken1 !== undefined ? actionTaken1.trim() : (remark ? remark.trim() : '');
-    const act2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
-    const act3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
-    const act4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
-    const effectiveRemark = act4 || act3 || act2 || act1 || (remark ? remark.trim() : '');
 
     const newInquiry = await StudentInquiry.create({
       inquiryId,

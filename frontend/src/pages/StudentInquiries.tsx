@@ -469,26 +469,155 @@ export default function StudentInquiries() {
     }
   }, [selectedPrevInquiry, lookupResult]);
 
-  // Compute prior inquiries ONLY if a previous inquiry ID is explicitly selected in the dropdown
-  const linkedPriorInquiries = useMemo(() => {
-    if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') {
-      return [];
+  // Compute up to 4 prior call history cards for display under Reference section
+  const priorCallsList = useMemo(() => {
+    const inqMap = new Map<string, any>();
+    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
+      lookupResult.inquiries.forEach((item) => {
+        if (item?.inquiryId) inqMap.set(item.inquiryId.toUpperCase(), item);
+      });
     }
-    if (!lookupResult?.inquiries || lookupResult.inquiries.length === 0) {
-      return [];
+    if (selectedPrevInquiry?.inquiryId) {
+      inqMap.set(selectedPrevInquiry.inquiryId.toUpperCase(), selectedPrevInquiry);
     }
-    const allAsc = [...lookupResult.inquiries].sort(
+
+    const sortedInquiries = Array.from(inqMap.values()).sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
-    const targetId = formData.previousInquiryId.trim().toUpperCase();
-    const matchIndex = allAsc.findIndex((i) => i.inquiryId?.toUpperCase() === targetId);
+    if (sortedInquiries.length === 0) return [];
 
-    if (matchIndex !== -1) {
-      return allAsc.slice(0, matchIndex + 1).slice(-4);
+    // If multiple separate inquiries exist (e.g. Call 1: INQ-1064, Call 2: INQ-1131, Call 3, Call 4)
+    if (sortedInquiries.length > 1) {
+      return sortedInquiries.slice(0, 4).map((inq, idx) => ({
+        key: `inq-card-${inq._id || inq.inquiryId || idx}`,
+        callNumber: idx + 1,
+        inquiryId: inq.inquiryId,
+        dateStr: inq.createdAt
+          ? new Date(inq.createdAt).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+          : '',
+        subject: inq.subject || '',
+        details: inq.details || '',
+        remark: inq.remark || inq.actionTaken4 || inq.actionTaken3 || inq.actionTaken2 || inq.actionTaken1 || '',
+        status: inq.status || 'Follow Up',
+        callType: inq.callType || 'Enquiry',
+        attendedBy: inq.addedByName || inq.forwardedBy || 'Staff',
+        isCurrentRef: inq.inquiryId?.toUpperCase() === formData.previousInquiryId?.trim().toUpperCase(),
+      }));
     }
-    return allAsc.slice(-4);
-  }, [formData.previousInquiryId, lookupResult]);
+
+    // If only 1 inquiry exists, expand its filled action taken slots (up to 4 calls)
+    const singleInq = sortedInquiries[0];
+    const list: Array<{
+      key: string;
+      callNumber: number;
+      inquiryId: string;
+      dateStr: string;
+      subject?: string;
+      details?: string;
+      remark: string;
+      status: string;
+      callType: string;
+      attendedBy: string;
+      isCurrentRef: boolean;
+    }> = [];
+
+    // Call 1
+    list.push({
+      key: `action-1-${singleInq.inquiryId}`,
+      callNumber: 1,
+      inquiryId: singleInq.inquiryId,
+      dateStr: singleInq.actionTaken1Date || singleInq.createdAt
+        ? new Date(singleInq.actionTaken1Date || singleInq.createdAt).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+        : '',
+      subject: singleInq.subject || '',
+      details: singleInq.details || '',
+      remark: singleInq.actionTaken1 || singleInq.remark || '',
+      status: singleInq.actionTaken1Status || singleInq.status || 'Follow Up',
+      callType: singleInq.callType || 'Enquiry',
+      attendedBy: singleInq.actionTaken1By || singleInq.addedByName || 'Staff',
+      isCurrentRef: true,
+    });
+
+    // Call 2
+    if (singleInq.actionTaken2 && singleInq.actionTaken2.trim()) {
+      list.push({
+        key: `action-2-${singleInq.inquiryId}`,
+        callNumber: 2,
+        inquiryId: singleInq.inquiryId,
+        dateStr: singleInq.actionTaken2Date || singleInq.updatedAt || singleInq.createdAt
+          ? new Date(singleInq.actionTaken2Date || singleInq.updatedAt || singleInq.createdAt).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+          : '',
+        subject: singleInq.subject || '',
+        details: '2nd Follow-up call discussion',
+        remark: singleInq.actionTaken2,
+        status: singleInq.actionTaken2Status || singleInq.status || 'Follow Up',
+        callType: singleInq.callType || 'Follow Up',
+        attendedBy: singleInq.actionTaken2By || singleInq.addedByName || 'Staff',
+        isCurrentRef: false,
+      });
+    }
+
+    // Call 3
+    if (singleInq.actionTaken3 && singleInq.actionTaken3.trim()) {
+      list.push({
+        key: `action-3-${singleInq.inquiryId}`,
+        callNumber: 3,
+        inquiryId: singleInq.inquiryId,
+        dateStr: singleInq.actionTaken3Date || singleInq.updatedAt || singleInq.createdAt
+          ? new Date(singleInq.actionTaken3Date || singleInq.updatedAt || singleInq.createdAt).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+          : '',
+        subject: singleInq.subject || '',
+        details: '3rd Follow-up call discussion',
+        remark: singleInq.actionTaken3,
+        status: singleInq.actionTaken3Status || singleInq.status || 'Follow Up',
+        callType: singleInq.callType || 'Follow Up',
+        attendedBy: singleInq.actionTaken3By || singleInq.addedByName || 'Staff',
+        isCurrentRef: false,
+      });
+    }
+
+    // Call 4
+    if (singleInq.actionTaken4 && singleInq.actionTaken4.trim()) {
+      list.push({
+        key: `action-4-${singleInq.inquiryId}`,
+        callNumber: 4,
+        inquiryId: singleInq.inquiryId,
+        dateStr: singleInq.actionTaken4Date || singleInq.updatedAt || singleInq.createdAt
+          ? new Date(singleInq.actionTaken4Date || singleInq.updatedAt || singleInq.createdAt).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+          : '',
+        subject: singleInq.subject || '',
+        details: '4th Follow-up call discussion',
+        remark: singleInq.actionTaken4,
+        status: singleInq.actionTaken4Status || singleInq.status || 'Follow Up',
+        callType: singleInq.callType || 'Follow Up',
+        attendedBy: singleInq.actionTaken4By || singleInq.addedByName || 'Staff',
+        isCurrentRef: false,
+      });
+    }
+
+    return list.slice(0, 4);
+  }, [lookupResult, selectedPrevInquiry, formData.previousInquiryId]);
 
   const resetForm = () => {
     setFormData({
@@ -557,8 +686,6 @@ export default function StudentInquiries() {
 
     setIsSubmitting(true);
     try {
-      const targetInquiryToUpdate = editingInquiry || selectedPrevInquiry || (lookupResult?.found ? lookupResult.latestInquiry : null);
-
       // Determine latest remark from the 4 action taken slots
       const finalRemark = formData.actionTaken4?.trim() || formData.actionTaken3?.trim() || formData.actionTaken2?.trim() || formData.actionTaken1?.trim() || formData.remark?.trim() || '';
 
@@ -575,14 +702,15 @@ export default function StudentInquiries() {
         actionTaken4Status: formData.actionTaken4Status || (formData.actionTaken4 ? formData.status : ''),
       };
 
-      if (targetInquiryToUpdate && targetInquiryToUpdate._id) {
+      if (editingInquiry && editingInquiry._id) {
+        // User clicked edit on existing record: update it
         const resultAction = await dispatch(
-          updateStudentInquiry({ id: targetInquiryToUpdate._id, data: submissionData })
+          updateStudentInquiry({ id: editingInquiry._id, data: submissionData })
         );
         if (updateStudentInquiry.fulfilled.match(resultAction)) {
           setNotificationMsg({
             type: 'success',
-            text: `Student Record ${targetInquiryToUpdate.inquiryId} updated successfully!`,
+            text: `Student Record ${editingInquiry.inquiryId} updated successfully!`,
           });
           handleCloseAddModal();
           loadData();
@@ -593,6 +721,7 @@ export default function StudentInquiries() {
           });
         }
       } else {
+        // "+ Add Student Inquiry": Always create a new entry (fresh or connected follow-up)
         const resultAction = await dispatch(createStudentInquiry(submissionData));
         if (createStudentInquiry.fulfilled.match(resultAction)) {
           setNotificationMsg({
@@ -1525,52 +1654,90 @@ export default function StudentInquiries() {
                       </div>
                     )}
 
-                    {/* Selected Previous Inquiry Full Details Card */}
-                    {selectedPrevInquiry && (
-                      <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-2xl text-xs space-y-2 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-bold text-xs text-indigo-700 bg-white px-2.5 py-0.5 rounded-lg border border-indigo-200 shadow-2xs">
-                            🔗 Selected Reference: {selectedPrevInquiry.inquiryId}
+                    {/* All Prior Calls History Cards (Up to 4 Calls Displayed) */}
+                    {priorCallsList.length > 0 && (
+                      <div className="space-y-2 mt-2 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                            <History className="w-3.5 h-3.5 text-indigo-600" />
+                            Connected History ({priorCallsList.length} of 4 Calls)
                           </span>
-                          <span className="text-[11px] text-gray-500 font-medium">
-                            {new Date(selectedPrevInquiry.createdAt).toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            1st se 4th Call tak ki alag-alag details
                           </span>
                         </div>
-                        <div className="text-gray-800 bg-white/80 p-2 rounded-xl border border-indigo-100/80">
-                          {selectedPrevInquiry.subject && (
-                            <div className="font-semibold text-gray-900 mb-0.5">
-                              {selectedPrevInquiry.subject}
+
+                        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                          {priorCallsList.map((callItem) => (
+                            <div
+                              key={callItem.key}
+                              className={`p-3 rounded-2xl text-xs space-y-2 border transition-all ${
+                                callItem.isCurrentRef
+                                  ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-400/30 shadow-xs'
+                                  : 'bg-white border-gray-200 hover:border-indigo-200 shadow-2xs'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={`font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border shadow-2xs ${
+                                      callItem.isCurrentRef
+                                        ? 'text-indigo-700 bg-white border-indigo-200'
+                                        : 'text-gray-700 bg-gray-50 border-gray-200'
+                                    }`}
+                                  >
+                                    🔗 Call #{callItem.callNumber}: {callItem.inquiryId}
+                                  </span>
+                                  {callItem.isCurrentRef && (
+                                    <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                                      Connected Ref
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-gray-500 font-medium">
+                                  {callItem.dateStr}
+                                </span>
+                              </div>
+
+                              <div className="text-gray-800 bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-1">
+                                {callItem.subject && (
+                                  <div className="font-semibold text-gray-900">
+                                    {callItem.subject}
+                                  </div>
+                                )}
+                                {callItem.details && (
+                                  <div className="text-gray-600 text-[11px] leading-relaxed">
+                                    <strong className="text-gray-700">Problem / Issue:</strong> {callItem.details}
+                                  </div>
+                                )}
+                                {callItem.remark && (
+                                  <div className="text-[11px] text-amber-900 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200/70 mt-1">
+                                    <strong>Previous Remark:</strong> {callItem.remark}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getStatusBadge(
+                                    callItem.status
+                                  )}`}
+                                >
+                                  {callItem.status}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getCallTypeBadge(
+                                    callItem.callType
+                                  )}`}
+                                >
+                                  {callItem.callType}
+                                </span>
+                                <span className="text-gray-500 text-[11px] ml-auto">
+                                  Attended By: <strong>{callItem.attendedBy}</strong>
+                                </span>
+                              </div>
                             </div>
-                          )}
-                          <div className="text-gray-600">{selectedPrevInquiry.details}</div>
-                          {selectedPrevInquiry.remark && (
-                            <div className="text-[11px] text-amber-800 bg-amber-50/80 px-2 py-0.5 rounded-md mt-1 border border-amber-200/60">
-                              <strong>Previous Remark:</strong> {selectedPrevInquiry.remark}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 pt-0.5">
-                          <span
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getStatusBadge(
-                              selectedPrevInquiry.status
-                            )}`}
-                          >
-                            {selectedPrevInquiry.status}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getCallTypeBadge(
-                              selectedPrevInquiry.callType
-                            )}`}
-                          >
-                            {selectedPrevInquiry.callType}
-                          </span>
-                          <span className="text-gray-500 text-[11px] ml-auto">
-                            Attended By: <strong>{selectedPrevInquiry.addedByName}</strong>
-                          </span>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -1594,39 +1761,19 @@ export default function StudentInquiries() {
 
               {/* Live Number Lookup Alert Banner */}
               {lookupResult && lookupResult.found && lookupResult.latestInquiry && (
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2 animate-in fade-in duration-200">
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 space-y-2 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-xs">
                       <Sparkles className="w-4 h-4 text-amber-600" />
                       <span>Existing Student Record Found ({lookupResult.count} Prior Calls)</span>
                     </div>
-                    <span className="text-[11px] bg-amber-200/80 px-2 py-0.5 rounded-full font-semibold">
+                    <span className="text-[11px] bg-amber-200/80 px-2.5 py-0.5 rounded-full font-semibold">
                       Latest: {lookupResult.latestInquiry.inquiryId}
                     </span>
                   </div>
 
-                  <div className="text-xs bg-white/80 p-3 rounded-xl border border-amber-100 space-y-1">
-                    <div className="flex justify-between">
-                      <span className="font-semibold text-gray-800">
-                        Attended By: {lookupResult.latestInquiry.addedByName}
-                      </span>
-                      <span className="text-gray-500">
-                        {new Date(lookupResult.latestInquiry.createdAt).toLocaleDateString('en-IN')}
-                      </span>
-                    </div>
-                    <div className="text-gray-600">
-                      <strong>Issue / Topic:</strong> {lookupResult.latestInquiry.details}
-                    </div>
-                    <div className="flex items-center gap-2 pt-1 text-[11px]">
-                      <span className="font-semibold">Status:</span>
-                      <span className={`px-2 py-0.5 rounded-md ${getStatusBadge(lookupResult.latestInquiry.status)}`}>
-                        {lookupResult.latestInquiry.status}
-                      </span>
-                    </div>
-                  </div>
-
                   {/* Auto-link Reference ID option */}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-0.5">
                     <input
                       type="checkbox"
                       id="linkRefCheck"
@@ -2080,8 +2227,10 @@ export default function StudentInquiries() {
                     </>
                   ) : (
                     <span>
-                      {selectedPrevInquiry || lookupResult?.found
-                        ? `Update Student Record (${selectedPrevInquiry?.inquiryId || lookupResult?.latestInquiry?.inquiryId})`
+                      {editingInquiry
+                        ? `Update Student Record (${editingInquiry.inquiryId})`
+                        : formData.previousInquiryId
+                        ? `Save Follow-Up Entry (Linked to ${formData.previousInquiryId})`
                         : 'Save New Inquiry'}
                     </span>
                   )}
