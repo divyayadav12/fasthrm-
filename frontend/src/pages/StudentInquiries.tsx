@@ -363,26 +363,33 @@ export default function StudentInquiries() {
 
   const availableInquiriesForDropdown = useMemo(() => {
     const map = new Map<string, any>();
-    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
-      lookupResult.inquiries.forEach((item) => {
-        if (item?.inquiryId) map.set(item.inquiryId.toUpperCase(), item);
-      });
-    }
-    if (editingInquiry) {
-      const editPhone = (editingInquiry.mobileNumber || '').replace(/\D/g, '').slice(-10);
+
+    // 1. Instantly match phone from local Redux inquiries list for zero-latency instant display
+    const cleanPhone = (formData.mobileNumber || editingInquiry?.mobileNumber || '')
+      .replace(/\D/g, '')
+      .slice(-10);
+    if (cleanPhone.length >= 6) {
       inquiries.forEach((item) => {
         const itemPhone = (item.mobileNumber || '').replace(/\D/g, '').slice(-10);
-        if (editPhone && itemPhone && itemPhone === editPhone && item.inquiryId) {
-          if (item.inquiryId.toUpperCase() !== editingInquiry.inquiryId?.toUpperCase()) {
+        if (itemPhone && itemPhone === cleanPhone && item.inquiryId) {
+          if (!editingInquiry || item.inquiryId.toUpperCase() !== editingInquiry.inquiryId?.toUpperCase()) {
             map.set(item.inquiryId.toUpperCase(), item);
           }
         }
       });
     }
+
+    // 2. Also merge full server lookup result
+    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
+      lookupResult.inquiries.forEach((item) => {
+        if (item?.inquiryId) map.set(item.inquiryId.toUpperCase(), item);
+      });
+    }
+
     return Array.from(map.values()).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [lookupResult, editingInquiry, inquiries]);
+  }, [lookupResult, editingInquiry, inquiries, formData.mobileNumber]);
 
   const selectedPrevInquiry = useMemo(() => {
     if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') return null;
@@ -430,73 +437,50 @@ export default function StudentInquiries() {
       ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       : (targetInq ? [targetInq] : []);
 
-    let r1 = '';
-    let r1Date = '';
-    let r1By = '';
-    let r1Status = '';
+    const hist = Array.isArray(targetInq?.history) ? targetInq.history : [];
 
-    let r2 = '';
-    let r2Date = '';
-    let r2By = '';
-    let r2Status = '';
+    let r1 = targetInq?.actionTaken1 || hist[0]?.remark || targetInq?.remark || '';
+    let r1Date = targetInq?.actionTaken1Date || (hist[0]?.date ? new Date(hist[0].date).toISOString() : '') || (targetInq?.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
+    let r1By = targetInq?.actionTaken1By || hist[0]?.attendedBy || targetInq?.addedByName || '';
+    let r1Status = targetInq?.actionTaken1Status || hist[0]?.status || targetInq?.status || '';
 
-    let r3 = '';
-    let r3Date = '';
-    let r3By = '';
-    let r3Status = '';
+    let r2 = targetInq?.actionTaken2 || hist[1]?.remark || '';
+    let r2Date = targetInq?.actionTaken2Date || (hist[1]?.date ? new Date(hist[1].date).toISOString() : '') || '';
+    let r2By = targetInq?.actionTaken2By || hist[1]?.attendedBy || '';
+    let r2Status = targetInq?.actionTaken2Status || hist[1]?.status || '';
 
-    let r4 = '';
-    let r4Date = '';
-    let r4By = '';
-    let r4Status = '';
+    let r3 = targetInq?.actionTaken3 || hist[2]?.remark || '';
+    let r3Date = targetInq?.actionTaken3Date || (hist[2]?.date ? new Date(hist[2].date).toISOString() : '') || '';
+    let r3By = targetInq?.actionTaken3By || hist[2]?.attendedBy || '';
+    let r3Status = targetInq?.actionTaken3Status || hist[2]?.status || '';
 
-    if (ascInquiries.length > 1) {
-      r1 = ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark || '';
-      r1Date = ascInquiries[0]?.actionTaken1Date || (ascInquiries[0]?.createdAt ? new Date(ascInquiries[0].createdAt).toISOString() : '');
-      r1By = ascInquiries[0]?.actionTaken1By || ascInquiries[0]?.addedByName || '';
-      r1Status = ascInquiries[0]?.actionTaken1Status || ascInquiries[0]?.status || '';
+    let r4 = targetInq?.actionTaken4 || hist[3]?.remark || '';
+    let r4Date = targetInq?.actionTaken4Date || (hist[3]?.date ? new Date(hist[3].date).toISOString() : '') || '';
+    let r4By = targetInq?.actionTaken4By || hist[3]?.attendedBy || '';
+    let r4Status = targetInq?.actionTaken4Status || hist[3]?.status || '';
 
+    // If multiple linked inquiries exist in chain, also check them for slots 2, 3, 4
+    if (ascInquiries.length > 1 && !r2) {
       r2 = ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.actionTaken1 || ascInquiries[1]?.remark || '';
       r2Date = ascInquiries[1]?.actionTaken2Date || (ascInquiries[1]?.createdAt ? new Date(ascInquiries[1].createdAt).toISOString() : '');
       r2By = ascInquiries[1]?.actionTaken2By || ascInquiries[1]?.addedByName || '';
       r2Status = ascInquiries[1]?.actionTaken2Status || ascInquiries[1]?.status || '';
-
-      if (ascInquiries.length > 2) {
-        r3 = ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark || '';
-        r3Date = ascInquiries[2]?.actionTaken3Date || (ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
-        r3By = ascInquiries[2]?.actionTaken3By || ascInquiries[2]?.addedByName || '';
-        r3Status = ascInquiries[2]?.actionTaken3Status || ascInquiries[2]?.status || '';
-      }
-      if (ascInquiries.length > 3) {
-        r4 = ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark || '';
-        r4Date = ascInquiries[3]?.actionTaken4Date || (ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
-        r4By = ascInquiries[3]?.actionTaken4By || ascInquiries[3]?.addedByName || '';
-        r4Status = ascInquiries[3]?.actionTaken4Status || ascInquiries[3]?.status || '';
-      }
-    } else if (targetInq) {
-      r1 = targetInq.actionTaken1 || targetInq.remark || '';
-      r1Date = targetInq.actionTaken1Date || (targetInq.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
-      r1By = targetInq.actionTaken1By || targetInq.addedByName || '';
-      r1Status = targetInq.actionTaken1Status || targetInq.status || '';
-
-      r2 = targetInq.actionTaken2 || '';
-      r2Date = targetInq.actionTaken2Date || '';
-      r2By = targetInq.actionTaken2By || '';
-      r2Status = targetInq.actionTaken2Status || '';
-
-      r3 = targetInq.actionTaken3 || '';
-      r3Date = targetInq.actionTaken3Date || '';
-      r3By = targetInq.actionTaken3By || '';
-      r3Status = targetInq.actionTaken3Status || '';
-
-      r4 = targetInq.actionTaken4 || '';
-      r4Date = targetInq.actionTaken4Date || '';
-      r4By = targetInq.actionTaken4By || '';
-      r4Status = targetInq.actionTaken4Status || '';
+    }
+    if (ascInquiries.length > 2 && !r3) {
+      r3 = ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark || '';
+      r3Date = ascInquiries[2]?.actionTaken3Date || (ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
+      r3By = ascInquiries[2]?.actionTaken3By || ascInquiries[2]?.addedByName || '';
+      r3Status = ascInquiries[2]?.actionTaken3Status || ascInquiries[2]?.status || '';
+    }
+    if (ascInquiries.length > 3 && !r4) {
+      r4 = ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark || '';
+      r4Date = ascInquiries[3]?.actionTaken4Date || (ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
+      r4By = ascInquiries[3]?.actionTaken4By || ascInquiries[3]?.addedByName || '';
+      r4Status = ascInquiries[3]?.actionTaken4Status || ascInquiries[3]?.status || '';
     }
 
-    const filledCount = r4 ? 4 : (r3 ? 3 : (r2 ? 2 : (r1 ? 1 : 0)));
-    setMaxFollowUpSlotVisible(Math.min(4, Math.max(filledCount + 1, 2)));
+    // When linking an inquiry, show all 4 slots so staff can immediately enter Call 2, 3, or 4 without any button hiding them
+    setMaxFollowUpSlotVisible(4);
 
     setFormData((prev) => ({
       ...prev,
@@ -538,18 +522,25 @@ export default function StudentInquiries() {
     }));
   };
 
-  // When mobile number lookup succeeds, auto-fill student name AND auto-link latest inquiry
+  // Instant auto-link when phone number is typed in Add Modal
   useEffect(() => {
     if (editingInquiry) return;
-    if (lookupResult && lookupResult.found && lookupResult.latestInquiry) {
-      if (!formData.studentName.trim() && lookupResult.studentName) {
-        setFormData((prev) => ({ ...prev, studentName: lookupResult.studentName }));
-      }
-      if (!userManuallyDeselectedLink && !formData.previousInquiryId) {
-        handleSelectPreviousInquiry(lookupResult.latestInquiry.inquiryId);
+    const cleanPhone = formData.mobileNumber.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length >= 6 && !userManuallyDeselectedLink) {
+      // Find matching inquiry immediately from available list or lookupResult
+      const match =
+        availableInquiriesForDropdown.find(
+          (i) => (i.mobileNumber || '').replace(/\D/g, '').slice(-10) === cleanPhone
+        ) || lookupResult?.latestInquiry;
+
+      if (match && match.inquiryId) {
+        if (!formData.studentName.trim() && match.studentName) {
+          setFormData((prev) => ({ ...prev, studentName: match.studentName }));
+        }
+        handleSelectPreviousInquiry(match.inquiryId);
       }
     }
-  }, [lookupResult, editingInquiry, userManuallyDeselectedLink, formData.previousInquiryId]);
+  }, [formData.mobileNumber, availableInquiriesForDropdown, lookupResult, editingInquiry, userManuallyDeselectedLink]);
 
   // Compute prior call history cards: ONLY show calls that actually have content or are being typed
   const priorCallsList = useMemo(() => {
@@ -962,8 +953,7 @@ export default function StudentInquiries() {
     const act4By = inquiry.actionTaken4By || hist[3]?.attendedBy || '';
     const act4Status = inquiry.actionTaken4Status || hist[3]?.status || '';
 
-    const highest = act4 ? 4 : (act3 ? 3 : (act2 ? 2 : 1));
-    setMaxFollowUpSlotVisible(Math.min(4, Math.max(highest + 1, 2)));
+    setMaxFollowUpSlotVisible(4);
 
     setFormData({
       studentName: inquiry.studentName || '',
