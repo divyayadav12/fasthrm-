@@ -39,6 +39,16 @@ export interface IStudentInquiry extends Document {
   resolvedAt?: Date;
   feedbackSent?: boolean;
   feedbackSentAt?: Date;
+  history?: Array<{
+    callNumber: number;
+    subject?: string;
+    details?: string;
+    remark?: string;
+    status?: string;
+    callType?: string;
+    attendedBy?: string;
+    date?: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -165,6 +175,18 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
     feedbackSentAt: {
       type: Date,
     },
+    history: [
+      {
+        callNumber: { type: Number },
+        subject: { type: String, trim: true, default: '' },
+        details: { type: String, trim: true, default: '' },
+        remark: { type: String, trim: true, default: '' },
+        status: { type: String, trim: true, default: '' },
+        callType: { type: String, trim: true, default: '' },
+        attendedBy: { type: String, trim: true, default: '' },
+        date: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

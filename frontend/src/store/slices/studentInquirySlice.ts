@@ -50,6 +50,16 @@ export interface StudentInquiry {
   resolvedAt?: string;
   feedbackSent?: boolean;
   feedbackSentAt?: string;
+  history?: Array<{
+    callNumber: number;
+    subject?: string;
+    details?: string;
+    remark?: string;
+    status?: string;
+    callType?: string;
+    attendedBy?: string;
+    date?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }

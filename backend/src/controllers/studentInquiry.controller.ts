@@ -131,6 +131,68 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
     const act4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
     const effectiveRemark = act4 || act3 || act2 || act1 || (remark ? remark.trim() : '');
 
+    const initialHistory: any[] = [];
+    if (act1 || details) {
+      initialHistory.push({
+        callNumber: 1,
+        subject: subject ? subject.trim() : '',
+        details: details ? details.trim() : '',
+        remark: act1 || (remark ? remark.trim() : ''),
+        status: status || 'Follow Up',
+        callType: callType || 'Enquiry',
+        attendedBy: user.name,
+        date: new Date(),
+      });
+    }
+    if (act2) {
+      initialHistory.push({
+        callNumber: 2,
+        subject: subject ? subject.trim() : '',
+        details: '2nd Follow-up discussion',
+        remark: act2,
+        status: actionTaken2Status || status || 'Follow Up',
+        callType: callType || 'Follow Up',
+        attendedBy: actionTaken2By || user.name,
+        date: actionTaken2Date ? new Date(actionTaken2Date) : new Date(),
+      });
+    }
+    if (act3) {
+      initialHistory.push({
+        callNumber: 3,
+        subject: subject ? subject.trim() : '',
+        details: '3rd Follow-up discussion',
+        remark: act3,
+        status: actionTaken3Status || status || 'Follow Up',
+        callType: callType || 'Follow Up',
+        attendedBy: actionTaken3By || user.name,
+        date: actionTaken3Date ? new Date(actionTaken3Date) : new Date(),
+      });
+    }
+    if (act4) {
+      initialHistory.push({
+        callNumber: 4,
+        subject: subject ? subject.trim() : '',
+        details: '4th Follow-up discussion',
+        remark: act4,
+        status: actionTaken4Status || status || 'Follow Up',
+        callType: callType || 'Follow Up',
+        attendedBy: actionTaken4By || user.name,
+        date: actionTaken4Date ? new Date(actionTaken4Date) : new Date(),
+      });
+    }
+    if (initialHistory.length === 0) {
+      initialHistory.push({
+        callNumber: 1,
+        subject: subject ? subject.trim() : '',
+        details: details ? details.trim() : '',
+        remark: effectiveRemark,
+        status: status || 'Follow Up',
+        callType: callType || 'Enquiry',
+        attendedBy: user.name,
+        date: new Date(),
+      });
+    }
+
     let previousInquiryRef: any = undefined;
     if (previousInquiryId && previousInquiryId.trim()) {
       const prevDoc = await StudentInquiry.findOne({
@@ -138,6 +200,32 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       });
       if (prevDoc) {
         previousInquiryRef = prevDoc._id;
+        // Sync history to parent doc
+        if (!Array.isArray(prevDoc.history) || prevDoc.history.length === 0) {
+          prevDoc.history = [
+            {
+              callNumber: 1,
+              subject: prevDoc.subject || '',
+              details: prevDoc.details || '',
+              remark: prevDoc.actionTaken1 || prevDoc.remark || '',
+              status: prevDoc.actionTaken1Status || prevDoc.status || 'Follow Up',
+              callType: prevDoc.callType || 'Enquiry',
+              attendedBy: prevDoc.actionTaken1By || prevDoc.addedByName || 'Staff',
+              date: prevDoc.actionTaken1Date || prevDoc.createdAt || new Date(),
+            },
+          ];
+        }
+        prevDoc.history.push({
+          callNumber: prevDoc.history.length + 1,
+          subject: subject ? subject.trim() : prevDoc.subject,
+          details: details ? details.trim() : 'Follow-up Call',
+          remark: effectiveRemark,
+          status: status || prevDoc.status || 'Follow Up',
+          callType: callType || prevDoc.callType || 'Follow Up',
+          attendedBy: user.name,
+          date: new Date(),
+        });
+
         // Also sync latest follow-up note & status to parent doc and touch updatedAt
         const latestNote = act4 || act3 || act2 || act1;
         if (latestNote) {
@@ -203,6 +291,7 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       previousInquiryRef,
       followUpDate: followUpDate ? new Date(followUpDate) : undefined,
       resolvedAt: status === 'Solved' ? new Date() : undefined,
+      history: initialHistory,
     });
 
     res.status(201).json({
@@ -596,6 +685,33 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
         inquiry.resolvedAt = new Date();
       }
     }
+
+    // Maintain historical trail of every update
+    if (!Array.isArray(inquiry.history) || inquiry.history.length === 0) {
+      inquiry.history = [
+        {
+          callNumber: 1,
+          subject: inquiry.subject || '',
+          details: inquiry.details || '',
+          remark: inquiry.actionTaken1 || inquiry.remark || '',
+          status: inquiry.actionTaken1Status || inquiry.status || 'Follow Up',
+          callType: inquiry.callType || 'Enquiry',
+          attendedBy: inquiry.actionTaken1By || inquiry.addedByName || 'Staff',
+          date: inquiry.actionTaken1Date || inquiry.createdAt || new Date(),
+        },
+      ];
+    }
+
+    inquiry.history.push({
+      callNumber: inquiry.history.length + 1,
+      subject: inquiry.subject || '',
+      details: details !== undefined ? details.trim() : (inquiry.details || 'Follow-up update'),
+      remark: latestRemark || '',
+      status: inquiry.status || 'Follow Up',
+      callType: inquiry.callType || 'Follow Up',
+      attendedBy: currentUserName,
+      date: new Date(),
+    });
 
     // Force updatedAt touch
     inquiry.updatedAt = new Date();
