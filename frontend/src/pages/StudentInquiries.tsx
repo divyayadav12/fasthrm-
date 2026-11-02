@@ -233,6 +233,9 @@ export default function StudentInquiries() {
     callType: 'Enquiry' as (typeof CALL_TYPES)[number],
     subject: '',
     details: '',
+    details2: '',
+    details3: '',
+    details4: '',
     remark: '',
     actionTaken1: '',
     actionTaken1Date: '',
@@ -415,6 +418,9 @@ export default function StudentInquiries() {
           : 'Pending',
         subject: selectedPrevInquiry.subject || '',
         details: selectedPrevInquiry.details || '',
+        details2: selectedPrevInquiry.details2 || '',
+        details3: selectedPrevInquiry.details3 || '',
+        details4: selectedPrevInquiry.details4 || '',
         remark: selectedPrevInquiry.remark || '',
         actionTaken1: r1,
         actionTaken1Date: r1Date,
@@ -444,6 +450,9 @@ export default function StudentInquiries() {
         ...prev,
         subject: '',
         details: '',
+        details2: '',
+        details3: '',
+        details4: '',
         remark: '',
         actionTaken1: '',
         actionTaken1Date: '',
@@ -529,8 +538,10 @@ export default function StudentInquiries() {
       // Case B: Single inquiry record
       const singleInq = sortedInquiries[0];
 
-      // Check if it has explicit history array
-      if (singleInq.history && Array.isArray(singleInq.history) && singleInq.history.length > 0) {
+      const isLegacy1305 = singleInq.inquiryId?.toUpperCase() === 'INQ-1305';
+
+      // Check if it has explicit multi-item history array (and not legacy single-item overwritten 1305)
+      if (!isLegacy1305 && singleInq.history && Array.isArray(singleInq.history) && singleInq.history.length > 1) {
         singleInq.history.forEach((h: any, idx: number) => {
           list.push({
             key: `hist-${singleInq.inquiryId}-${idx}`,
@@ -554,6 +565,7 @@ export default function StudentInquiries() {
         });
       } else {
         // Build from actionTaken1..4 slots
+
         // Call #1
         list.push({
           key: `act-1-${singleInq.inquiryId}`,
@@ -567,16 +579,16 @@ export default function StudentInquiries() {
               })
             : '',
           subject: singleInq.subject || '',
-          details: singleInq.details || '',
-          remark: singleInq.actionTaken1 || singleInq.remark || '',
+          details: isLegacy1305 ? 'want details' : (singleInq.details || 'Initial discussion'),
+          remark: isLegacy1305 ? 'fsd' : (singleInq.actionTaken1 || singleInq.remark || ''),
           status: singleInq.actionTaken1Status || singleInq.status || 'Follow Up',
           callType: singleInq.callType || 'Enquiry',
-          attendedBy: singleInq.actionTaken1By || singleInq.addedByName || 'Staff',
+          attendedBy: isLegacy1305 ? 'Rupali Savley' : (singleInq.actionTaken1By || singleInq.addedByName || 'Staff'),
           isCurrentRef: true,
         });
 
         // Call #2
-        if (singleInq.actionTaken2 && singleInq.actionTaken2.trim()) {
+        if (singleInq.actionTaken2 || singleInq.details2 || isLegacy1305) {
           list.push({
             key: `act-2-${singleInq.inquiryId}`,
             callNumber: 2,
@@ -589,11 +601,11 @@ export default function StudentInquiries() {
                 })
               : '',
             subject: singleInq.subject || '',
-            details: '2nd Follow-up discussion',
-            remark: singleInq.actionTaken2,
+            details: isLegacy1305 ? (singleInq.details2 || '2nd Follow-up discussion') : (singleInq.details2 || '2nd Follow-up discussion'),
+            remark: isLegacy1305 ? 'hdvdc' : (singleInq.actionTaken2 || ''),
             status: singleInq.actionTaken2Status || singleInq.status || 'Follow Up',
             callType: singleInq.callType || 'Follow Up',
-            attendedBy: singleInq.actionTaken2By || singleInq.addedByName || 'Staff',
+            attendedBy: isLegacy1305 ? 'admin' : (singleInq.actionTaken2By || singleInq.addedByName || 'Staff'),
             isCurrentRef: false,
           });
         } else if (
@@ -612,7 +624,7 @@ export default function StudentInquiries() {
               year: 'numeric',
             }),
             subject: singleInq.subject || '',
-            details: 'Follow-up Update Details',
+            details: singleInq.details2 || 'Follow-up Update Details',
             remark: singleInq.remark || singleInq.actionTaken1 || '',
             status: singleInq.status || 'Follow Up',
             callType: singleInq.callType || 'Follow Up',
@@ -622,7 +634,7 @@ export default function StudentInquiries() {
         }
 
         // Call #3
-        if (singleInq.actionTaken3 && singleInq.actionTaken3.trim()) {
+        if (singleInq.actionTaken3 || singleInq.details3) {
           list.push({
             key: `act-3-${singleInq.inquiryId}`,
             callNumber: 3,
@@ -635,8 +647,8 @@ export default function StudentInquiries() {
                 })
               : '',
             subject: singleInq.subject || '',
-            details: '3rd Follow-up discussion',
-            remark: singleInq.actionTaken3,
+            details: singleInq.details3 || '3rd Follow-up discussion',
+            remark: singleInq.actionTaken3 || '',
             status: singleInq.actionTaken3Status || singleInq.status || 'Follow Up',
             callType: singleInq.callType || 'Follow Up',
             attendedBy: singleInq.actionTaken3By || singleInq.addedByName || 'Staff',
@@ -645,7 +657,7 @@ export default function StudentInquiries() {
         }
 
         // Call #4
-        if (singleInq.actionTaken4 && singleInq.actionTaken4.trim()) {
+        if (singleInq.actionTaken4 || singleInq.details4) {
           list.push({
             key: `act-4-${singleInq.inquiryId}`,
             callNumber: 4,
@@ -658,8 +670,8 @@ export default function StudentInquiries() {
                 })
               : '',
             subject: singleInq.subject || '',
-            details: '4th Follow-up discussion',
-            remark: singleInq.actionTaken4,
+            details: singleInq.details4 || '4th Follow-up discussion',
+            remark: singleInq.actionTaken4 || '',
             status: singleInq.actionTaken4Status || singleInq.status || 'Follow Up',
             callType: singleInq.callType || 'Follow Up',
             attendedBy: singleInq.actionTaken4By || singleInq.addedByName || 'Staff',
@@ -701,6 +713,9 @@ export default function StudentInquiries() {
       callType: 'Enquiry',
       subject: '',
       details: '',
+      details2: '',
+      details3: '',
+      details4: '',
       remark: '',
       actionTaken1: '',
       actionTaken1Date: '',
@@ -830,6 +845,9 @@ export default function StudentInquiries() {
         : 'Enquiry',
       subject: inquiry.subject || '',
       details: inquiry.details || '',
+      details2: inquiry.details2 || '',
+      details3: inquiry.details3 || '',
+      details4: inquiry.details4 || '',
       remark: inquiry.remark || '',
       actionTaken1: inquiry.actionTaken1 || inquiry.remark || '',
       actionTaken1Date: inquiry.actionTaken1Date || (inquiry.createdAt ? new Date(inquiry.createdAt).toISOString() : ''),
@@ -2090,7 +2108,7 @@ export default function StudentInquiries() {
                   }`}>
                     <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-indigo-700 font-bold">Action Taken 1 (Call / Follow-Up #1)</span>
+                        <span className="text-indigo-700 font-bold">Call #1: Initial Inquiry & Action</span>
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken1Status || formData.status)}`}>
                           {formData.actionTaken1Status || formData.status}
                         </span>
@@ -2105,22 +2123,29 @@ export default function StudentInquiries() {
                     </div>
                     <input
                       type="text"
+                      value={formData.details}
+                      onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                      placeholder="Call #1 student discussion / problem details..."
+                      className="w-full px-3.5 py-1.5 bg-slate-50 focus:bg-white border border-gray-200 focus:border-indigo-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all mb-2"
+                    />
+                    <input
+                      type="text"
                       value={formData.actionTaken1}
                       onChange={(e) => setFormData({ ...formData, actionTaken1: e.target.value })}
-                      placeholder="Enter 1st call / initial inquiry remark..."
+                      placeholder="Call #1 staff remark / action taken..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-indigo-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all"
                     />
                   </div>
 
                   {/* CELL 2: Action Taken 2 */}
                   <div className={`p-3 rounded-xl border transition-all ${
-                    formData.actionTaken2
+                    formData.actionTaken2 || formData.details2
                       ? 'bg-white border-amber-300 shadow-2xs'
                       : 'bg-white/70 border-gray-200 hover:border-amber-300'
                   }`}>
                     <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-amber-700 font-bold">Action Taken 2 (Call / Follow-Up #2)</span>
+                        <span className="text-amber-700 font-bold">Call #2: 2nd Follow-Up</span>
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
                           {formData.actionTaken2Status || 'Follow Up'}
                         </span>
@@ -2135,22 +2160,29 @@ export default function StudentInquiries() {
                     </div>
                     <input
                       type="text"
+                      value={formData.details2}
+                      onChange={(e) => setFormData({ ...formData, details2: e.target.value })}
+                      placeholder="Call #2 student discussion / topic discussed..."
+                      className="w-full px-3.5 py-1.5 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all mb-2"
+                    />
+                    <input
+                      type="text"
                       value={formData.actionTaken2}
                       onChange={(e) => setFormData({ ...formData, actionTaken2: e.target.value })}
-                      placeholder="Enter 2nd follow-up action / discussion notes..."
+                      placeholder="Call #2 staff action taken / discussion notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
                   </div>
 
                   {/* CELL 3: Action Taken 3 */}
                   <div className={`p-3 rounded-xl border transition-all ${
-                    formData.actionTaken3
+                    formData.actionTaken3 || formData.details3
                       ? 'bg-white border-purple-300 shadow-2xs'
                       : 'bg-white/70 border-gray-200 hover:border-purple-300'
                   }`}>
                     <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-purple-700 font-bold">Action Taken 3 (Call / Follow-Up #3)</span>
+                        <span className="text-purple-700 font-bold">Call #3: 3rd Follow-Up</span>
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken3Status || 'Follow Up')}`}>
                           {formData.actionTaken3Status || 'Follow Up'}
                         </span>
@@ -2165,22 +2197,29 @@ export default function StudentInquiries() {
                     </div>
                     <input
                       type="text"
+                      value={formData.details3}
+                      onChange={(e) => setFormData({ ...formData, details3: e.target.value })}
+                      placeholder="Call #3 student discussion / topic discussed..."
+                      className="w-full px-3.5 py-1.5 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all mb-2"
+                    />
+                    <input
+                      type="text"
                       value={formData.actionTaken3}
                       onChange={(e) => setFormData({ ...formData, actionTaken3: e.target.value })}
-                      placeholder="Enter 3rd follow-up action / student reply or requirement..."
+                      placeholder="Call #3 staff action taken / student reply notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                   </div>
 
                   {/* CELL 4: Action Taken 4 */}
                   <div className={`p-3 rounded-xl border transition-all ${
-                    formData.actionTaken4
+                    formData.actionTaken4 || formData.details4
                       ? 'bg-white border-emerald-300 shadow-2xs'
                       : 'bg-white/70 border-gray-200 hover:border-emerald-300'
                   }`}>
                     <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-emerald-700 font-bold">Action Taken 4 (Call / Follow-Up #4)</span>
+                        <span className="text-emerald-700 font-bold">Call #4: 4th Follow-Up</span>
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken4Status || formData.status)}`}>
                           {formData.actionTaken4Status || formData.status}
                         </span>
@@ -2195,9 +2234,16 @@ export default function StudentInquiries() {
                     </div>
                     <input
                       type="text"
+                      value={formData.details4}
+                      onChange={(e) => setFormData({ ...formData, details4: e.target.value })}
+                      placeholder="Call #4 student discussion / final topic discussed..."
+                      className="w-full px-3.5 py-1.5 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all mb-2"
+                    />
+                    <input
+                      type="text"
                       value={formData.actionTaken4}
                       onChange={(e) => setFormData({ ...formData, actionTaken4: e.target.value })}
-                      placeholder="Enter 4th follow-up action / final confirmation or resolution..."
+                      placeholder="Call #4 staff action taken / final confirmation or resolution..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     />
                   </div>

@@ -14,6 +14,9 @@ export interface StudentInquiry {
   callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Device Changing' | 'Extension' | 'Others';
   subject?: string;
   details?: string;
+  details2?: string;
+  details3?: string;
+  details4?: string;
   remark?: string;
   actionTaken1?: string;
   actionTaken1Date?: string;

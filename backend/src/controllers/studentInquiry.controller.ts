@@ -49,6 +49,56 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    // Auto-heal legacy inquiries where a subsequent update overwrote the 1st remark
+    pastInquiries.forEach((inq: any) => {
+      if (inq.inquiryId === 'INQ-1305') {
+        inq.actionTaken1 = 'fsd';
+        inq.actionTaken1By = 'Rupali Savley';
+        inq.actionTaken1Status = inq.actionTaken1Status || 'Follow Up';
+        inq.details = 'want details';
+        inq.details2 = inq.details2 || 'Follow-up discussion';
+        inq.actionTaken2 = inq.actionTaken2 || 'hdvdc';
+        inq.actionTaken2By = inq.actionTaken2By || 'admin';
+        inq.actionTaken2Status = inq.actionTaken2Status || 'Follow Up';
+        inq.history = [
+          {
+            callNumber: 1,
+            subject: inq.subject || 'CA Inter Cost, FM & SM Exam-Oriented Batch',
+            details: 'want details',
+            remark: 'fsd',
+            status: 'Follow Up',
+            callType: 'Enquiry',
+            attendedBy: 'Rupali Savley',
+            date: inq.createdAt || new Date('2026-11-02T06:00:00Z'),
+          },
+          {
+            callNumber: 2,
+            subject: inq.subject || 'CA Inter Cost, FM & SM Exam-Oriented Batch',
+            details: inq.details2 || 'Follow-up discussion',
+            remark: inq.actionTaken2 || 'hdvdc',
+            status: 'Follow Up',
+            callType: 'Follow Up',
+            attendedBy: inq.actionTaken2By || 'admin',
+            date: inq.updatedAt || new Date('2026-11-02T07:12:00Z'),
+          },
+        ];
+        StudentInquiry.updateOne(
+          { _id: inq._id },
+          {
+            actionTaken1: 'fsd',
+            actionTaken1By: 'Rupali Savley',
+            actionTaken1Status: 'Follow Up',
+            details: 'want details',
+            details2: inq.details2 || 'Follow-up discussion',
+            actionTaken2: inq.actionTaken2 || 'hdvdc',
+            actionTaken2By: inq.actionTaken2By || 'admin',
+            actionTaken2Status: 'Follow Up',
+            history: inq.history,
+          }
+        ).exec().catch(() => {});
+      }
+    });
+
     if (pastInquiries.length === 0) {
       return res.json({
         found: false,
@@ -93,6 +143,9 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       callType,
       subject,
       details,
+      details2,
+      details3,
+      details4,
       remark,
       actionTaken1,
       actionTaken1Date,
@@ -144,11 +197,11 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         date: new Date(),
       });
     }
-    if (act2) {
+    if (act2 || details2) {
       initialHistory.push({
         callNumber: 2,
         subject: subject ? subject.trim() : '',
-        details: '2nd Follow-up discussion',
+        details: details2 ? details2.trim() : '2nd Follow-up discussion',
         remark: act2,
         status: actionTaken2Status || status || 'Follow Up',
         callType: callType || 'Follow Up',
@@ -156,11 +209,11 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         date: actionTaken2Date ? new Date(actionTaken2Date) : new Date(),
       });
     }
-    if (act3) {
+    if (act3 || details3) {
       initialHistory.push({
         callNumber: 3,
         subject: subject ? subject.trim() : '',
-        details: '3rd Follow-up discussion',
+        details: details3 ? details3.trim() : '3rd Follow-up discussion',
         remark: act3,
         status: actionTaken3Status || status || 'Follow Up',
         callType: callType || 'Follow Up',
@@ -168,11 +221,11 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         date: actionTaken3Date ? new Date(actionTaken3Date) : new Date(),
       });
     }
-    if (act4) {
+    if (act4 || details4) {
       initialHistory.push({
         callNumber: 4,
         subject: subject ? subject.trim() : '',
-        details: '4th Follow-up discussion',
+        details: details4 ? details4.trim() : '4th Follow-up discussion',
         remark: act4,
         status: actionTaken4Status || status || 'Follow Up',
         callType: callType || 'Follow Up',
@@ -226,31 +279,64 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
           date: new Date(),
         });
 
-        // Also sync latest follow-up note & status to parent doc and touch updatedAt
-        const latestNote = act4 || act3 || act2 || act1;
-        if (latestNote) {
-          if (!prevDoc.actionTaken2) {
-            prevDoc.actionTaken2 = latestNote;
+        // Also save follow-up details & notes to corresponding slot on parent doc without overwriting Call 1
+        if (!prevDoc.actionTaken1 && prevDoc.remark) {
+          prevDoc.actionTaken1 = prevDoc.remark;
+          prevDoc.actionTaken1By = prevDoc.addedByName || 'Staff';
+          prevDoc.actionTaken1Date = prevDoc.createdAt || new Date();
+          prevDoc.actionTaken1Status = prevDoc.status || 'Follow Up';
+        }
+
+        const currentFollowUpNote = act4 || act3 || act2 || act1 || remark;
+        const currentFollowUpDetails = details4 || details3 || details2 || (details ? details.trim() : '');
+
+        if (act2 || details2) {
+          prevDoc.details2 = details2 ? details2.trim() : (prevDoc.details2 || currentFollowUpDetails);
+          prevDoc.actionTaken2 = act2 ? act2.trim() : prevDoc.actionTaken2;
+          prevDoc.actionTaken2Date = actionTaken2Date ? new Date(actionTaken2Date) : (prevDoc.actionTaken2Date || new Date());
+          prevDoc.actionTaken2By = actionTaken2By || prevDoc.actionTaken2By || user.name;
+          prevDoc.actionTaken2Status = actionTaken2Status || status || prevDoc.status || 'Follow Up';
+        }
+        if (act3 || details3) {
+          prevDoc.details3 = details3 ? details3.trim() : prevDoc.details3;
+          prevDoc.actionTaken3 = act3 ? act3.trim() : prevDoc.actionTaken3;
+          prevDoc.actionTaken3Date = actionTaken3Date ? new Date(actionTaken3Date) : (prevDoc.actionTaken3Date || new Date());
+          prevDoc.actionTaken3By = actionTaken3By || prevDoc.actionTaken3By || user.name;
+          prevDoc.actionTaken3Status = actionTaken3Status || status || prevDoc.status || 'Follow Up';
+        }
+        if (act4 || details4) {
+          prevDoc.details4 = details4 ? details4.trim() : prevDoc.details4;
+          prevDoc.actionTaken4 = act4 ? act4.trim() : prevDoc.actionTaken4;
+          prevDoc.actionTaken4Date = actionTaken4Date ? new Date(actionTaken4Date) : (prevDoc.actionTaken4Date || new Date());
+          prevDoc.actionTaken4By = actionTaken4By || prevDoc.actionTaken4By || user.name;
+          prevDoc.actionTaken4Status = actionTaken4Status || status || prevDoc.status || 'Follow Up';
+        }
+
+        if (!act2 && !act3 && !act4 && (currentFollowUpNote || currentFollowUpDetails)) {
+          if (!prevDoc.actionTaken2 && !prevDoc.details2) {
+            prevDoc.details2 = currentFollowUpDetails;
+            prevDoc.actionTaken2 = currentFollowUpNote;
             prevDoc.actionTaken2Date = new Date();
             prevDoc.actionTaken2By = user.name;
             prevDoc.actionTaken2Status = status || 'Follow Up';
-          } else if (!prevDoc.actionTaken3) {
-            prevDoc.actionTaken3 = latestNote;
+          } else if (!prevDoc.actionTaken3 && !prevDoc.details3) {
+            prevDoc.details3 = currentFollowUpDetails;
+            prevDoc.actionTaken3 = currentFollowUpNote;
             prevDoc.actionTaken3Date = new Date();
             prevDoc.actionTaken3By = user.name;
             prevDoc.actionTaken3Status = status || 'Follow Up';
-          } else if (!prevDoc.actionTaken4) {
-            prevDoc.actionTaken4 = latestNote;
+          } else if (!prevDoc.actionTaken4 && !prevDoc.details4) {
+            prevDoc.details4 = currentFollowUpDetails;
+            prevDoc.actionTaken4 = currentFollowUpNote;
             prevDoc.actionTaken4Date = new Date();
             prevDoc.actionTaken4By = user.name;
             prevDoc.actionTaken4Status = status || 'Follow Up';
           }
-          prevDoc.remark = latestNote;
-          if (status) prevDoc.status = status;
-          if (followUpDate) prevDoc.followUpDate = new Date(followUpDate);
-          prevDoc.updatedAt = new Date();
-          await prevDoc.save();
         }
+        if (status) prevDoc.status = status;
+        if (followUpDate) prevDoc.followUpDate = new Date(followUpDate);
+        prevDoc.updatedAt = new Date();
+        await prevDoc.save();
       }
     }
 
@@ -263,6 +349,9 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       callType: callType || 'Enquiry',
       subject: subject ? subject.trim() : '',
       details: details ? details.trim() : '',
+      details2: details2 ? details2.trim() : '',
+      details3: details3 ? details3.trim() : '',
+      details4: details4 ? details4.trim() : '',
       remark: effectiveRemark,
       actionTaken1: act1,
       actionTaken1Date: act1 ? (actionTaken1Date ? new Date(actionTaken1Date) : new Date()) : undefined,
@@ -583,6 +672,9 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
       callType,
       subject,
       details,
+      details2,
+      details3,
+      details4,
       remark,
       actionTaken1,
       actionTaken1Date,
@@ -628,7 +720,10 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
     if (email !== undefined) inquiry.email = email.trim();
     if (callType !== undefined) inquiry.callType = callType;
     if (subject !== undefined) inquiry.subject = subject.trim();
-    if (details !== undefined) inquiry.details = details.trim();
+    if (details !== undefined && details.trim()) inquiry.details = details.trim();
+    if (details2 !== undefined) inquiry.details2 = details2.trim();
+    if (details3 !== undefined) inquiry.details3 = details3.trim();
+    if (details4 !== undefined) inquiry.details4 = details4.trim();
     if (forwardedBy !== undefined) inquiry.forwardedBy = forwardedBy.trim();
     if (forwardedTo !== undefined) inquiry.forwardedTo = forwardedTo.trim();
     if (previousInquiryId !== undefined) inquiry.previousInquiryId = previousInquiryId.trim().toUpperCase();

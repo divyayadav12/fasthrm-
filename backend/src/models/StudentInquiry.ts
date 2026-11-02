@@ -9,6 +9,9 @@ export interface IStudentInquiry extends Document {
   callType: 'Enquiry' | 'Tech Issue' | 'Dispatch Related' | 'Purchased' | 'Device Changing' | 'Extension' | 'Others';
   subject?: string;
   details?: string;
+  details2?: string;
+  details3?: string;
+  details4?: string;
   remark?: string;
   actionTaken1?: string;
   actionTaken1Date?: Date;
@@ -94,6 +97,21 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
       default: '',
     },
     details: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    details2: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    details3: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    details4: {
       type: String,
       trim: true,
       default: '',
