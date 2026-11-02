@@ -370,16 +370,38 @@ export default function StudentInquiries() {
     }
   }, [lookupResult, editingInquiry]);
 
+  const availableInquiriesForDropdown = useMemo(() => {
+    const map = new Map<string, any>();
+    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
+      lookupResult.inquiries.forEach((item) => {
+        if (item?.inquiryId) map.set(item.inquiryId.toUpperCase(), item);
+      });
+    }
+    if (editingInquiry) {
+      const editPhone = (editingInquiry.mobileNumber || '').replace(/\D/g, '').slice(-10);
+      inquiries.forEach((item) => {
+        const itemPhone = (item.mobileNumber || '').replace(/\D/g, '').slice(-10);
+        if (editPhone && itemPhone && itemPhone === editPhone && item.inquiryId) {
+          if (item.inquiryId.toUpperCase() !== editingInquiry.inquiryId?.toUpperCase()) {
+            map.set(item.inquiryId.toUpperCase(), item);
+          }
+        }
+      });
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [lookupResult, editingInquiry, inquiries]);
+
   const selectedPrevInquiry = useMemo(() => {
-    if (editingInquiry) return null;
     if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') return null;
     const targetId = formData.previousInquiryId.trim().toUpperCase();
-    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
-      const match = lookupResult.inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId);
+    if (availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0) {
+      const match = availableInquiriesForDropdown.find((i) => i.inquiryId?.toUpperCase() === targetId);
       if (match) return match;
     }
     return inquiries.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
-  }, [formData.previousInquiryId, lookupResult, inquiries, editingInquiry]);
+  }, [formData.previousInquiryId, availableInquiriesForDropdown, inquiries]);
 
   // Auto-fill fields ONLY when an existing inquiry ID is explicitly selected from the dropdown
   useEffect(() => {
@@ -552,8 +574,8 @@ export default function StudentInquiries() {
   // Compute all 4 prior call history cards for display under Reference section
   const priorCallsList = useMemo(() => {
     const inqMap = new Map<string, any>();
-    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
-      lookupResult.inquiries.forEach((item) => {
+    if (availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0) {
+      availableInquiriesForDropdown.forEach((item) => {
         if (item?.inquiryId) inqMap.set(item.inquiryId.toUpperCase(), item);
       });
     }
@@ -1729,31 +1751,24 @@ export default function StudentInquiries() {
               {/* Connected / Previous Reference ID */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    {editingInquiry ? 'Inquiry ID (Editing Record)' : 'Previous / Connected Inquiry ID (Optional)'}
-                  </label>
-                  {!editingInquiry && lookupResult?.inquiries && lookupResult.inquiries.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Previous / Connected Inquiry ID (Optional)
+                    </label>
+                    {editingInquiry && (
+                      <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200">
+                        Current: {editingInquiry.inquiryId}
+                      </span>
+                    )}
+                  </div>
+                  {availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0 && (
                     <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-                      {lookupResult.inquiries.length} Previous Inquiries Found
+                      {availableInquiriesForDropdown.length} Previous Inquiries Found
                     </span>
                   )}
                 </div>
 
-                {editingInquiry ? (
-                  <div className="p-3 bg-indigo-50/80 border border-indigo-200 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs bg-indigo-600 text-white px-2.5 py-1 rounded-lg shadow-2xs">
-                        {editingInquiry.inquiryId}
-                      </span>
-                      <span className="text-xs text-indigo-950 font-semibold">
-                        Editing this student record directly
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-indigo-600 font-medium">
-                      All changes will update this inquiry
-                    </span>
-                  </div>
-                ) : lookupResult?.inquiries && lookupResult.inquiries.length > 0 ? (
+                {availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0 ? (
                   <div className="space-y-2.5">
                     <div className="relative">
                       <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
@@ -1763,7 +1778,7 @@ export default function StudentInquiries() {
                         className="w-full pl-10 pr-10 py-2.5 bg-indigo-50/60 border border-indigo-200 rounded-xl text-xs sm:text-sm font-medium text-gray-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer shadow-2xs"
                       >
                         <option value="">-- None (Fresh Inquiry / No Connection) --</option>
-                        {lookupResult.inquiries.map((prevInq) => (
+                        {availableInquiriesForDropdown.map((prevInq) => (
                           <option key={prevInq._id} value={prevInq.inquiryId}>
                             [{prevInq.inquiryId}] • {prevInq.status} • {prevInq.callType} : {prevInq.subject ? prevInq.subject + ' - ' : ''}{(prevInq.details || '').substring(0, 35)}... (By {prevInq.addedByName} on {new Date(prevInq.createdAt).toLocaleDateString('en-IN')})
                           </option>
@@ -1776,7 +1791,7 @@ export default function StudentInquiries() {
                     {/* Manual input if CUSTOM selected */}
                     {(formData.previousInquiryId === 'CUSTOM' ||
                       (formData.previousInquiryId &&
-                        !lookupResult.inquiries.some(
+                        !availableInquiriesForDropdown.some(
                           (i) => i.inquiryId?.toUpperCase() === formData.previousInquiryId?.toUpperCase()
                         ))) && (
                       <div className="relative animate-in fade-in duration-150">
@@ -1798,10 +1813,10 @@ export default function StudentInquiries() {
                         <div className="flex items-center justify-between px-1">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
                             <History className="w-3.5 h-3.5 text-indigo-600" />
-                            Connected History (All 4 Call Slots)
+                            Connected History (Call 1 se 4 tak)
                           </span>
                           <span className="text-[10px] text-gray-500 font-medium">
-                            Call 1 se Call 4 tak ki puri details
+                            Student ke previous calls ki details
                           </span>
                         </div>
 
@@ -1848,13 +1863,9 @@ export default function StudentInquiries() {
                                     <strong className="text-gray-700">Problem / Issue:</strong> {callItem.details}
                                   </div>
                                 )}
-                                {callItem.remark ? (
+                                {callItem.remark && (
                                   <div className="text-[11px] text-amber-900 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200/70 mt-1">
                                     <strong>Previous Remark:</strong> {callItem.remark}
-                                  </div>
-                                ) : (
-                                  <div className="text-[11px] text-gray-400 bg-gray-50/80 px-2.5 py-1 rounded-lg border border-gray-200/60 mt-1 italic">
-                                    Remark pending (type below in Action Taken {callItem.callNumber})
                                   </div>
                                 )}
                               </div>
@@ -1896,11 +1907,9 @@ export default function StudentInquiries() {
                     />
                   </div>
                 )}
-                {!editingInquiry && (
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Agar pehle kisi aur ne call attend kiya ho, to dropdown se purani ID select karein taaki history link ho jaye.
-                  </p>
-                )}
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Agar pehle kisi aur ne call attend kiya ho, to dropdown se purani ID select karein taaki history link ho jaye.
+                </p>
               </div>
 
               {/* Live Number Lookup Alert Banner */}
