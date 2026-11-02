@@ -10,6 +10,22 @@ export interface IStudentInquiry extends Document {
   subject?: string;
   details?: string;
   remark?: string;
+  actionTaken1?: string;
+  actionTaken1Date?: Date;
+  actionTaken1By?: string;
+  actionTaken1Status?: string;
+  actionTaken2?: string;
+  actionTaken2Date?: Date;
+  actionTaken2By?: string;
+  actionTaken2Status?: string;
+  actionTaken3?: string;
+  actionTaken3Date?: Date;
+  actionTaken3By?: string;
+  actionTaken3Status?: string;
+  actionTaken4?: string;
+  actionTaken4Date?: Date;
+  actionTaken4By?: string;
+  actionTaken4Status?: string;
   status: 'Solved' | 'Follow Up' | 'Purchased' | 'Pending' | 'FAST Education App' | 'FAST Education 2.0 App' | 'Others';
   forwardedBy?: string;
   forwardedTo?: string;
@@ -77,6 +93,22 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
       trim: true,
       default: '',
     },
+    actionTaken1: { type: String, trim: true, default: '' },
+    actionTaken1Date: { type: Date },
+    actionTaken1By: { type: String, trim: true, default: '' },
+    actionTaken1Status: { type: String, trim: true, default: '' },
+    actionTaken2: { type: String, trim: true, default: '' },
+    actionTaken2Date: { type: Date },
+    actionTaken2By: { type: String, trim: true, default: '' },
+    actionTaken2Status: { type: String, trim: true, default: '' },
+    actionTaken3: { type: String, trim: true, default: '' },
+    actionTaken3Date: { type: Date },
+    actionTaken3By: { type: String, trim: true, default: '' },
+    actionTaken3Status: { type: String, trim: true, default: '' },
+    actionTaken4: { type: String, trim: true, default: '' },
+    actionTaken4Date: { type: Date },
+    actionTaken4By: { type: String, trim: true, default: '' },
+    actionTaken4Status: { type: String, trim: true, default: '' },
     status: {
       type: String,
       enum: ['Solved', 'Follow Up', 'Purchased', 'Pending', 'FAST Education App', 'FAST Education 2.0 App', 'Others'],

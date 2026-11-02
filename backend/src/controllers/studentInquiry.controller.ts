@@ -94,6 +94,22 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       subject,
       details,
       remark,
+      actionTaken1,
+      actionTaken1Date,
+      actionTaken1By,
+      actionTaken1Status,
+      actionTaken2,
+      actionTaken2Date,
+      actionTaken2By,
+      actionTaken2Status,
+      actionTaken3,
+      actionTaken3Date,
+      actionTaken3By,
+      actionTaken3Status,
+      actionTaken4,
+      actionTaken4Date,
+      actionTaken4By,
+      actionTaken4Status,
       status,
       forwardedBy,
       forwardedTo,
@@ -119,6 +135,12 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const act1 = actionTaken1 !== undefined ? actionTaken1.trim() : (remark ? remark.trim() : '');
+    const act2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
+    const act3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
+    const act4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
+    const effectiveRemark = act4 || act3 || act2 || act1 || (remark ? remark.trim() : '');
+
     const newInquiry = await StudentInquiry.create({
       inquiryId,
       studentName: studentName.trim(),
@@ -128,7 +150,23 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
       callType: callType || 'Enquiry',
       subject: subject ? subject.trim() : '',
       details: details ? details.trim() : '',
-      remark: remark ? remark.trim() : '',
+      remark: effectiveRemark,
+      actionTaken1: act1,
+      actionTaken1Date: act1 ? (actionTaken1Date ? new Date(actionTaken1Date) : new Date()) : undefined,
+      actionTaken1By: act1 ? (actionTaken1By || user.name) : '',
+      actionTaken1Status: act1 ? (actionTaken1Status || status || 'Follow Up') : '',
+      actionTaken2: act2,
+      actionTaken2Date: act2 ? (actionTaken2Date ? new Date(actionTaken2Date) : new Date()) : undefined,
+      actionTaken2By: act2 ? (actionTaken2By || user.name) : '',
+      actionTaken2Status: act2 ? (actionTaken2Status || status || 'Follow Up') : '',
+      actionTaken3: act3,
+      actionTaken3Date: act3 ? (actionTaken3Date ? new Date(actionTaken3Date) : new Date()) : undefined,
+      actionTaken3By: act3 ? (actionTaken3By || user.name) : '',
+      actionTaken3Status: act3 ? (actionTaken3Status || status || 'Follow Up') : '',
+      actionTaken4: act4,
+      actionTaken4Date: act4 ? (actionTaken4Date ? new Date(actionTaken4Date) : new Date()) : undefined,
+      actionTaken4By: act4 ? (actionTaken4By || user.name) : '',
+      actionTaken4Status: act4 ? (actionTaken4Status || status || 'Follow Up') : '',
       status: status || 'Follow Up',
       forwardedBy: forwardedBy ? forwardedBy.trim() : (user.name || ''),
       forwardedTo: forwardedTo ? forwardedTo.trim() : '',
@@ -169,9 +207,12 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
       dateFrom,
       dateTo,
       followUpDate,
+      followUpDateFrom,
+      followUpDateTo,
+      followUpPreset,
       page = 1,
       limit = 50,
-      sortBy = 'createdAt',
+      sortBy = 'updatedAt',
       sortOrder = 'desc',
     } = req.query;
 
@@ -186,6 +227,11 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
         { mobileNumber: { $regex: s, $options: 'i' } },
         { subject: { $regex: s, $options: 'i' } },
         { details: { $regex: s, $options: 'i' } },
+        { remark: { $regex: s, $options: 'i' } },
+        { actionTaken1: { $regex: s, $options: 'i' } },
+        { actionTaken2: { $regex: s, $options: 'i' } },
+        { actionTaken3: { $regex: s, $options: 'i' } },
+        { actionTaken4: { $regex: s, $options: 'i' } },
         { addedByName: { $regex: s, $options: 'i' } },
         { previousInquiryId: { $regex: s, $options: 'i' } },
       ];
@@ -224,13 +270,50 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    if (followUpDate && typeof followUpDate === 'string' && followUpDate.trim()) {
-      const fDate = new Date(followUpDate.trim());
-      const startOfDay = new Date(fDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(fDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      query.followUpDate = { $gte: startOfDay, $lte: endOfDay };
+    // Follow-Up Date Filters (Preset, Range, or Single Date)
+    if (followUpPreset && typeof followUpPreset === 'string' && followUpPreset !== 'ALL') {
+      const now = new Date();
+      const istStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+      const todayStart = new Date(`${istStr}T00:00:00.000+05:30`);
+      const todayEnd = new Date(`${istStr}T23:59:59.999+05:30`);
+
+      if (followUpPreset === 'TODAY') {
+        const utcStart = new Date(todayStart.toISOString().split('T')[0] + 'T00:00:00.000Z');
+        const utcEnd = new Date(todayEnd.toISOString().split('T')[0] + 'T23:59:59.999Z');
+        query.followUpDate = {
+          $gte: new Date(Math.min(todayStart.getTime(), utcStart.getTime())),
+          $lte: new Date(Math.max(todayEnd.getTime(), utcEnd.getTime())),
+        };
+      } else if (followUpPreset === 'TOMORROW') {
+        const tomStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+        const tomEnd = new Date(todayEnd.getTime() + 24 * 60 * 60 * 1000);
+        query.followUpDate = { $gte: tomStart, $lte: tomEnd };
+      } else if (followUpPreset === 'OVERDUE') {
+        query.followUpDate = { $lt: todayStart, $ne: null };
+        if (!status) query.status = 'Follow Up';
+      } else if (followUpPreset === 'UPCOMING_7') {
+        const next7End = new Date(todayEnd.getTime() + 7 * 24 * 60 * 60 * 1000);
+        query.followUpDate = { $gte: todayStart, $lte: next7End };
+      }
+    } else if (followUpDateFrom || followUpDateTo) {
+      query.followUpDate = {};
+      if (followUpDateFrom) {
+        const fStr = (followUpDateFrom as string).trim().split('T')[0];
+        query.followUpDate.$gte = new Date(`${fStr}T00:00:00.000Z`);
+      }
+      if (followUpDateTo) {
+        const tStr = (followUpDateTo as string).trim().split('T')[0];
+        query.followUpDate.$lte = new Date(`${tStr}T23:59:59.999Z`);
+      }
+    } else if (followUpDate && typeof followUpDate === 'string' && followUpDate.trim() && followUpDate !== 'ALL') {
+      const fDateStr = followUpDate.trim().split('T')[0];
+      const istStart = new Date(`${fDateStr}T00:00:00.000+05:30`);
+      const istEnd = new Date(`${fDateStr}T23:59:59.999+05:30`);
+      const utcStart = new Date(`${fDateStr}T00:00:00.000Z`);
+      const utcEnd = new Date(`${fDateStr}T23:59:59.999Z`);
+      const minDate = istStart < utcStart ? istStart : utcStart;
+      const maxDate = istEnd > utcEnd ? istEnd : utcEnd;
+      query.followUpDate = { $gte: minDate, $lte: maxDate };
     }
 
     if (dateFrom || dateTo) {
@@ -387,6 +470,22 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
       subject,
       details,
       remark,
+      actionTaken1,
+      actionTaken1Date,
+      actionTaken1By,
+      actionTaken1Status,
+      actionTaken2,
+      actionTaken2Date,
+      actionTaken2By,
+      actionTaken2Status,
+      actionTaken3,
+      actionTaken3Date,
+      actionTaken3By,
+      actionTaken3Status,
+      actionTaken4,
+      actionTaken4Date,
+      actionTaken4By,
+      actionTaken4Status,
       status,
       forwardedBy,
       forwardedTo,
@@ -416,11 +515,55 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
     if (callType !== undefined) inquiry.callType = callType;
     if (subject !== undefined) inquiry.subject = subject.trim();
     if (details !== undefined) inquiry.details = details.trim();
-    if (remark !== undefined) inquiry.remark = remark.trim();
     if (forwardedBy !== undefined) inquiry.forwardedBy = forwardedBy.trim();
     if (forwardedTo !== undefined) inquiry.forwardedTo = forwardedTo.trim();
     if (previousInquiryId !== undefined) inquiry.previousInquiryId = previousInquiryId.trim().toUpperCase();
     if (followUpDate !== undefined) inquiry.followUpDate = followUpDate ? new Date(followUpDate) : undefined;
+
+    // Action Taken 1 to 4 updates
+    const currentUserName = req.user?.name || 'Staff';
+    if (actionTaken1 !== undefined) {
+      inquiry.actionTaken1 = actionTaken1.trim();
+      if (inquiry.actionTaken1 && !inquiry.actionTaken1Date) {
+        inquiry.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
+      }
+      if (actionTaken1By) inquiry.actionTaken1By = actionTaken1By;
+      else if (!inquiry.actionTaken1By && inquiry.actionTaken1) inquiry.actionTaken1By = currentUserName;
+      if (actionTaken1Status) inquiry.actionTaken1Status = actionTaken1Status;
+      else if (!inquiry.actionTaken1Status && inquiry.actionTaken1) inquiry.actionTaken1Status = status || inquiry.status;
+    }
+    if (actionTaken2 !== undefined) {
+      const prevVal = inquiry.actionTaken2 || '';
+      inquiry.actionTaken2 = actionTaken2.trim();
+      if (inquiry.actionTaken2 && (inquiry.actionTaken2 !== prevVal || !inquiry.actionTaken2Date)) {
+        inquiry.actionTaken2Date = actionTaken2Date ? new Date(actionTaken2Date) : new Date();
+        inquiry.actionTaken2By = actionTaken2By || currentUserName;
+        inquiry.actionTaken2Status = actionTaken2Status || status || inquiry.status;
+      }
+    }
+    if (actionTaken3 !== undefined) {
+      const prevVal = inquiry.actionTaken3 || '';
+      inquiry.actionTaken3 = actionTaken3.trim();
+      if (inquiry.actionTaken3 && (inquiry.actionTaken3 !== prevVal || !inquiry.actionTaken3Date)) {
+        inquiry.actionTaken3Date = actionTaken3Date ? new Date(actionTaken3Date) : new Date();
+        inquiry.actionTaken3By = actionTaken3By || currentUserName;
+        inquiry.actionTaken3Status = actionTaken3Status || status || inquiry.status;
+      }
+    }
+    if (actionTaken4 !== undefined) {
+      const prevVal = inquiry.actionTaken4 || '';
+      inquiry.actionTaken4 = actionTaken4.trim();
+      if (inquiry.actionTaken4 && (inquiry.actionTaken4 !== prevVal || !inquiry.actionTaken4Date)) {
+        inquiry.actionTaken4Date = actionTaken4Date ? new Date(actionTaken4Date) : new Date();
+        inquiry.actionTaken4By = actionTaken4By || currentUserName;
+        inquiry.actionTaken4Status = actionTaken4Status || status || inquiry.status;
+      }
+    }
+
+    const latestRemark = inquiry.actionTaken4 || inquiry.actionTaken3 || inquiry.actionTaken2 || inquiry.actionTaken1 || (remark !== undefined ? remark.trim() : inquiry.remark);
+    if (latestRemark !== undefined) {
+      inquiry.remark = latestRemark;
+    }
 
     if (status !== undefined) {
       inquiry.status = status;
@@ -429,6 +572,8 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Force updatedAt touch
+    inquiry.updatedAt = new Date();
     await inquiry.save();
 
     res.json({

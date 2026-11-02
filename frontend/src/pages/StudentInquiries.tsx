@@ -180,6 +180,7 @@ export default function StudentInquiries() {
   const [callTypeFilter, setCallTypeFilter] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
   const [followUpDateFilter, setFollowUpDateFilter] = useState('');
+  const [followUpPreset, setFollowUpPreset] = useState('ALL');
   const [attendedByFilter, setAttendedByFilter] = useState('ALL');
   const [page, setPage] = useState(1);
   const limit = 30;
@@ -199,6 +200,14 @@ export default function StudentInquiries() {
   };
   const handleFollowUpDateChange = (val: string) => {
     setFollowUpDateFilter(val);
+    setFollowUpPreset('ALL');
+    setPage(1);
+  };
+  const handleFollowUpPresetChange = (val: string) => {
+    setFollowUpPreset(val);
+    if (val !== 'CUSTOM') {
+      setFollowUpDateFilter('');
+    }
     setPage(1);
   };
   const handleAttendedByChange = (val: string) => {
@@ -225,6 +234,22 @@ export default function StudentInquiries() {
     subject: '',
     details: '',
     remark: '',
+    actionTaken1: '',
+    actionTaken1Date: '',
+    actionTaken1By: '',
+    actionTaken1Status: '',
+    actionTaken2: '',
+    actionTaken2Date: '',
+    actionTaken2By: '',
+    actionTaken2Status: '',
+    actionTaken3: '',
+    actionTaken3Date: '',
+    actionTaken3By: '',
+    actionTaken3Status: '',
+    actionTaken4: '',
+    actionTaken4Date: '',
+    actionTaken4By: '',
+    actionTaken4Status: '',
     status: 'Pending' as (typeof STATUS_TYPES)[number],
     forwardedBy: user?.name || '',
     forwardedTo: '',
@@ -273,10 +298,11 @@ export default function StudentInquiries() {
 
   // Load Inquiries on Mount & Filter Change
   const loadData = () => {
-    const params: any = { page, limit };
+    const params: any = { page, limit, sortBy: 'updatedAt', sortOrder: 'desc' };
     if (searchTerm.trim()) params.search = searchTerm.trim();
     if (statusFilter !== 'ALL') params.status = statusFilter;
     if (callTypeFilter !== 'ALL') params.callType = callTypeFilter;
+    if (followUpPreset && followUpPreset !== 'ALL') params.followUpPreset = followUpPreset;
     if (followUpDateFilter) params.followUpDate = followUpDateFilter;
     if (attendedByFilter !== 'ALL') params.attendedBy = attendedByFilter;
 
@@ -307,7 +333,7 @@ export default function StudentInquiries() {
     if (isAuthorized) {
       loadData();
     }
-  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter, followUpDateFilter, attendedByFilter, page]);
+  }, [dispatch, isAuthorized, statusFilter, callTypeFilter, dateFilter, followUpDateFilter, followUpPreset, attendedByFilter, page]);
 
   // Debounced search
   useEffect(() => {
@@ -352,6 +378,32 @@ export default function StudentInquiries() {
   // Auto-fill fields ONLY when an existing inquiry ID is explicitly selected from the dropdown
   useEffect(() => {
     if (selectedPrevInquiry) {
+      // Find all inquiries in lookupResult for this student in ascending order
+      const ascInquiries = lookupResult?.inquiries && lookupResult.inquiries.length > 0
+        ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        : [selectedPrevInquiry];
+
+      // Extract past remarks from across the student's inquiry thread
+      const r1 = selectedPrevInquiry.actionTaken1 || ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark || '';
+      const r1Date = selectedPrevInquiry.actionTaken1Date || (ascInquiries[0]?.createdAt ? new Date(ascInquiries[0].createdAt).toISOString() : '');
+      const r1By = selectedPrevInquiry.actionTaken1By || ascInquiries[0]?.addedByName || '';
+      const r1Status = selectedPrevInquiry.actionTaken1Status || ascInquiries[0]?.status || '';
+
+      const r2 = selectedPrevInquiry.actionTaken2 || (ascInquiries.length > 1 ? (ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.remark || '') : '');
+      const r2Date = selectedPrevInquiry.actionTaken2Date || (ascInquiries.length > 1 && ascInquiries[1]?.createdAt ? new Date(ascInquiries[1].createdAt).toISOString() : '');
+      const r2By = selectedPrevInquiry.actionTaken2By || (ascInquiries.length > 1 ? ascInquiries[1]?.addedByName : '') || '';
+      const r2Status = selectedPrevInquiry.actionTaken2Status || (ascInquiries.length > 1 ? ascInquiries[1]?.status : '') || '';
+
+      const r3 = selectedPrevInquiry.actionTaken3 || (ascInquiries.length > 2 ? (ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.remark || '') : '');
+      const r3Date = selectedPrevInquiry.actionTaken3Date || (ascInquiries.length > 2 && ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
+      const r3By = selectedPrevInquiry.actionTaken3By || (ascInquiries.length > 2 ? ascInquiries[2]?.addedByName : '') || '';
+      const r3Status = selectedPrevInquiry.actionTaken3Status || (ascInquiries.length > 2 ? ascInquiries[2]?.status : '') || '';
+
+      const r4 = selectedPrevInquiry.actionTaken4 || (ascInquiries.length > 3 ? (ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.remark || '') : '');
+      const r4Date = selectedPrevInquiry.actionTaken4Date || (ascInquiries.length > 3 && ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
+      const r4By = selectedPrevInquiry.actionTaken4By || (ascInquiries.length > 3 ? ascInquiries[3]?.addedByName : '') || '';
+      const r4Status = selectedPrevInquiry.actionTaken4Status || (ascInquiries.length > 3 ? ascInquiries[3]?.status : '') || '';
+
       setFormData((prev) => ({
         ...prev,
         studentName: selectedPrevInquiry.studentName || prev.studentName,
@@ -364,10 +416,27 @@ export default function StudentInquiries() {
         subject: selectedPrevInquiry.subject || '',
         details: selectedPrevInquiry.details || '',
         remark: selectedPrevInquiry.remark || '',
+        actionTaken1: r1,
+        actionTaken1Date: r1Date,
+        actionTaken1By: r1By,
+        actionTaken1Status: r1Status,
+        actionTaken2: r2,
+        actionTaken2Date: r2Date,
+        actionTaken2By: r2By,
+        actionTaken2Status: r2Status,
+        actionTaken3: r3,
+        actionTaken3Date: r3Date,
+        actionTaken3By: r3By,
+        actionTaken3Status: r3Status,
+        actionTaken4: r4,
+        actionTaken4Date: r4Date,
+        actionTaken4By: r4By,
+        actionTaken4Status: r4Status,
         forwardedBy: selectedPrevInquiry.forwardedBy || prev.forwardedBy,
         forwardedTo: selectedPrevInquiry.forwardedTo || '',
         alternateNumber: selectedPrevInquiry.alternateNumber || prev.alternateNumber,
         email: selectedPrevInquiry.email || prev.email,
+        followUpDate: selectedPrevInquiry.followUpDate ? selectedPrevInquiry.followUpDate.split('T')[0] : '',
       }));
     } else {
       // If -- None (Fresh Inquiry) -- is selected (or previousInquiryId is empty), reset details/subject/remark/status for fresh entry
@@ -376,12 +445,29 @@ export default function StudentInquiries() {
         subject: '',
         details: '',
         remark: '',
+        actionTaken1: '',
+        actionTaken1Date: '',
+        actionTaken1By: '',
+        actionTaken1Status: '',
+        actionTaken2: '',
+        actionTaken2Date: '',
+        actionTaken2By: '',
+        actionTaken2Status: '',
+        actionTaken3: '',
+        actionTaken3Date: '',
+        actionTaken3By: '',
+        actionTaken3Status: '',
+        actionTaken4: '',
+        actionTaken4Date: '',
+        actionTaken4By: '',
+        actionTaken4Status: '',
         forwardedTo: '',
         callType: 'Enquiry',
         status: 'Pending',
+        followUpDate: '',
       }));
     }
-  }, [selectedPrevInquiry]);
+  }, [selectedPrevInquiry, lookupResult]);
 
   // Compute prior inquiries ONLY if a previous inquiry ID is explicitly selected in the dropdown
   const linkedPriorInquiries = useMemo(() => {
@@ -399,9 +485,9 @@ export default function StudentInquiries() {
     const matchIndex = allAsc.findIndex((i) => i.inquiryId?.toUpperCase() === targetId);
 
     if (matchIndex !== -1) {
-      return allAsc.slice(0, matchIndex + 1).slice(-3);
+      return allAsc.slice(0, matchIndex + 1).slice(-4);
     }
-    return allAsc.slice(-3);
+    return allAsc.slice(-4);
   }, [formData.previousInquiryId, lookupResult]);
 
   const resetForm = () => {
@@ -414,6 +500,22 @@ export default function StudentInquiries() {
       subject: '',
       details: '',
       remark: '',
+      actionTaken1: '',
+      actionTaken1Date: '',
+      actionTaken1By: '',
+      actionTaken1Status: '',
+      actionTaken2: '',
+      actionTaken2Date: '',
+      actionTaken2By: '',
+      actionTaken2Status: '',
+      actionTaken3: '',
+      actionTaken3Date: '',
+      actionTaken3By: '',
+      actionTaken3Status: '',
+      actionTaken4: '',
+      actionTaken4Date: '',
+      actionTaken4By: '',
+      actionTaken4Status: '',
       status: 'Pending',
       forwardedBy: user?.name || '',
       forwardedTo: '',
@@ -455,12 +557,27 @@ export default function StudentInquiries() {
 
     setIsSubmitting(true);
     try {
-      // Prioritize editingInquiry when editing, or selected/existing student inquiry to update
       const targetInquiryToUpdate = editingInquiry || selectedPrevInquiry || (lookupResult?.found ? lookupResult.latestInquiry : null);
+
+      // Determine latest remark from the 4 action taken slots
+      const finalRemark = formData.actionTaken4?.trim() || formData.actionTaken3?.trim() || formData.actionTaken2?.trim() || formData.actionTaken1?.trim() || formData.remark?.trim() || '';
+
+      const submissionData = {
+        ...formData,
+        remark: finalRemark,
+        actionTaken1By: formData.actionTaken1By || (formData.actionTaken1 ? user?.name : ''),
+        actionTaken1Status: formData.actionTaken1Status || (formData.actionTaken1 ? formData.status : ''),
+        actionTaken2By: formData.actionTaken2By || (formData.actionTaken2 ? user?.name : ''),
+        actionTaken2Status: formData.actionTaken2Status || (formData.actionTaken2 ? formData.status : ''),
+        actionTaken3By: formData.actionTaken3By || (formData.actionTaken3 ? user?.name : ''),
+        actionTaken3Status: formData.actionTaken3Status || (formData.actionTaken3 ? formData.status : ''),
+        actionTaken4By: formData.actionTaken4By || (formData.actionTaken4 ? user?.name : ''),
+        actionTaken4Status: formData.actionTaken4Status || (formData.actionTaken4 ? formData.status : ''),
+      };
 
       if (targetInquiryToUpdate && targetInquiryToUpdate._id) {
         const resultAction = await dispatch(
-          updateStudentInquiry({ id: targetInquiryToUpdate._id, data: formData })
+          updateStudentInquiry({ id: targetInquiryToUpdate._id, data: submissionData })
         );
         if (updateStudentInquiry.fulfilled.match(resultAction)) {
           setNotificationMsg({
@@ -476,8 +593,7 @@ export default function StudentInquiries() {
           });
         }
       } else {
-        // Create new inquiry ONLY IF student mobile number is completely new to the database
-        const resultAction = await dispatch(createStudentInquiry(formData));
+        const resultAction = await dispatch(createStudentInquiry(submissionData));
         if (createStudentInquiry.fulfilled.match(resultAction)) {
           setNotificationMsg({
             type: 'success',
@@ -513,6 +629,22 @@ export default function StudentInquiries() {
       subject: inquiry.subject || '',
       details: inquiry.details || '',
       remark: inquiry.remark || '',
+      actionTaken1: inquiry.actionTaken1 || inquiry.remark || '',
+      actionTaken1Date: inquiry.actionTaken1Date || (inquiry.createdAt ? new Date(inquiry.createdAt).toISOString() : ''),
+      actionTaken1By: inquiry.actionTaken1By || (typeof inquiry.addedBy === 'object' ? inquiry.addedBy.name : inquiry.addedByName) || '',
+      actionTaken1Status: inquiry.actionTaken1Status || inquiry.status || '',
+      actionTaken2: inquiry.actionTaken2 || '',
+      actionTaken2Date: inquiry.actionTaken2Date || '',
+      actionTaken2By: inquiry.actionTaken2By || '',
+      actionTaken2Status: inquiry.actionTaken2Status || '',
+      actionTaken3: inquiry.actionTaken3 || '',
+      actionTaken3Date: inquiry.actionTaken3Date || '',
+      actionTaken3By: inquiry.actionTaken3By || '',
+      actionTaken3Status: inquiry.actionTaken3Status || '',
+      actionTaken4: inquiry.actionTaken4 || '',
+      actionTaken4Date: inquiry.actionTaken4Date || '',
+      actionTaken4By: inquiry.actionTaken4By || '',
+      actionTaken4Status: inquiry.actionTaken4Status || '',
       status: (STATUS_TYPES as readonly string[]).includes(inquiry.status)
         ? (inquiry.status as (typeof STATUS_TYPES)[number])
         : 'Others',
@@ -874,21 +1006,46 @@ export default function StudentInquiries() {
 
         {/* Second Row: Follow-Up Date & Attended By Filters under Search Box */}
         <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-gray-100">
-          <div className="relative flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 border border-gray-200 rounded-xl px-3 h-10 shadow-2xs transition-colors">
-            <span className="text-xs font-medium text-gray-600 flex items-center gap-1.5 shrink-0">
+          {/* Follow-Up Date Filter Container with Presets and Exact Date Picker */}
+          <div className={`relative flex items-center flex-wrap gap-2 border rounded-xl px-3 h-auto sm:h-10 py-1 sm:py-0 shadow-2xs transition-colors ${
+            statusFilter === 'Follow Up' || followUpPreset !== 'ALL' || followUpDateFilter
+              ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-400/20'
+              : 'bg-gray-50 hover:bg-gray-100/80 border-gray-200'
+          }`}>
+            <span className="text-xs font-semibold text-amber-800 flex items-center gap-1.5 shrink-0">
               <Calendar className="w-3.5 h-3.5 text-amber-600" />
               Follow-Up Date:
             </span>
+
+            {/* Quick Follow-Up Preset Selector */}
+            <select
+              value={followUpPreset}
+              onChange={(e) => handleFollowUpPresetChange(e.target.value)}
+              className="text-xs font-semibold text-gray-800 bg-transparent border-none focus:outline-hidden cursor-pointer py-1"
+            >
+              <option value="ALL">All Follow-Up Dates</option>
+              <option value="TODAY">📅 Today's Follow-Ups</option>
+              <option value="TOMORROW">⏭️ Tomorrow's Follow-Ups</option>
+              <option value="OVERDUE">⚠️ Overdue / Pending</option>
+              <option value="UPCOMING_7">🗓️ Next 7 Days</option>
+              <option value="CUSTOM">📅 Specific Date Picker</option>
+            </select>
+
+            {/* Specific Date Picker (shown if user wants specific date or has date selected) */}
             <input
               type="date"
               value={followUpDateFilter}
-              onChange={(e) => setFollowUpDateFilter(e.target.value)}
-              title="Filter by Follow-Up Date"
-              className="text-xs font-semibold text-gray-800 bg-transparent border-none focus:outline-hidden cursor-pointer"
+              onChange={(e) => handleFollowUpDateChange(e.target.value)}
+              title="Filter by Specific Follow-Up Date"
+              className="text-xs font-semibold text-gray-800 bg-white/80 border border-amber-200 rounded-md px-1.5 py-0.5 focus:outline-hidden cursor-pointer"
             />
-            {followUpDateFilter && (
+
+            {(followUpDateFilter || followUpPreset !== 'ALL') && (
               <button
-                onClick={() => setFollowUpDateFilter('')}
+                onClick={() => {
+                  setFollowUpDateFilter('');
+                  setFollowUpPreset('ALL');
+                }}
                 className="p-0.5 text-gray-400 hover:text-red-500 rounded-full"
                 title="Clear Follow-Up Date filter"
               >
@@ -928,12 +1085,13 @@ export default function StudentInquiries() {
           </div>
 
           {/* Reset Filter Button if active */}
-          {(callTypeFilter !== 'ALL' || statusFilter !== 'ALL' || followUpDateFilter !== '' || attendedByFilter !== 'ALL') && (
+          {(callTypeFilter !== 'ALL' || statusFilter !== 'ALL' || followUpDateFilter !== '' || followUpPreset !== 'ALL' || attendedByFilter !== 'ALL') && (
             <button
               onClick={() => {
                 setCallTypeFilter('ALL');
                 setStatusFilter('ALL');
                 setFollowUpDateFilter('');
+                setFollowUpPreset('ALL');
                 setAttendedByFilter('ALL');
               }}
               className="h-10 inline-flex items-center px-3 text-xs text-red-600 hover:text-red-700 font-semibold bg-red-50 hover:bg-red-100 rounded-xl transition-colors border border-red-100 whitespace-nowrap cursor-pointer"
@@ -975,7 +1133,7 @@ export default function StudentInquiries() {
                   <th className="px-5 py-3.5">Follow-Up Date</th>
                   <th className="px-5 py-3.5">Attended By</th>
                   <th className="px-5 py-3.5">Reference ID</th>
-                  <th className="px-5 py-3.5">Date & Time</th>
+                  <th className="px-5 py-3.5">Date & Time (Updated)</th>
                   <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
@@ -1139,12 +1297,27 @@ export default function StudentInquiries() {
                       )}
                     </td>
 
-                    {/* Date */}
-                    <td className="px-5 py-4 whitespace-nowrap text-xs text-gray-500">
-                      <div>{new Date(inq.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                      <div className="text-[10px] text-gray-400">
-                        {new Date(inq.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {/* Date & Time (Shows the latest updated/changed date, e.g. 3rd instead of 2nd) */}
+                    <td className="px-5 py-4 whitespace-nowrap text-xs">
+                      <div className="font-semibold text-gray-900">
+                        {new Date(inq.updatedAt || inq.createdAt).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                       </div>
+                      <div className="text-[10px] text-indigo-600 font-medium">
+                        {new Date(inq.updatedAt || inq.createdAt).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
+                      </div>
+                      {inq.createdAt && inq.updatedAt && new Date(inq.createdAt).toDateString() !== new Date(inq.updatedAt).toDateString() && (
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          First: {new Date(inq.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </div>
+                      )}
                     </td>
 
                     {/* Actions */}
@@ -1654,63 +1827,143 @@ export default function StudentInquiries() {
                 />
               </div>
 
-              {/* Dynamic Staff Remark / Action Taken (Shows prior action fields ONLY when a previous inquiry is selected in dropdown) */}
-              <div className="space-y-3 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80">
+              {/* Staff Remark / Action Taken (4 Follow-Up Details / Cells) */}
+              <div className="space-y-3.5 bg-slate-50/90 p-4 rounded-2xl border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider">
-                    Staff Remark / Action Taken
-                  </label>
-                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/90 px-2.5 py-0.5 rounded-full border border-indigo-200">
-                    {linkedPriorInquiries.length === 0
-                      ? 'Fresh Call (No Linked History)'
-                      : `Linked Call Thread (${linkedPriorInquiries.length + 1}th Call in Thread)`}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider">
+                      Staff Remark / Follow-Up Action Taken
+                    </label>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Student ke sabhi 4 follow-ups ki details alag-alag cells me note karein (Action 1 se Action 4 tak)
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/90 px-2.5 py-0.5 rounded-full border border-indigo-200 shrink-0">
+                    4 Follow-Up Slots
                   </span>
                 </div>
 
-                {/* Previous Call Auto-filled Fields (Shown ONLY if linkedPriorInquiries has items) */}
-                {linkedPriorInquiries.length > 0 &&
-                  linkedPriorInquiries.map((prevInq, idx) => {
-                    const fieldNum = idx + 1;
-                    return (
-                      <div key={prevInq._id || idx} className="space-y-1">
-                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-600 uppercase">
-                          <div className="flex items-center gap-1.5">
-                            <span>Action Taken {fieldNum} (Call #{fieldNum} - {prevInq.inquiryId})</span>
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusBadge(prevInq.status)}`}>
-                              {prevInq.status}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-gray-500 font-normal">
-                            By {prevInq.addedByName || 'Staff'} on {new Date(prevInq.createdAt).toLocaleDateString('en-IN')}
-                          </span>
-                        </div>
-                        <input
-                          type="text"
-                          readOnly
-                          value={prevInq.remark || prevInq.details || 'No previous remark recorded'}
-                          className="w-full px-3.5 py-2 bg-slate-100/90 border border-slate-200 rounded-xl text-xs font-medium text-gray-700 cursor-not-allowed select-none"
-                        />
+                {/* 4 Distinct Action Taken / Follow-Up Cells */}
+                <div className="space-y-3 pt-1">
+                  {/* CELL 1: Action Taken 1 */}
+                  <div className={`p-3 rounded-xl border transition-all ${
+                    formData.actionTaken1
+                      ? 'bg-white border-indigo-200 shadow-2xs'
+                      : 'bg-white/70 border-gray-200 hover:border-indigo-200'
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-indigo-700 font-bold">Action Taken 1 (Call / Follow-Up #1)</span>
+                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken1Status || formData.status)}`}>
+                          {formData.actionTaken1Status || formData.status}
+                        </span>
                       </div>
-                    );
-                  })}
-
-                {/* Active / Current Call Action Taken Input */}
-                <div className="space-y-1 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-bold text-indigo-700 uppercase">
-                      Action Taken {linkedPriorInquiries.length > 0 ? linkedPriorInquiries.length + 1 : 1} (Current Call)
-                    </label>
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.status)}`}>
-                      Status: {formData.status}
-                    </span>
+                      <span className="text-[10px] text-gray-500 font-normal">
+                        {formData.actionTaken1By
+                          ? `By ${formData.actionTaken1By} ${formData.actionTaken1Date ? `on ${new Date(formData.actionTaken1Date).toLocaleDateString('en-IN')}` : ''}`
+                          : formData.actionTaken1
+                          ? `By ${user?.name || 'Staff'}`
+                          : 'Initial Call'}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.actionTaken1}
+                      onChange={(e) => setFormData({ ...formData, actionTaken1: e.target.value })}
+                      placeholder="Enter 1st call / initial inquiry remark..."
+                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-indigo-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    value={formData.remark}
-                    onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                    placeholder="e.g. Cleared app cache, student confirmed working."
-                    className="w-full px-3.5 py-2.5 bg-white border border-indigo-300 rounded-xl text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs"
-                  />
+
+                  {/* CELL 2: Action Taken 2 */}
+                  <div className={`p-3 rounded-xl border transition-all ${
+                    formData.actionTaken2
+                      ? 'bg-white border-amber-300 shadow-2xs'
+                      : 'bg-white/70 border-gray-200 hover:border-amber-300'
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-700 font-bold">Action Taken 2 (Call / Follow-Up #2)</span>
+                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
+                          {formData.actionTaken2Status || 'Follow Up'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-normal">
+                        {formData.actionTaken2By
+                          ? `By ${formData.actionTaken2By} ${formData.actionTaken2Date ? `on ${new Date(formData.actionTaken2Date).toLocaleDateString('en-IN')}` : ''}`
+                          : formData.actionTaken2
+                          ? `By ${user?.name || 'Staff'}`
+                          : '2nd Follow-Up'}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.actionTaken2}
+                      onChange={(e) => setFormData({ ...formData, actionTaken2: e.target.value })}
+                      placeholder="Enter 2nd follow-up action / discussion notes..."
+                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
+                    />
+                  </div>
+
+                  {/* CELL 3: Action Taken 3 */}
+                  <div className={`p-3 rounded-xl border transition-all ${
+                    formData.actionTaken3
+                      ? 'bg-white border-purple-300 shadow-2xs'
+                      : 'bg-white/70 border-gray-200 hover:border-purple-300'
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-purple-700 font-bold">Action Taken 3 (Call / Follow-Up #3)</span>
+                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken3Status || 'Follow Up')}`}>
+                          {formData.actionTaken3Status || 'Follow Up'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-normal">
+                        {formData.actionTaken3By
+                          ? `By ${formData.actionTaken3By} ${formData.actionTaken3Date ? `on ${new Date(formData.actionTaken3Date).toLocaleDateString('en-IN')}` : ''}`
+                          : formData.actionTaken3
+                          ? `By ${user?.name || 'Staff'}`
+                          : '3rd Follow-Up'}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.actionTaken3}
+                      onChange={(e) => setFormData({ ...formData, actionTaken3: e.target.value })}
+                      placeholder="Enter 3rd follow-up action / student reply or requirement..."
+                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    />
+                  </div>
+
+                  {/* CELL 4: Action Taken 4 */}
+                  <div className={`p-3 rounded-xl border transition-all ${
+                    formData.actionTaken4
+                      ? 'bg-white border-emerald-300 shadow-2xs'
+                      : 'bg-white/70 border-gray-200 hover:border-emerald-300'
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-emerald-700 font-bold">Action Taken 4 (Call / Follow-Up #4)</span>
+                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken4Status || formData.status)}`}>
+                          {formData.actionTaken4Status || formData.status}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-normal">
+                        {formData.actionTaken4By
+                          ? `By ${formData.actionTaken4By} ${formData.actionTaken4Date ? `on ${new Date(formData.actionTaken4Date).toLocaleDateString('en-IN')}` : ''}`
+                          : formData.actionTaken4
+                          ? `By ${user?.name || 'Staff'}`
+                          : '4th Follow-Up'}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.actionTaken4}
+                      onChange={(e) => setFormData({ ...formData, actionTaken4: e.target.value })}
+                      placeholder="Enter 4th follow-up action / final confirmation or resolution..."
+                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1926,7 +2179,32 @@ export default function StudentInquiries() {
 
                 {selectedInquiry.remark && (
                   <div className="p-2.5 rounded-xl bg-white border border-indigo-100 text-xs text-gray-700">
-                    <strong className="text-indigo-700">Staff Remark:</strong> {selectedInquiry.remark}
+                    <strong className="text-indigo-700">Latest Staff Remark:</strong> {selectedInquiry.remark}
+                  </div>
+                )}
+
+                {/* All 4 Follow-Up Action Takens Breakdown */}
+                {(selectedInquiry.actionTaken1 || selectedInquiry.actionTaken2 || selectedInquiry.actionTaken3 || selectedInquiry.actionTaken4) && (
+                  <div className="space-y-2 pt-2 border-t border-indigo-100">
+                    <div className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                      Follow-Up Actions History (Up to 4 Follow-Ups):
+                    </div>
+                    {[
+                      { num: 1, text: selectedInquiry.actionTaken1, date: selectedInquiry.actionTaken1Date || selectedInquiry.createdAt, by: selectedInquiry.actionTaken1By || selectedInquiry.addedByName, status: selectedInquiry.actionTaken1Status || selectedInquiry.status },
+                      { num: 2, text: selectedInquiry.actionTaken2, date: selectedInquiry.actionTaken2Date, by: selectedInquiry.actionTaken2By, status: selectedInquiry.actionTaken2Status },
+                      { num: 3, text: selectedInquiry.actionTaken3, date: selectedInquiry.actionTaken3Date, by: selectedInquiry.actionTaken3By, status: selectedInquiry.actionTaken3Status },
+                      { num: 4, text: selectedInquiry.actionTaken4, date: selectedInquiry.actionTaken4Date, by: selectedInquiry.actionTaken4By, status: selectedInquiry.actionTaken4Status },
+                    ].map((act) => act.text ? (
+                      <div key={act.num} className="p-2.5 rounded-xl bg-white border border-indigo-100 text-xs text-gray-700 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-indigo-900">
+                          <span className="font-bold">Action Taken {act.num}</span>
+                          <span className="text-gray-400 font-normal">
+                            {act.by ? `By ${act.by}` : ''} {act.date ? `on ${new Date(act.date).toLocaleDateString('en-IN')}` : ''}
+                          </span>
+                        </div>
+                        <p className="text-gray-800">{act.text}</p>
+                      </div>
+                    ) : null)}
                   </div>
                 )}
 
