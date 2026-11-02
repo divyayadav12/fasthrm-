@@ -49,8 +49,14 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Auto-heal legacy inquiries where a subsequent update overwrote the 1st remark
+    // Auto-heal legacy inquiries where a subsequent update overwrote the 1st remark or actionTaken1 wasn't set
     pastInquiries.forEach((inq: any) => {
+      if (!inq.actionTaken1 && inq.remark) {
+        inq.actionTaken1 = inq.remark;
+        inq.actionTaken1Date = inq.createdAt || new Date();
+        inq.actionTaken1By = inq.addedByName || 'Staff';
+        inq.actionTaken1Status = inq.status || 'Follow Up';
+      }
       if (inq.inquiryId === 'INQ-1305') {
         inq.actionTaken1 = 'fsd';
         inq.actionTaken1By = 'Rupali Savley';
@@ -571,6 +577,15 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
         .lean(),
       StudentInquiry.countDocuments(query),
     ]);
+
+    inquiries.forEach((inq: any) => {
+      if (!inq.actionTaken1 && inq.remark) {
+        inq.actionTaken1 = inq.remark;
+        inq.actionTaken1Date = inq.createdAt;
+        inq.actionTaken1By = inq.addedByName || 'Staff';
+        inq.actionTaken1Status = inq.status || 'Follow Up';
+      }
+    });
 
     // Aggregate overall KPI stats
     const statsPipeline: any = [

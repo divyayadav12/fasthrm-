@@ -551,7 +551,7 @@ export default function StudentInquiries() {
     }
   }, [lookupResult, editingInquiry, userManuallyDeselectedLink, formData.previousInquiryId]);
 
-  // Compute all 4 prior call history cards for display under Reference section
+  // Compute all 4 prior call history cards for display under Reference section (Call 1 to 4)
   const priorCallsList = useMemo(() => {
     const inqMap = new Map<string, any>();
     if (availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0) {
@@ -562,156 +562,149 @@ export default function StudentInquiries() {
     if (selectedPrevInquiry?.inquiryId) {
       inqMap.set(selectedPrevInquiry.inquiryId.toUpperCase(), selectedPrevInquiry);
     }
+    if (editingInquiry?.inquiryId) {
+      inqMap.set(editingInquiry.inquiryId.toUpperCase(), editingInquiry);
+    }
+    if (lookupResult?.latestInquiry?.inquiryId) {
+      inqMap.set(lookupResult.latestInquiry.inquiryId.toUpperCase(), lookupResult.latestInquiry);
+    }
 
     const sortedInquiries = Array.from(inqMap.values()).sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
-    if (sortedInquiries.length === 0) return [];
-
-    const list: Array<{
-      key: string;
-      callNumber: number;
-      inquiryId: string;
-      dateStr: string;
-      subject?: string;
-      details?: string;
-      remark?: string;
-      status: string;
-      callType: string;
-      attendedBy: string;
-      isCurrentRef: boolean;
-      isEmptySlot?: boolean;
-    }> = [];
-
-    // Case A: Multiple separate inquiries exist (e.g. INQ-1064, INQ-1131, etc.)
-    if (sortedInquiries.length > 1) {
-      sortedInquiries.forEach((inq, idx) => {
-        const rem = inq.remark || inq.actionTaken4 || inq.actionTaken3 || inq.actionTaken2 || inq.actionTaken1 || '';
-        list.push({
-          key: `inq-${inq._id || inq.inquiryId || idx}`,
-          callNumber: idx + 1,
-          inquiryId: inq.inquiryId,
-          dateStr: inq.createdAt
-            ? new Date(inq.createdAt).toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })
-            : '',
-          subject: inq.subject || '',
-          details: inq.details || '',
-          remark: rem,
-          status: inq.status || 'Follow Up',
-          callType: inq.callType || 'Enquiry',
-          attendedBy: inq.addedByName || inq.forwardedBy || 'Staff',
-          isCurrentRef: inq.inquiryId?.toUpperCase() === formData.previousInquiryId?.trim().toUpperCase(),
-        });
-      });
-      // Do NOT pad empty slots - only display real calls that have taken place
-    } else {
-      // Case B: Single inquiry record with slots 1 to 4
-      const singleInq = sortedInquiries[0];
-
-      // Call #1
-      const r1 = singleInq.actionTaken1 || singleInq.remark || formData.actionTaken1 || '';
-      if (r1.trim() || singleInq.details?.trim()) {
-        list.push({
-          key: `act-1-${singleInq.inquiryId}`,
-          callNumber: 1,
-          inquiryId: singleInq.inquiryId,
-          dateStr: singleInq.actionTaken1Date || singleInq.createdAt
-            ? new Date(singleInq.actionTaken1Date || singleInq.createdAt).toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })
-            : '',
-          subject: singleInq.subject || '',
-          details: singleInq.details || 'Initial discussion',
-          remark: r1,
-          status: singleInq.actionTaken1Status || singleInq.status || 'Follow Up',
-          callType: singleInq.callType || 'Enquiry',
-          attendedBy: singleInq.actionTaken1By || singleInq.addedByName || 'Staff',
-          isCurrentRef: true,
-        });
-      }
-
-      // Call #2 - ONLY show if it actually has content
-      const call2Remark = singleInq.actionTaken2 || formData.actionTaken2 || '';
-      if (call2Remark.trim() || singleInq.details2?.trim()) {
-        list.push({
-          key: `act-2-${singleInq.inquiryId}`,
-          callNumber: 2,
-          inquiryId: singleInq.inquiryId,
-          dateStr: singleInq.actionTaken2Date || singleInq.updatedAt
-            ? new Date(singleInq.actionTaken2Date || singleInq.updatedAt).toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })
-            : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          subject: singleInq.subject || '',
-          details: singleInq.details2 || singleInq.details || '2nd Follow-up discussion',
-          remark: call2Remark,
-          status: singleInq.actionTaken2Status || singleInq.status || 'Follow Up',
-          callType: 'Follow Up',
-          attendedBy: singleInq.actionTaken2By || (formData.actionTaken2 ? (user?.name || 'Staff') : 'Staff'),
-          isCurrentRef: false,
-        });
-      }
-
-      // Call #3 - ONLY show if it actually has content
-      const call3Remark = singleInq.actionTaken3 || formData.actionTaken3 || '';
-      if (call3Remark.trim() || singleInq.details3?.trim()) {
-        list.push({
-          key: `act-3-${singleInq.inquiryId}`,
-          callNumber: 3,
-          inquiryId: singleInq.inquiryId,
-          dateStr: singleInq.actionTaken3Date
-            ? new Date(singleInq.actionTaken3Date).toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })
-            : (call3Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-          subject: singleInq.subject || '',
-          details: singleInq.details3 || singleInq.details || '3rd Follow-up discussion',
-          remark: call3Remark,
-          status: singleInq.actionTaken3Status || (call3Remark ? formData.status : 'Follow Up'),
-          callType: 'Follow Up',
-          attendedBy: singleInq.actionTaken3By || (call3Remark ? (user?.name || 'Staff') : 'Staff'),
-          isCurrentRef: false,
-        });
-      }
-
-      // Call #4 - ONLY show if it actually has content
-      const call4Remark = singleInq.actionTaken4 || formData.actionTaken4 || '';
-      if (call4Remark.trim() || singleInq.details4?.trim()) {
-        list.push({
-          key: `act-4-${singleInq.inquiryId}`,
-          callNumber: 4,
-          inquiryId: singleInq.inquiryId,
-          dateStr: singleInq.actionTaken4Date
-            ? new Date(singleInq.actionTaken4Date).toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })
-            : (call4Remark ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-          subject: singleInq.subject || '',
-          details: singleInq.details4 || singleInq.details || '4th Follow-up discussion',
-          remark: call4Remark,
-          status: singleInq.actionTaken4Status || (call4Remark ? formData.status : 'Follow Up'),
-          callType: 'Follow Up',
-          attendedBy: singleInq.actionTaken4By || (call4Remark ? (user?.name || 'Staff') : 'Staff'),
-          isCurrentRef: false,
-        });
-      }
+    // If no inquiry exists at all and user hasn't typed anything, return empty
+    if (sortedInquiries.length === 0 && !formData.previousInquiryId && !formData.actionTaken1 && !formData.remark) {
+      return [];
     }
 
-    return list.slice(0, 4);
-  }, [lookupResult, selectedPrevInquiry, formData.previousInquiryId, formData.actionTaken1, formData.actionTaken2, formData.actionTaken3, formData.actionTaken4, formData.status, user?.name]);
+    // Determine the primary reference inquiry
+    const baseInq =
+      selectedPrevInquiry ||
+      editingInquiry ||
+      lookupResult?.latestInquiry ||
+      sortedInquiries[sortedInquiries.length - 1] ||
+      sortedInquiries[0] ||
+      {};
+
+    const inqId = baseInq.inquiryId || formData.previousInquiryId || 'INQ-REF';
+    const subj = baseInq.subject || formData.subject || 'Student Inquiry';
+    const baseDetails = baseInq.details || formData.details || '';
+    const baseStaff = baseInq.addedByName || baseInq.actionTaken1By || user?.name || 'Staff';
+    const formatDate = (d: any) =>
+      d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    const baseDate = formatDate(baseInq.createdAt) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // History array if available
+    const hist = Array.isArray(baseInq.history) ? baseInq.history : [];
+
+    // Slot 1
+    const r1 = (formData.actionTaken1 || '').trim() || baseInq.actionTaken1 || hist[0]?.remark || baseInq.remark || '';
+    const d1 = baseInq.details || formData.details || 'Initial inquiry discussion';
+    const by1 = baseInq.actionTaken1By || hist[0]?.attendedBy || baseStaff;
+    const status1 = formData.actionTaken1Status || baseInq.actionTaken1Status || hist[0]?.status || baseInq.status || formData.status || 'Follow Up';
+    const date1 = baseInq.actionTaken1Date || hist[0]?.date || baseInq.createdAt;
+
+    // Slot 2
+    const r2 = (formData.actionTaken2 || '').trim() || baseInq.actionTaken2 || hist[1]?.remark || (sortedInquiries.length > 1 ? (sortedInquiries[1]?.actionTaken1 || sortedInquiries[1]?.remark) : '') || '';
+    const d2 = (formData.actionTaken2 || '').trim() ? (formData.details || baseDetails) : (baseInq.details2 || hist[1]?.details || baseDetails);
+    const by2 = (formData.actionTaken2 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken2By || hist[1]?.attendedBy || (sortedInquiries.length > 1 ? sortedInquiries[1]?.addedByName : '') || 'Staff');
+    const status2 = (formData.actionTaken2 || '').trim() ? (formData.actionTaken2Status || formData.status || 'Follow Up') : (baseInq.actionTaken2Status || hist[1]?.status || 'Follow Up');
+    const date2 = baseInq.actionTaken2Date || hist[1]?.date || (sortedInquiries.length > 1 ? sortedInquiries[1]?.createdAt : null) || (formData.actionTaken2 ? new Date() : null);
+
+    // Slot 3
+    const r3 = (formData.actionTaken3 || '').trim() || baseInq.actionTaken3 || hist[2]?.remark || (sortedInquiries.length > 2 ? (sortedInquiries[2]?.actionTaken1 || sortedInquiries[2]?.remark) : '') || '';
+    const d3 = (formData.actionTaken3 || '').trim() ? (formData.details || baseDetails) : (baseInq.details3 || hist[2]?.details || baseDetails);
+    const by3 = (formData.actionTaken3 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken3By || hist[2]?.attendedBy || (sortedInquiries.length > 2 ? sortedInquiries[2]?.addedByName : '') || 'Staff');
+    const status3 = (formData.actionTaken3 || '').trim() ? (formData.actionTaken3Status || formData.status || 'Follow Up') : (baseInq.actionTaken3Status || hist[2]?.status || 'Follow Up');
+    const date3 = baseInq.actionTaken3Date || hist[2]?.date || (sortedInquiries.length > 2 ? sortedInquiries[2]?.createdAt : null) || (formData.actionTaken3 ? new Date() : null);
+
+    // Slot 4
+    const r4 = (formData.actionTaken4 || '').trim() || baseInq.actionTaken4 || hist[3]?.remark || (sortedInquiries.length > 3 ? (sortedInquiries[3]?.actionTaken1 || sortedInquiries[3]?.remark) : '') || '';
+    const d4 = (formData.actionTaken4 || '').trim() ? (formData.details || baseDetails) : (baseInq.details4 || hist[3]?.details || baseDetails);
+    const by4 = (formData.actionTaken4 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken4By || hist[3]?.attendedBy || (sortedInquiries.length > 3 ? sortedInquiries[3]?.addedByName : '') || 'Staff');
+    const status4 = (formData.actionTaken4 || '').trim() ? (formData.actionTaken4Status || formData.status || 'Follow Up') : (baseInq.actionTaken4Status || hist[3]?.status || 'Follow Up');
+    const date4 = baseInq.actionTaken4Date || hist[3]?.date || (sortedInquiries.length > 3 ? sortedInquiries[3]?.createdAt : null) || (formData.actionTaken4 ? new Date() : null);
+
+    return [
+      {
+        key: `call-1-${inqId}`,
+        callNumber: 1,
+        inquiryId: inqId,
+        dateStr: formatDate(date1) || baseDate,
+        subject: subj,
+        details: d1,
+        remark: r1 || 'Initial call inquiry logged',
+        status: status1,
+        callType: baseInq.callType || formData.callType || 'Enquiry',
+        attendedBy: by1,
+        isCurrentRef: true,
+        isPendingSlot: false,
+      },
+      {
+        key: `call-2-${inqId}`,
+        callNumber: 2,
+        inquiryId: inqId,
+        dateStr: formatDate(date2) || (r2 ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+        subject: subj,
+        details: d2 || (r2 ? baseDetails : 'Follow-up discussion notes pending'),
+        remark: r2 || 'Pending 2nd follow up (type below in Action Taken 2)',
+        status: status2,
+        callType: 'Follow Up',
+        attendedBy: by2,
+        isCurrentRef: false,
+        isPendingSlot: !r2,
+      },
+      {
+        key: `call-3-${inqId}`,
+        callNumber: 3,
+        inquiryId: inqId,
+        dateStr: formatDate(date3) || (r3 ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+        subject: subj,
+        details: d3 || (r3 ? baseDetails : 'Follow-up discussion notes pending'),
+        remark: r3 || 'Pending 3rd follow up (type below in Action Taken 3)',
+        status: status3,
+        callType: 'Follow Up',
+        attendedBy: by3,
+        isCurrentRef: false,
+        isPendingSlot: !r3,
+      },
+      {
+        key: `call-4-${inqId}`,
+        callNumber: 4,
+        inquiryId: inqId,
+        dateStr: formatDate(date4) || (r4 ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+        subject: subj,
+        details: d4 || (r4 ? baseDetails : 'Follow-up discussion notes pending'),
+        remark: r4 || 'Pending 4th follow up (type below in Action Taken 4)',
+        status: status4,
+        callType: 'Follow Up',
+        attendedBy: by4,
+        isCurrentRef: false,
+        isPendingSlot: !r4,
+      },
+    ];
+  }, [
+    availableInquiriesForDropdown,
+    selectedPrevInquiry,
+    editingInquiry,
+    lookupResult,
+    formData.previousInquiryId,
+    formData.subject,
+    formData.details,
+    formData.actionTaken1,
+    formData.actionTaken2,
+    formData.actionTaken3,
+    formData.actionTaken4,
+    formData.actionTaken1Status,
+    formData.actionTaken2Status,
+    formData.actionTaken3Status,
+    formData.actionTaken4Status,
+    formData.status,
+    formData.callType,
+    formData.remark,
+    user?.name,
+  ]);
 
   const resetForm = () => {
     setFormData({
@@ -867,6 +860,29 @@ export default function StudentInquiries() {
           updatedSubData.actionTaken3By = user?.name || 'Staff';
           updatedSubData.actionTaken3Status = formData.status || 'Follow Up';
           updatedSubData.actionTaken2 = oldSlots[1];
+        } else if (oldSlots[2] && newSlots[2] && newSlots[2] !== oldSlots[2].trim() && !newSlots[3]) {
+          updatedSubData.actionTaken4 = newSlots[2];
+          updatedSubData.actionTaken4Date = new Date().toISOString();
+          updatedSubData.actionTaken4By = user?.name || 'Staff';
+          updatedSubData.actionTaken4Status = formData.status || 'Follow Up';
+          updatedSubData.actionTaken3 = oldSlots[2];
+        }
+
+        if (updatedSubData.actionTaken1 && !updatedSubData.actionTaken1Date) {
+          updatedSubData.actionTaken1Date = new Date().toISOString();
+          updatedSubData.actionTaken1By = updatedSubData.actionTaken1By || user?.name || 'Staff';
+        }
+        if (updatedSubData.actionTaken2 && !updatedSubData.actionTaken2Date) {
+          updatedSubData.actionTaken2Date = new Date().toISOString();
+          updatedSubData.actionTaken2By = updatedSubData.actionTaken2By || user?.name || 'Staff';
+        }
+        if (updatedSubData.actionTaken3 && !updatedSubData.actionTaken3Date) {
+          updatedSubData.actionTaken3Date = new Date().toISOString();
+          updatedSubData.actionTaken3By = updatedSubData.actionTaken3By || user?.name || 'Staff';
+        }
+        if (updatedSubData.actionTaken4 && !updatedSubData.actionTaken4Date) {
+          updatedSubData.actionTaken4Date = new Date().toISOString();
+          updatedSubData.actionTaken4By = updatedSubData.actionTaken4By || user?.name || 'Staff';
         }
 
         // Ensure final remark is the latest active actionTaken
@@ -1881,7 +1897,9 @@ export default function StudentInquiries() {
                             <div
                               key={callItem.key}
                               className={`p-3 rounded-2xl text-xs space-y-2 border transition-all ${
-                                callItem.isCurrentRef
+                                callItem.isPendingSlot
+                                  ? 'bg-slate-50/70 border-dashed border-gray-300'
+                                  : callItem.isCurrentRef
                                   ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-400/30 shadow-xs'
                                   : 'bg-white border-gray-200 hover:border-indigo-200 shadow-2xs'
                               }`}
@@ -1890,27 +1908,41 @@ export default function StudentInquiries() {
                                 <div className="flex items-center gap-1.5">
                                   <span
                                     className={`font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border shadow-2xs ${
-                                      callItem.isCurrentRef
+                                      callItem.isPendingSlot
+                                        ? 'text-gray-500 bg-gray-100 border-gray-200'
+                                        : callItem.isCurrentRef
                                         ? 'text-indigo-700 bg-white border-indigo-200'
                                         : 'text-gray-700 bg-gray-50 border-gray-200'
                                     }`}
                                   >
-                                    🔗 Call #{callItem.callNumber}: {callItem.inquiryId}
+                                    {callItem.isPendingSlot ? '⏳' : '🔗'} Call #{callItem.callNumber}: {callItem.inquiryId}
                                   </span>
-                                  {callItem.isCurrentRef && (
+                                  {callItem.isPendingSlot ? (
+                                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                                      Upcoming Call
+                                    </span>
+                                  ) : callItem.isCurrentRef ? (
                                     <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">
                                       Connected Ref
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                                      Completed
                                     </span>
                                   )}
                                 </div>
                                 <span className="text-[11px] text-gray-500 font-medium">
-                                  {callItem.dateStr}
+                                  {callItem.dateStr || (callItem.isPendingSlot ? 'Slot Available' : '')}
                                 </span>
                               </div>
 
-                              <div className="text-gray-800 bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-1">
+                              <div className={`p-2.5 rounded-xl border shadow-2xs space-y-1 ${
+                                callItem.isPendingSlot
+                                  ? 'bg-white/80 border-gray-200'
+                                  : 'bg-white/90 border-gray-100 text-gray-800'
+                              }`}>
                                 {callItem.subject && (
-                                  <div className="font-semibold text-gray-900">
+                                  <div className={`font-semibold ${callItem.isPendingSlot ? 'text-gray-700' : 'text-gray-900'}`}>
                                     {callItem.subject}
                                   </div>
                                 )}
@@ -1920,8 +1952,12 @@ export default function StudentInquiries() {
                                   </div>
                                 )}
                                 {callItem.remark && (
-                                  <div className="text-[11px] text-amber-900 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200/70 mt-1">
-                                    <strong>Previous Remark:</strong> {callItem.remark}
+                                  <div className={`text-[11px] px-2.5 py-1 rounded-lg border mt-1 ${
+                                    callItem.isPendingSlot
+                                      ? 'text-amber-800 bg-amber-50/70 border-amber-200/60 font-medium italic'
+                                      : 'text-amber-900 bg-amber-50/90 border-amber-200/70 font-medium'
+                                  }`}>
+                                    <strong>{callItem.isPendingSlot ? 'Follow-Up Status:' : 'Previous Remark:'}</strong> {callItem.remark}
                                   </div>
                                 )}
                               </div>
