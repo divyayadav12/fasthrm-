@@ -984,3 +984,186 @@ export const getSubjectSuggestions = async (req: AuthRequest, res: Response) => 
   }
 };
 
+/**
+ * @desc    Get purchased inquiries statistics grouped by IT & Support staff
+ * @route   GET /api/student-inquiries/purchased-stats
+ * @access  Private (Support / Admin)
+ */
+export const getPurchasedStaffStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const User = (await import('../models/User')).default;
+
+    const targetDate = req.query.date ? String(req.query.date) : undefined;
+    const targetMonth = req.query.month ? String(req.query.month) : undefined;
+
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const now = new Date();
+    const istNow = new Date(now.getTime() + istOffset);
+
+    const tYear = istNow.getUTCFullYear();
+    const tMonth = istNow.getUTCMonth();
+    const tDay = istNow.getUTCDate();
+
+    let startOfToday = new Date(Date.UTC(tYear, tMonth, tDay, 0, 0, 0) - istOffset);
+    let endOfToday = new Date(Date.UTC(tYear, tMonth, tDay, 23, 59, 59, 999) - istOffset);
+
+    if (targetDate) {
+      const p = new Date(targetDate);
+      if (!isNaN(p.getTime())) {
+        const pIst = new Date(p.getTime() + istOffset);
+        startOfToday = new Date(Date.UTC(pIst.getUTCFullYear(), pIst.getUTCMonth(), pIst.getUTCDate(), 0, 0, 0) - istOffset);
+        endOfToday = new Date(Date.UTC(pIst.getUTCFullYear(), pIst.getUTCMonth(), pIst.getUTCDate(), 23, 59, 59, 999) - istOffset);
+      }
+    }
+
+    let startOfMonth = new Date(Date.UTC(tYear, tMonth, 1, 0, 0, 0) - istOffset);
+    let endOfMonth = new Date(Date.UTC(tYear, tMonth + 1, 1, 0, 0, 0) - istOffset);
+
+    if (targetMonth && targetMonth.includes('-')) {
+      const parts = targetMonth.split('-');
+      const mY = Number(parts[0]);
+      const mM = Number(parts[1]);
+      if (mY && mM) {
+        startOfMonth = new Date(Date.UTC(mY, mM - 1, 1, 0, 0, 0) - istOffset);
+        endOfMonth = new Date(Date.UTC(mY, mM, 1, 0, 0, 0) - istOffset);
+      }
+    }
+
+    // 1. Fetch all IT & Support staff users from DB
+    const allUsers = await User.find({
+      isActive: true,
+      name: { $nin: [/^unknown$/i, '', null] },
+    })
+      .select('_id name email department designation role profileImage')
+      .lean();
+
+    const itSupportStaff = allUsers.filter((u: any) => {
+      const dept = (u.department || '').toLowerCase().trim();
+      const desig = (u.designation || '').toLowerCase().trim();
+      return (
+        dept.includes('it') ||
+        dept.includes('support') ||
+        desig.includes('it') ||
+        desig.includes('support') ||
+        ['Divya yadav', 'Jyoti', 'Pallavi', 'Palavi', 'Admin', 'Rupali Savley'].some((n) =>
+          (u.name || '').toLowerCase().includes(n.toLowerCase())
+        )
+      );
+    });
+
+    // 2. Fetch all inquiries that are marked as Purchased
+    const purchasedInquiries = await StudentInquiry.find({
+      $or: [
+        { status: 'Purchased' },
+        { callType: 'Purchased' },
+        { actionTaken1Status: 'Purchased' },
+        { actionTaken2Status: 'Purchased' },
+        { actionTaken3Status: 'Purchased' },
+        { actionTaken4Status: 'Purchased' },
+      ],
+    })
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .lean();
+
+    // 3. Map staff member stats
+    const staffStatsMap = new Map<string, any>();
+
+    itSupportStaff.forEach((s: any) => {
+      staffStatsMap.set(s.name.toLowerCase().trim(), {
+        _id: s._id,
+        name: s.name,
+        email: s.email,
+        department: s.department || 'IT and support',
+        designation: s.designation || 'IT Support',
+        profileImage: s.profileImage,
+        totalPurchased: 0,
+        todayPurchased: 0,
+        monthPurchased: 0,
+        inquiries: [],
+      });
+    });
+
+    purchasedInquiries.forEach((inq: any) => {
+      const handlerName = (
+        inq.forwardedTo ||
+        (inq.actionTaken4Status === 'Purchased' ? inq.actionTaken4By : '') ||
+        (inq.actionTaken3Status === 'Purchased' ? inq.actionTaken3By : '') ||
+        (inq.actionTaken2Status === 'Purchased' ? inq.actionTaken2By : '') ||
+        (inq.actionTaken1Status === 'Purchased' ? inq.actionTaken1By : '') ||
+        inq.addedByName ||
+        'Staff'
+      ).trim();
+
+      const key = handlerName.toLowerCase();
+      if (!staffStatsMap.has(key)) {
+        staffStatsMap.set(key, {
+          _id: inq.addedBy || `ext-${key}`,
+          name: handlerName,
+          email: inq.addedByEmail || '',
+          department: inq.addedByDepartment || 'IT and support',
+          designation: 'Staff',
+          totalPurchased: 0,
+          todayPurchased: 0,
+          monthPurchased: 0,
+          inquiries: [],
+        });
+      }
+
+      const staffStat = staffStatsMap.get(key);
+      const effectiveDate = new Date(inq.updatedAt || inq.createdAt);
+
+      staffStat.totalPurchased += 1;
+
+      if (effectiveDate >= startOfToday && effectiveDate <= endOfToday) {
+        staffStat.todayPurchased += 1;
+      }
+
+      if (effectiveDate >= startOfMonth && effectiveDate < endOfMonth) {
+        staffStat.monthPurchased += 1;
+      }
+
+      staffStat.inquiries.push({
+        _id: inq._id,
+        inquiryId: inq.inquiryId,
+        studentName: inq.studentName,
+        mobileNumber: inq.mobileNumber,
+        subject: inq.subject,
+        details: inq.details,
+        status: inq.status,
+        callType: inq.callType,
+        remark: inq.remark || inq.actionTaken4 || inq.actionTaken3 || inq.actionTaken2 || inq.actionTaken1,
+        date: effectiveDate,
+        createdAt: inq.createdAt,
+        updatedAt: inq.updatedAt,
+      });
+    });
+
+    const staffStats = Array.from(staffStatsMap.values()).sort(
+      (a, b) => b.totalPurchased - a.totalPurchased
+    );
+
+    const teamTotalPurchased = staffStats.reduce((sum, s) => sum + s.totalPurchased, 0);
+    const teamTodayPurchased = staffStats.reduce((sum, s) => sum + s.todayPurchased, 0);
+    const teamMonthPurchased = staffStats.reduce((sum, s) => sum + s.monthPurchased, 0);
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          teamTotalPurchased,
+          teamTodayPurchased,
+          teamMonthPurchased,
+          topStaff: staffStats[0]?.name || 'N/A',
+          totalStaffCount: staffStats.length,
+          activeDate: startOfToday.toISOString().split('T')[0],
+          activeMonth: `${tYear}-${String(tMonth + 1).padStart(2, '0')}`,
+        },
+        staffStats,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching purchased staff stats:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch purchased stats' });
+  }
+};
+

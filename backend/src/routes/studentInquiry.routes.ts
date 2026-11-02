@@ -10,6 +10,7 @@ import {
   deleteStudentInquiry,
   sendStudentFeedback,
   getSubjectSuggestions,
+  getPurchasedStaffStats,
 } from '../controllers/studentInquiry.controller';
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.route('/')
   .get(getStudentInquiries)
   .post(createStudentInquiry);
 
+router.get('/purchased-stats', getPurchasedStaffStats);
 router.get('/lookup', lookupStudentByPhone);
 router.get('/subject-suggestions', getSubjectSuggestions);
 

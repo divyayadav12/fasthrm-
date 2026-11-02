@@ -5,7 +5,7 @@ import { RootState, AppDispatch } from '../store';
 import { logout } from '../store/slices/authSlice';
 import { fetchNotifications, markAllAsRead } from '../store/slices/notificationSlice';
 import { socket } from '../utils/socket';
-import { LogOut, Activity, Users, Briefcase, FileText, Settings, Menu, Bell, CheckSquare, ChevronDown, X, BarChart2, Calendar, Headphones } from 'lucide-react';
+import { LogOut, Activity, Users, Briefcase, FileText, Settings, Menu, Bell, CheckSquare, ChevronDown, X, BarChart2, Calendar, Headphones, ShoppingBag } from 'lucide-react';
 import { canAccessStudentInquiry } from '../pages/StudentInquiries';
 
 const Layout = () => {
@@ -123,12 +123,18 @@ const Layout = () => {
         </>
       )}
 
-      {/* Student Inquiries: Only for Admin and IT & Support team */}
+      {/* Student Inquiries & Purchased: Only for Admin and IT & Support team */}
       {canAccessStudentInquiry(user) && (
-        <Link to={`${prefix}/student-inquiries`} className={getLinkClass(`${prefix}/student-inquiries`)}>
-          <Headphones className="h-5 w-5 mr-3" />
-          Student Inquiry
-        </Link>
+        <>
+          <Link to={`${prefix}/student-inquiries`} className={getLinkClass(`${prefix}/student-inquiries`)}>
+            <Headphones className="h-5 w-5 mr-3" />
+            Student Inquiry
+          </Link>
+          <Link to={`${prefix}/purchased`} className={getLinkClass(`${prefix}/purchased`)}>
+            <ShoppingBag className="h-5 w-5 mr-3" />
+            Purchased
+          </Link>
+        </>
       )}
     </>
   );

@@ -18,6 +18,7 @@ import MyReport from './pages/employee/MyReport';
 import AdminLeaves from './pages/admin/Leaves';
 import MyLeaves from './pages/employee/MyLeaves';
 import StudentInquiries from './pages/StudentInquiries';
+import PurchasedInquiries from './pages/PurchasedInquiries';
 import Layout from './components/Layout';
 
 function App() {
@@ -56,6 +57,7 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="leaves" element={<AdminLeaves />} />
           <Route path="student-inquiries" element={<StudentInquiries />} />
+          <Route path="purchased" element={<PurchasedInquiries />} />
         </Route>
 
         {/* Employee Routes */}
@@ -71,6 +73,7 @@ function App() {
           <Route path="my-report" element={<MyReport />} />
           <Route path="leaves" element={<MyLeaves />} />
           <Route path="student-inquiries" element={<StudentInquiries />} />
+          <Route path="purchased" element={<PurchasedInquiries />} />
 
           {/* Add more employee routes here */}
         </Route>
