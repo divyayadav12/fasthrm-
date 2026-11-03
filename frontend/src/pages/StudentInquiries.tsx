@@ -438,49 +438,55 @@ export default function StudentInquiries() {
       : (targetInq ? [targetInq] : []);
 
     const hist = Array.isArray(targetInq?.history) ? targetInq.history : [];
+    const h1 = hist.find((h: any) => h.callNumber === 1);
+    const h2 = hist.find((h: any) => h.callNumber === 2);
+    const h3 = hist.find((h: any) => h.callNumber === 3);
+    const h4 = hist.find((h: any) => h.callNumber === 4);
 
-    let r1 = targetInq?.actionTaken1 || hist[0]?.remark || targetInq?.remark || '';
-    let r1Date = targetInq?.actionTaken1Date || (hist[0]?.date ? new Date(hist[0].date).toISOString() : '') || (targetInq?.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
-    let r1By = targetInq?.actionTaken1By || hist[0]?.attendedBy || targetInq?.addedByName || '';
-    let r1Status = targetInq?.actionTaken1Status || hist[0]?.status || targetInq?.status || '';
+    // Slot 1: ALWAYS the initial inquiry call
+    let r1 =
+      targetInq?.actionTaken1 ||
+      h1?.remark ||
+      (ascInquiries.length > 0 ? (ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark) : '') ||
+      (!targetInq?.actionTaken2 ? targetInq?.remark : '') ||
+      '';
+    let r1Date = targetInq?.actionTaken1Date || (h1?.date ? new Date(h1.date).toISOString() : '') || (targetInq?.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
+    let r1By = targetInq?.actionTaken1By || h1?.attendedBy || targetInq?.addedByName || '';
+    let r1Status = targetInq?.actionTaken1Status || h1?.status || targetInq?.status || '';
 
-    let r2 = targetInq?.actionTaken2 || hist[1]?.remark || '';
-    let r2Date = targetInq?.actionTaken2Date || (hist[1]?.date ? new Date(hist[1].date).toISOString() : '') || '';
-    let r2By = targetInq?.actionTaken2By || hist[1]?.attendedBy || '';
-    let r2Status = targetInq?.actionTaken2Status || hist[1]?.status || '';
+    // Slot 2: 2nd follow up
+    let r2 =
+      targetInq?.actionTaken2 ||
+      h2?.remark ||
+      (ascInquiries.length > 1 ? (ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.actionTaken1 || ascInquiries[1]?.remark) : '') ||
+      '';
+    let r2Date = targetInq?.actionTaken2Date || (h2?.date ? new Date(h2.date).toISOString() : '') || '';
+    let r2By = targetInq?.actionTaken2By || h2?.attendedBy || '';
+    let r2Status = targetInq?.actionTaken2Status || h2?.status || '';
 
-    let r3 = targetInq?.actionTaken3 || hist[2]?.remark || '';
-    let r3Date = targetInq?.actionTaken3Date || (hist[2]?.date ? new Date(hist[2].date).toISOString() : '') || '';
-    let r3By = targetInq?.actionTaken3By || hist[2]?.attendedBy || '';
-    let r3Status = targetInq?.actionTaken3Status || hist[2]?.status || '';
+    // Slot 3: 3rd follow up
+    let r3 =
+      targetInq?.actionTaken3 ||
+      h3?.remark ||
+      (ascInquiries.length > 2 ? (ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark) : '') ||
+      '';
+    let r3Date = targetInq?.actionTaken3Date || (h3?.date ? new Date(h3.date).toISOString() : '') || '';
+    let r3By = targetInq?.actionTaken3By || h3?.attendedBy || '';
+    let r3Status = targetInq?.actionTaken3Status || h3?.status || '';
 
-    let r4 = targetInq?.actionTaken4 || hist[3]?.remark || '';
-    let r4Date = targetInq?.actionTaken4Date || (hist[3]?.date ? new Date(hist[3].date).toISOString() : '') || '';
-    let r4By = targetInq?.actionTaken4By || hist[3]?.attendedBy || '';
-    let r4Status = targetInq?.actionTaken4Status || hist[3]?.status || '';
+    // Slot 4: 4th follow up
+    let r4 =
+      targetInq?.actionTaken4 ||
+      h4?.remark ||
+      (ascInquiries.length > 3 ? (ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark) : '') ||
+      '';
+    let r4Date = targetInq?.actionTaken4Date || (h4?.date ? new Date(h4.date).toISOString() : '') || '';
+    let r4By = targetInq?.actionTaken4By || h4?.attendedBy || '';
+    let r4Status = targetInq?.actionTaken4Status || h4?.status || '';
 
-    // If multiple linked inquiries exist in chain, also check them for slots 2, 3, 4
-    if (ascInquiries.length > 1 && !r2) {
-      r2 = ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.actionTaken1 || ascInquiries[1]?.remark || '';
-      r2Date = ascInquiries[1]?.actionTaken2Date || (ascInquiries[1]?.createdAt ? new Date(ascInquiries[1].createdAt).toISOString() : '');
-      r2By = ascInquiries[1]?.actionTaken2By || ascInquiries[1]?.addedByName || '';
-      r2Status = ascInquiries[1]?.actionTaken2Status || ascInquiries[1]?.status || '';
-    }
-    if (ascInquiries.length > 2 && !r3) {
-      r3 = ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark || '';
-      r3Date = ascInquiries[2]?.actionTaken3Date || (ascInquiries[2]?.createdAt ? new Date(ascInquiries[2].createdAt).toISOString() : '');
-      r3By = ascInquiries[2]?.actionTaken3By || ascInquiries[2]?.addedByName || '';
-      r3Status = ascInquiries[2]?.actionTaken3Status || ascInquiries[2]?.status || '';
-    }
-    if (ascInquiries.length > 3 && !r4) {
-      r4 = ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark || '';
-      r4Date = ascInquiries[3]?.actionTaken4Date || (ascInquiries[3]?.createdAt ? new Date(ascInquiries[3].createdAt).toISOString() : '');
-      r4By = ascInquiries[3]?.actionTaken4By || ascInquiries[3]?.addedByName || '';
-      r4Status = ascInquiries[3]?.actionTaken4Status || ascInquiries[3]?.status || '';
-    }
-
-    // When linking an inquiry, show all 4 slots so staff can immediately enter Call 2, 3, or 4 without any button hiding them
-    setMaxFollowUpSlotVisible(4);
+    // Show filled slots + 1 next available slot so staff can immediately enter their follow-up note
+    const filledCount = r4 ? 4 : (r3 ? 3 : (r2 ? 2 : (r1 ? 1 : 1)));
+    setMaxFollowUpSlotVisible(Math.min(4, filledCount + 1));
 
     setFormData((prev) => ({
       ...prev,
@@ -534,13 +540,15 @@ export default function StudentInquiries() {
         ) || lookupResult?.latestInquiry;
 
       if (match && match.inquiryId) {
-        if (!formData.studentName.trim() && match.studentName) {
-          setFormData((prev) => ({ ...prev, studentName: match.studentName }));
+        if (!formData.previousInquiryId || formData.previousInquiryId !== match.inquiryId) {
+          if (!formData.studentName.trim() && match.studentName) {
+            setFormData((prev) => ({ ...prev, studentName: match.studentName }));
+          }
+          handleSelectPreviousInquiry(match.inquiryId);
         }
-        handleSelectPreviousInquiry(match.inquiryId);
       }
     }
-  }, [formData.mobileNumber, availableInquiriesForDropdown, lookupResult, editingInquiry, userManuallyDeselectedLink]);
+  }, [formData.mobileNumber, availableInquiriesForDropdown, lookupResult, editingInquiry, userManuallyDeselectedLink, formData.previousInquiryId]);
 
   // Compute prior call history cards: ONLY show calls that actually have content or are being typed
   const priorCallsList = useMemo(() => {
@@ -587,34 +595,59 @@ export default function StudentInquiries() {
 
     // History array if available
     const hist = Array.isArray(baseInq.history) ? baseInq.history : [];
+    const h1 = hist.find((h: any) => h.callNumber === 1) || hist[0];
+    const h2 = hist.find((h: any) => h.callNumber === 2) || (hist[1]?.callNumber === 2 ? hist[1] : null);
+    const h3 = hist.find((h: any) => h.callNumber === 3) || (hist[2]?.callNumber === 3 ? hist[2] : null);
+    const h4 = hist.find((h: any) => h.callNumber === 4) || (hist[3]?.callNumber === 4 ? hist[3] : null);
 
     // Slot 1
-    const r1 = (formData.actionTaken1 || '').trim() || baseInq.actionTaken1 || hist[0]?.remark || baseInq.remark || '';
+    const r1 =
+      (formData.actionTaken1 || '').trim() ||
+      baseInq.actionTaken1 ||
+      h1?.remark ||
+      (sortedInquiries.length > 0 ? (sortedInquiries[0]?.actionTaken1 || sortedInquiries[0]?.remark) : '') ||
+      (!baseInq.actionTaken2 ? baseInq.remark : '') ||
+      '';
     const d1 = baseInq.details || formData.details || 'Initial inquiry discussion';
-    const by1 = baseInq.actionTaken1By || hist[0]?.attendedBy || baseStaff;
-    const status1 = formData.actionTaken1Status || baseInq.actionTaken1Status || hist[0]?.status || baseInq.status || formData.status || 'Follow Up';
-    const date1 = baseInq.actionTaken1Date || hist[0]?.date || baseInq.createdAt;
+    const by1 = baseInq.actionTaken1By || h1?.attendedBy || baseStaff;
+    const status1 = formData.actionTaken1Status || baseInq.actionTaken1Status || h1?.status || baseInq.status || formData.status || 'Follow Up';
+    const date1 = baseInq.actionTaken1Date || h1?.date || baseInq.createdAt;
 
     // Slot 2
-    const r2 = (formData.actionTaken2 || '').trim() || baseInq.actionTaken2 || hist[1]?.remark || (sortedInquiries.length > 1 ? (sortedInquiries[1]?.actionTaken2 || sortedInquiries[1]?.actionTaken1 || sortedInquiries[1]?.remark) : '') || '';
-    const d2 = baseInq.details2 || hist[1]?.details || (r2 ? '2nd Follow-up discussion' : '');
-    const by2 = (formData.actionTaken2 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken2By || hist[1]?.attendedBy || (sortedInquiries.length > 1 ? sortedInquiries[1]?.addedByName : '') || 'Staff');
-    const status2 = (formData.actionTaken2 || '').trim() ? (formData.actionTaken2Status || formData.status || 'Follow Up') : (baseInq.actionTaken2Status || hist[1]?.status || 'Follow Up');
-    const date2 = baseInq.actionTaken2Date || hist[1]?.date || (sortedInquiries.length > 1 ? sortedInquiries[1]?.createdAt : null) || (formData.actionTaken2 ? new Date() : null);
+    const r2 =
+      (formData.actionTaken2 || '').trim() ||
+      baseInq.actionTaken2 ||
+      h2?.remark ||
+      (sortedInquiries.length > 1 ? (sortedInquiries[1]?.actionTaken2 || sortedInquiries[1]?.actionTaken1 || sortedInquiries[1]?.remark) : '') ||
+      '';
+    const d2 = baseInq.details2 || h2?.details || (r2 ? '2nd Follow-up discussion' : '');
+    const by2 = (formData.actionTaken2 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken2By || h2?.attendedBy || (sortedInquiries.length > 1 ? sortedInquiries[1]?.addedByName : '') || 'Staff');
+    const status2 = (formData.actionTaken2 || '').trim() ? (formData.actionTaken2Status || formData.status || 'Follow Up') : (baseInq.actionTaken2Status || h2?.status || 'Follow Up');
+    const date2 = baseInq.actionTaken2Date || h2?.date || (sortedInquiries.length > 1 ? sortedInquiries[1]?.createdAt : null) || (formData.actionTaken2 ? new Date() : null);
 
     // Slot 3
-    const r3 = (formData.actionTaken3 || '').trim() || baseInq.actionTaken3 || hist[2]?.remark || (sortedInquiries.length > 2 ? (sortedInquiries[2]?.actionTaken3 || sortedInquiries[2]?.actionTaken1 || sortedInquiries[2]?.remark) : '') || '';
-    const d3 = baseInq.details3 || hist[2]?.details || (r3 ? '3rd Follow-up discussion' : '');
-    const by3 = (formData.actionTaken3 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken3By || hist[2]?.attendedBy || (sortedInquiries.length > 2 ? sortedInquiries[2]?.addedByName : '') || 'Staff');
-    const status3 = (formData.actionTaken3 || '').trim() ? (formData.actionTaken3Status || formData.status || 'Follow Up') : (baseInq.actionTaken3Status || hist[2]?.status || 'Follow Up');
-    const date3 = baseInq.actionTaken3Date || hist[2]?.date || (sortedInquiries.length > 2 ? sortedInquiries[2]?.createdAt : null) || (formData.actionTaken3 ? new Date() : null);
+    const r3 =
+      (formData.actionTaken3 || '').trim() ||
+      baseInq.actionTaken3 ||
+      h3?.remark ||
+      (sortedInquiries.length > 2 ? (sortedInquiries[2]?.actionTaken3 || sortedInquiries[2]?.actionTaken1 || sortedInquiries[2]?.remark) : '') ||
+      '';
+    const d3 = baseInq.details3 || h3?.details || (r3 ? '3rd Follow-up discussion' : '');
+    const by3 = (formData.actionTaken3 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken3By || h3?.attendedBy || (sortedInquiries.length > 2 ? sortedInquiries[2]?.addedByName : '') || 'Staff');
+    const status3 = (formData.actionTaken3 || '').trim() ? (formData.actionTaken3Status || formData.status || 'Follow Up') : (baseInq.actionTaken3Status || h3?.status || 'Follow Up');
+    const date3 = baseInq.actionTaken3Date || h3?.date || (sortedInquiries.length > 2 ? sortedInquiries[2]?.createdAt : null) || (formData.actionTaken3 ? new Date() : null);
 
     // Slot 4
-    const r4 = (formData.actionTaken4 || '').trim() || baseInq.actionTaken4 || hist[3]?.remark || (sortedInquiries.length > 3 ? (sortedInquiries[3]?.actionTaken4 || sortedInquiries[3]?.actionTaken1 || sortedInquiries[3]?.remark) : '') || '';
-    const d4 = baseInq.details4 || hist[3]?.details || (r4 ? '4th Follow-up discussion' : '');
-    const by4 = (formData.actionTaken4 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken4By || hist[3]?.attendedBy || (sortedInquiries.length > 3 ? sortedInquiries[3]?.addedByName : '') || 'Staff');
-    const status4 = (formData.actionTaken4 || '').trim() ? (formData.actionTaken4Status || formData.status || 'Follow Up') : (baseInq.actionTaken4Status || hist[3]?.status || 'Follow Up');
-    const date4 = baseInq.actionTaken4Date || hist[3]?.date || (sortedInquiries.length > 3 ? sortedInquiries[3]?.createdAt : null) || (formData.actionTaken4 ? new Date() : null);
+    const r4 =
+      (formData.actionTaken4 || '').trim() ||
+      baseInq.actionTaken4 ||
+      h4?.remark ||
+      (sortedInquiries.length > 3 ? (sortedInquiries[3]?.actionTaken4 || sortedInquiries[3]?.actionTaken1 || sortedInquiries[3]?.remark) : '') ||
+      '';
+    const d4 = baseInq.details4 || h4?.details || (r4 ? '4th Follow-up discussion' : '');
+    const by4 = (formData.actionTaken4 || '').trim() ? (user?.name || 'Staff') : (baseInq.actionTaken4By || h4?.attendedBy || (sortedInquiries.length > 3 ? sortedInquiries[3]?.addedByName : '') || 'Staff');
+    const status4 = (formData.actionTaken4 || '').trim() ? (formData.actionTaken4Status || formData.status || 'Follow Up') : (baseInq.actionTaken4Status || h4?.status || 'Follow Up');
+    const date4 = baseInq.actionTaken4Date || h4?.date || (sortedInquiries.length > 3 ? sortedInquiries[3]?.createdAt : null) || (formData.actionTaken4 ? new Date() : null);
 
     const list: Array<any> = [];
 
@@ -933,27 +966,33 @@ export default function StudentInquiries() {
   const handleOpenEdit = (inquiry: StudentInquiry) => {
     setEditingInquiry(inquiry);
     const hist = inquiry.history || [];
-    const act1 = inquiry.actionTaken1 || hist[0]?.remark || inquiry.remark || '';
-    const act1Date = inquiry.actionTaken1Date || (hist[0]?.date ? new Date(hist[0].date).toISOString() : '') || (inquiry.createdAt ? new Date(inquiry.createdAt).toISOString() : '');
-    const act1By = inquiry.actionTaken1By || hist[0]?.attendedBy || (typeof inquiry.addedBy === 'object' ? inquiry.addedBy.name : inquiry.addedByName) || '';
-    const act1Status = inquiry.actionTaken1Status || hist[0]?.status || inquiry.status || '';
+    const h1 = hist.find((h: any) => h.callNumber === 1) || hist[0];
+    const h2 = hist.find((h: any) => h.callNumber === 2) || (hist[1]?.callNumber === 2 ? hist[1] : null);
+    const h3 = hist.find((h: any) => h.callNumber === 3) || (hist[2]?.callNumber === 3 ? hist[2] : null);
+    const h4 = hist.find((h: any) => h.callNumber === 4) || (hist[3]?.callNumber === 4 ? hist[3] : null);
 
-    const act2 = inquiry.actionTaken2 || hist[1]?.remark || '';
-    const act2Date = inquiry.actionTaken2Date || (hist[1]?.date ? new Date(hist[1].date).toISOString() : '') || '';
-    const act2By = inquiry.actionTaken2By || hist[1]?.attendedBy || '';
-    const act2Status = inquiry.actionTaken2Status || hist[1]?.status || '';
+    const act1 = inquiry.actionTaken1 || h1?.remark || (!inquiry.actionTaken2 ? inquiry.remark : '') || '';
+    const act1Date = inquiry.actionTaken1Date || (h1?.date ? new Date(h1.date).toISOString() : '') || (inquiry.createdAt ? new Date(inquiry.createdAt).toISOString() : '');
+    const act1By = inquiry.actionTaken1By || h1?.attendedBy || (typeof inquiry.addedBy === 'object' ? inquiry.addedBy.name : inquiry.addedByName) || '';
+    const act1Status = inquiry.actionTaken1Status || h1?.status || inquiry.status || '';
 
-    const act3 = inquiry.actionTaken3 || hist[2]?.remark || '';
-    const act3Date = inquiry.actionTaken3Date || (hist[2]?.date ? new Date(hist[2].date).toISOString() : '') || '';
-    const act3By = inquiry.actionTaken3By || hist[2]?.attendedBy || '';
-    const act3Status = inquiry.actionTaken3Status || hist[2]?.status || '';
+    const act2 = inquiry.actionTaken2 || h2?.remark || '';
+    const act2Date = inquiry.actionTaken2Date || (h2?.date ? new Date(h2.date).toISOString() : '') || '';
+    const act2By = inquiry.actionTaken2By || h2?.attendedBy || '';
+    const act2Status = inquiry.actionTaken2Status || h2?.status || '';
 
-    const act4 = inquiry.actionTaken4 || hist[3]?.remark || '';
-    const act4Date = inquiry.actionTaken4Date || (hist[3]?.date ? new Date(hist[3].date).toISOString() : '') || '';
-    const act4By = inquiry.actionTaken4By || hist[3]?.attendedBy || '';
-    const act4Status = inquiry.actionTaken4Status || hist[3]?.status || '';
+    const act3 = inquiry.actionTaken3 || h3?.remark || '';
+    const act3Date = inquiry.actionTaken3Date || (h3?.date ? new Date(h3.date).toISOString() : '') || '';
+    const act3By = inquiry.actionTaken3By || h3?.attendedBy || '';
+    const act3Status = inquiry.actionTaken3Status || h3?.status || '';
 
-    setMaxFollowUpSlotVisible(4);
+    const act4 = inquiry.actionTaken4 || h4?.remark || '';
+    const act4Date = inquiry.actionTaken4Date || (h4?.date ? new Date(h4.date).toISOString() : '') || '';
+    const act4By = inquiry.actionTaken4By || h4?.attendedBy || '';
+    const act4Status = inquiry.actionTaken4Status || h4?.status || '';
+
+    const filledCount = act4 ? 4 : (act3 ? 3 : (act2 ? 2 : (act1 ? 1 : 1)));
+    setMaxFollowUpSlotVisible(Math.min(4, filledCount + 1));
 
     setFormData({
       studentName: inquiry.studentName || '',
@@ -965,10 +1004,10 @@ export default function StudentInquiries() {
         : 'Enquiry',
       subject: inquiry.subject || '',
       details: inquiry.details || '',
-      details2: inquiry.details2 || hist[1]?.details || '',
-      details3: inquiry.details3 || hist[2]?.details || '',
-      details4: inquiry.details4 || hist[3]?.details || '',
-      remark: inquiry.remark || act1 || '',
+      details2: inquiry.details2 || h2?.details || '',
+      details3: inquiry.details3 || h3?.details || '',
+      details4: inquiry.details4 || h4?.details || '',
+      remark: inquiry.remark || act2 || act1 || '',
       actionTaken1: act1,
       actionTaken1Date: act1Date,
       actionTaken1By: act1By,
