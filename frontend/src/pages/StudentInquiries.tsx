@@ -467,8 +467,22 @@ export default function StudentInquiries() {
       by: call.by || targetCalls[index].by,
       status: call.status || targetCalls[index].status,
     }));
-    const [call1, call2, call3, call4] = calls;
+    const summaryRemark = targetInq?.remark || rootInquiry?.remark || '';
     const hasLaterCall = calls.slice(1).some((call) => call.remark);
+    if (
+      calls[0].remark &&
+      !hasLaterCall &&
+      summaryRemark.trim() &&
+      summaryRemark.trim() !== calls[0].remark.trim()
+    ) {
+      calls[1] = {
+        remark: summaryRemark,
+        date: targetInq?.updatedAt || rootInquiry?.updatedAt || '',
+        by: targetInq?.addedByName || rootInquiry?.addedByName || '',
+        status: targetInq?.status || rootInquiry?.status || '',
+      };
+    }
+    const [call1, call2, call3, call4] = calls;
     const r1 = call1.remark || (!hasLaterCall ? targetInq?.remark : '') || '';
     const r1Date = call1.date || targetInq?.createdAt || '';
     const r1By = call1.by || targetInq?.addedByName || '';

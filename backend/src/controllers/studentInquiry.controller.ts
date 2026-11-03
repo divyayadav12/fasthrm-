@@ -93,6 +93,24 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
           inq.actionTaken4Status = h4.status || 'Follow Up';
         }
       }
+
+      const hasLaterCall =
+        inq.actionTaken2 ||
+        inq.actionTaken3 ||
+        inq.actionTaken4 ||
+        (Array.isArray(inq.history) && inq.history.some((call: any) => call.callNumber > 1 && call.remark));
+      const latestRemark = (inq.remark || '').trim();
+      if (
+        inq.actionTaken1 &&
+        !hasLaterCall &&
+        latestRemark &&
+        latestRemark !== inq.actionTaken1.trim()
+      ) {
+        inq.actionTaken2 = latestRemark;
+        inq.actionTaken2Date = inq.updatedAt || inq.createdAt;
+        inq.actionTaken2By = inq.addedByName || 'Staff';
+        inq.actionTaken2Status = inq.status || 'Follow Up';
+      }
     });
 
     // Multi-inquiry consolidation: collect chronological calls across all records for this student
