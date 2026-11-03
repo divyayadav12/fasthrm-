@@ -394,12 +394,17 @@ export default function StudentInquiries() {
   const selectedPrevInquiry = useMemo(() => {
     if (!formData.previousInquiryId || formData.previousInquiryId === 'CUSTOM') return null;
     const targetId = formData.previousInquiryId.trim().toUpperCase();
-    const allInqs = [
-      ...(availableInquiriesForDropdown || []),
-      ...(lookupResult?.inquiries || []),
-      ...inquiries,
-    ];
+    const allInqs: any[] = [];
     if (lookupResult?.latestInquiry) allInqs.push(lookupResult.latestInquiry);
+    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
+      allInqs.push(...lookupResult.inquiries);
+    }
+    if (availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0) {
+      allInqs.push(...availableInquiriesForDropdown);
+    }
+    if (inquiries && inquiries.length > 0) {
+      allInqs.push(...inquiries);
+    }
     return allInqs.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
   }, [formData.previousInquiryId, availableInquiriesForDropdown, lookupResult, inquiries]);
 
@@ -425,12 +430,17 @@ export default function StudentInquiries() {
     }
 
     const targetId = inqId.trim().toUpperCase();
-    const allInqs = [
-      ...(availableInquiriesForDropdown || []),
-      ...(lookupResult?.inquiries || []),
-      ...inquiries,
-    ];
+    const allInqs: any[] = [];
     if (lookupResult?.latestInquiry) allInqs.push(lookupResult.latestInquiry);
+    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
+      allInqs.push(...lookupResult.inquiries);
+    }
+    if (availableInquiriesForDropdown && availableInquiriesForDropdown.length > 0) {
+      allInqs.push(...availableInquiriesForDropdown);
+    }
+    if (inquiries && inquiries.length > 0) {
+      allInqs.push(...inquiries);
+    }
     const targetInq = allInqs.find((i) => i.inquiryId?.toUpperCase() === targetId);
 
     const ascInquiries = lookupResult?.inquiries && lookupResult.inquiries.length > 0
@@ -504,22 +514,22 @@ export default function StudentInquiries() {
       details3: targetInq?.details3 || prev.details3,
       details4: targetInq?.details4 || prev.details4,
       remark: targetInq?.remark || prev.remark,
-      actionTaken1: r1,
-      actionTaken1Date: r1Date,
-      actionTaken1By: r1By,
-      actionTaken1Status: r1Status,
-      actionTaken2: r2,
-      actionTaken2Date: r2Date,
-      actionTaken2By: r2By,
-      actionTaken2Status: r2Status,
-      actionTaken3: r3,
-      actionTaken3Date: r3Date,
-      actionTaken3By: r3By,
-      actionTaken3Status: r3Status,
-      actionTaken4: r4,
-      actionTaken4Date: r4Date,
-      actionTaken4By: r4By,
-      actionTaken4Status: r4Status,
+      actionTaken1: r1 || prev.actionTaken1,
+      actionTaken1Date: r1Date || prev.actionTaken1Date,
+      actionTaken1By: r1By || prev.actionTaken1By,
+      actionTaken1Status: r1Status || prev.actionTaken1Status,
+      actionTaken2: r2 || prev.actionTaken2,
+      actionTaken2Date: r2Date || prev.actionTaken2Date,
+      actionTaken2By: r2By || prev.actionTaken2By,
+      actionTaken2Status: r2Status || prev.actionTaken2Status,
+      actionTaken3: r3 || prev.actionTaken3,
+      actionTaken3Date: r3Date || prev.actionTaken3Date,
+      actionTaken3By: r3By || prev.actionTaken3By,
+      actionTaken3Status: r3Status || prev.actionTaken3Status,
+      actionTaken4: r4 || prev.actionTaken4,
+      actionTaken4Date: r4Date || prev.actionTaken4Date,
+      actionTaken4By: r4By || prev.actionTaken4By,
+      actionTaken4Status: r4Status || prev.actionTaken4Status,
       forwardedBy: targetInq?.forwardedBy || prev.forwardedBy,
       forwardedTo: targetInq?.forwardedTo || prev.forwardedTo,
       alternateNumber: targetInq?.alternateNumber || prev.alternateNumber,
@@ -528,27 +538,26 @@ export default function StudentInquiries() {
     }));
   };
 
-  // Instant auto-link when phone number is typed in Add Modal
+  // Instant auto-link when phone number is typed or copy-pasted in Add Modal
   useEffect(() => {
     if (editingInquiry) return;
     const cleanPhone = formData.mobileNumber.replace(/\D/g, '').slice(-10);
     if (cleanPhone.length >= 6 && !userManuallyDeselectedLink) {
-      // Find matching inquiry immediately from available list or lookupResult
+      // Find matching inquiry: prioritize fresh lookupResult from server
       const match =
+        lookupResult?.latestInquiry ||
         availableInquiriesForDropdown.find(
           (i) => (i.mobileNumber || '').replace(/\D/g, '').slice(-10) === cleanPhone
-        ) || lookupResult?.latestInquiry;
+        );
 
       if (match && match.inquiryId) {
-        if (!formData.previousInquiryId || formData.previousInquiryId !== match.inquiryId) {
-          if (!formData.studentName.trim() && match.studentName) {
-            setFormData((prev) => ({ ...prev, studentName: match.studentName }));
-          }
-          handleSelectPreviousInquiry(match.inquiryId);
+        if (!formData.studentName.trim() && match.studentName) {
+          setFormData((prev) => ({ ...prev, studentName: match.studentName }));
         }
+        handleSelectPreviousInquiry(match.inquiryId);
       }
     }
-  }, [formData.mobileNumber, availableInquiriesForDropdown, lookupResult, editingInquiry, userManuallyDeselectedLink, formData.previousInquiryId]);
+  }, [formData.mobileNumber, availableInquiriesForDropdown, lookupResult, editingInquiry, userManuallyDeselectedLink]);
 
   // Compute prior call history cards: ONLY show calls that actually have content or are being typed
   const priorCallsList = useMemo(() => {
@@ -577,11 +586,11 @@ export default function StudentInquiries() {
       return [];
     }
 
-    // Determine the primary reference inquiry
+    // Determine the primary reference inquiry (prioritize fresh server lookupResult)
     const baseInq =
+      lookupResult?.latestInquiry ||
       selectedPrevInquiry ||
       editingInquiry ||
-      lookupResult?.latestInquiry ||
       sortedInquiries[sortedInquiries.length - 1] ||
       sortedInquiries[0] ||
       {};
