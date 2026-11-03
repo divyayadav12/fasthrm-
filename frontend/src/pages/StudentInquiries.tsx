@@ -447,35 +447,44 @@ export default function StudentInquiries() {
       ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       : (targetInq ? [targetInq] : []);
 
-    const history = Array.isArray(targetInq?.history) ? targetInq.history : [];
-    const getHistoryCall = (callNumber: number) =>
-      history.find((call: any) => call.callNumber === callNumber) ||
-      (history.some((call: any) => call.callNumber != null) ? undefined : history[callNumber - 1]);
-    const h1 = getHistoryCall(1);
-    const h2 = getHistoryCall(2);
-    const h3 = getHistoryCall(3);
-    const h4 = getHistoryCall(4);
-
-    const hasLaterCall = targetInq?.actionTaken2 || targetInq?.actionTaken3 || targetInq?.actionTaken4 || h2?.remark || h3?.remark || h4?.remark;
-    const r1 = targetInq?.actionTaken1 || h1?.remark || (!hasLaterCall ? targetInq?.remark : '') || '';
-    const r1Date = targetInq?.actionTaken1Date || h1?.date || targetInq?.createdAt || '';
-    const r1By = targetInq?.actionTaken1By || h1?.attendedBy || targetInq?.addedByName || '';
-    const r1Status = targetInq?.actionTaken1Status || h1?.status || targetInq?.status || '';
-
-    const r2 = targetInq?.actionTaken2 || h2?.remark || '';
-    const r2Date = targetInq?.actionTaken2Date || h2?.date || '';
-    const r2By = targetInq?.actionTaken2By || h2?.attendedBy || '';
-    const r2Status = targetInq?.actionTaken2Status || h2?.status || '';
-
-    const r3 = targetInq?.actionTaken3 || h3?.remark || '';
-    const r3Date = targetInq?.actionTaken3Date || h3?.date || '';
-    const r3By = targetInq?.actionTaken3By || h3?.attendedBy || '';
-    const r3Status = targetInq?.actionTaken3Status || h3?.status || '';
-
-    const r4 = targetInq?.actionTaken4 || h4?.remark || '';
-    const r4Date = targetInq?.actionTaken4Date || h4?.date || '';
-    const r4By = targetInq?.actionTaken4By || h4?.attendedBy || '';
-    const r4Status = targetInq?.actionTaken4Status || h4?.status || '';
+    const rootInquiry = ascInquiries[0] || targetInq;
+    const getInquiryCall = (inquiry: any, callNumber: number) => {
+      const history = Array.isArray(inquiry?.history) ? inquiry.history : [];
+      const historyCall = history.find((call: any) => call.callNumber === callNumber) ||
+        (history.some((call: any) => call.callNumber != null) ? undefined : history[callNumber - 1]);
+      return {
+        remark: inquiry?.[`actionTaken${callNumber}`] || historyCall?.remark || '',
+        date: inquiry?.[`actionTaken${callNumber}Date`] || historyCall?.date || '',
+        by: inquiry?.[`actionTaken${callNumber}By`] || historyCall?.attendedBy || '',
+        status: inquiry?.[`actionTaken${callNumber}Status`] || historyCall?.status || '',
+      };
+    };
+    const rootCalls = [1, 2, 3, 4].map((callNumber) => getInquiryCall(rootInquiry, callNumber));
+    const targetCalls = [1, 2, 3, 4].map((callNumber) => getInquiryCall(targetInq, callNumber));
+    const calls = rootCalls.map((call, index) => ({
+      remark: call.remark || targetCalls[index].remark,
+      date: call.date || targetCalls[index].date,
+      by: call.by || targetCalls[index].by,
+      status: call.status || targetCalls[index].status,
+    }));
+    const [call1, call2, call3, call4] = calls;
+    const hasLaterCall = calls.slice(1).some((call) => call.remark);
+    const r1 = call1.remark || (!hasLaterCall ? targetInq?.remark : '') || '';
+    const r1Date = call1.date || targetInq?.createdAt || '';
+    const r1By = call1.by || targetInq?.addedByName || '';
+    const r1Status = call1.status || targetInq?.status || '';
+    const r2 = call2.remark;
+    const r2Date = call2.date;
+    const r2By = call2.by;
+    const r2Status = call2.status;
+    const r3 = call3.remark;
+    const r3Date = call3.date;
+    const r3By = call3.by;
+    const r3Status = call3.status;
+    const r4 = call4.remark;
+    const r4Date = call4.date;
+    const r4By = call4.by;
+    const r4Status = call4.status;
 
     setMaxFollowUpSlotVisible(4);
 

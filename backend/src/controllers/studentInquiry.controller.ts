@@ -421,12 +421,13 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         // Auto-heal legacy inquiry if actionTaken1 was not set, but remark had initial note
         if (!prevDoc.actionTaken1) {
           const h1 = Array.isArray(prevDoc.history) ? prevDoc.history.find((h: any) => h.callNumber === 1) : null;
+          const hasLaterHistory = Array.isArray(prevDoc.history) && prevDoc.history.some((h: any) => h.callNumber > 1 && h.remark);
           if (h1 && h1.remark) {
             prevDoc.actionTaken1 = h1.remark;
             prevDoc.actionTaken1Date = h1.date || prevDoc.createdAt;
             prevDoc.actionTaken1By = h1.attendedBy || prevDoc.addedByName || user.name;
             prevDoc.actionTaken1Status = h1.status || prevDoc.status || 'Follow Up';
-          } else if (prevDoc.remark && !prevDoc.actionTaken2) {
+          } else if (prevDoc.remark && !prevDoc.actionTaken2 && !prevDoc.actionTaken3 && !prevDoc.actionTaken4 && !hasLaterHistory) {
             prevDoc.actionTaken1 = prevDoc.remark;
             prevDoc.actionTaken1Date = prevDoc.createdAt || new Date();
             prevDoc.actionTaken1By = prevDoc.addedByName || user.name;
@@ -434,39 +435,11 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
           }
         }
 
-        // Protect existing slots from accidental overwrites:
         const existing1 = (prevDoc.actionTaken1 || '').trim();
-        const existing2 = (prevDoc.actionTaken2 || '').trim();
-        const existing3 = (prevDoc.actionTaken3 || '').trim();
-        const existing4 = (prevDoc.actionTaken4 || '').trim();
-
-        let in1 = actionTaken1 !== undefined ? actionTaken1.trim() : '';
-        let in2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
-        let in3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
-        let in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
-
-        // If staff typed new follow-up remark into Slot 1 or as remark, but Slot 1 already exists:
-        // Automatically shift it to the next open slot! Never destroy earlier slots!
-        if (existing1 && in1 && in1 !== existing1) {
-          if (!existing2 && !in2) {
-            in2 = in1;
-            in1 = existing1;
-          } else if ((existing2 || in2) && !existing3 && !in3) {
-            in3 = in1;
-            in1 = existing1;
-            if (!in2) in2 = existing2;
-          } else if ((existing3 || in3) && !existing4 && !in4) {
-            in4 = in1;
-            in1 = existing1;
-            if (!in2) in2 = existing2;
-            if (!in3) in3 = existing3;
-          }
-        } else if (existing1 && !in1 && !in2 && remark && remark.trim() !== existing1) {
-          if (!existing2) in2 = remark.trim();
-          else if (!existing3) in3 = remark.trim();
-          else if (!existing4) in4 = remark.trim();
-          in1 = existing1;
-        }
+        const in1 = actionTaken1 !== undefined ? actionTaken1.trim() : '';
+        const in2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
+        const in3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
+        const in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
 
         prevDoc.actionTaken1 = in1 || existing1;
         if (prevDoc.actionTaken1 && !prevDoc.actionTaken1Date) {
@@ -1088,46 +1061,29 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
     // Action Taken 1 to 4 updates
     const currentUserName = req.user?.name || 'Staff';
 
-    // Auto-heal legacy inquiry if actionTaken1 was not set, but remark had initial note
-    if (!inquiry.actionTaken1 && inquiry.remark) {
-      inquiry.actionTaken1 = inquiry.remark;
-      inquiry.actionTaken1Date = inquiry.createdAt || new Date();
-      inquiry.actionTaken1By = inquiry.addedByName || currentUserName;
-      inquiry.actionTaken1Status = inquiry.status || 'Follow Up';
-    }
-
-    // Existing slots in database:
-    const existing1 = (inquiry.actionTaken1 || '').trim();
-    const existing2 = (inquiry.actionTaken2 || '').trim();
-    const existing3 = (inquiry.actionTaken3 || '').trim();
-    const existing4 = (inquiry.actionTaken4 || '').trim();
-
-    let in1 = actionTaken1 !== undefined ? actionTaken1.trim() : '';
-    let in2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
-    let in3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
-    let in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
-
-    // If staff entered remark into Slot 1 or as remark, but Slot 1 already exists, shift to next available slot!
-    if (existing1 && in1 && in1 !== existing1) {
-      if (!existing2 && !in2) {
-        in2 = in1;
-        in1 = existing1;
-      } else if ((existing2 || in2) && !existing3 && !in3) {
-        in3 = in1;
-        in1 = existing1;
-        if (!in2) in2 = existing2;
-      } else if ((existing3 || in3) && !existing4 && !in4) {
-        in4 = in1;
-        in1 = existing1;
-        if (!in2) in2 = existing2;
-        if (!in3) in3 = existing3;
+    if (!inquiry.actionTaken1) {
+      const history = Array.isArray(inquiry.history) ? inquiry.history : [];
+      const historyCall1 = history.find((call: any) => call.callNumber === 1);
+      const hasLaterHistory = history.some((call: any) => call.callNumber > 1 && call.remark);
+      if (historyCall1?.remark) {
+        inquiry.actionTaken1 = historyCall1.remark;
+        inquiry.actionTaken1Date = historyCall1.date || inquiry.createdAt || new Date();
+        inquiry.actionTaken1By = historyCall1.attendedBy || inquiry.addedByName || currentUserName;
+        inquiry.actionTaken1Status = historyCall1.status || inquiry.status || 'Follow Up';
+      } else if (inquiry.remark && !inquiry.actionTaken2 && !inquiry.actionTaken3 && !inquiry.actionTaken4 && !hasLaterHistory) {
+        inquiry.actionTaken1 = inquiry.remark;
+        inquiry.actionTaken1Date = inquiry.createdAt || new Date();
+        inquiry.actionTaken1By = inquiry.addedByName || currentUserName;
+        inquiry.actionTaken1Status = inquiry.status || 'Follow Up';
       }
-    } else if (existing1 && !in1 && !in2 && remark && remark.trim() !== existing1) {
-      if (!existing2) in2 = remark.trim();
-      else if (!existing3) in3 = remark.trim();
-      else if (!existing4) in4 = remark.trim();
-      in1 = existing1;
     }
+
+    const existing1 = (inquiry.actionTaken1 || '').trim();
+
+    const in1 = actionTaken1 !== undefined ? actionTaken1.trim() : '';
+    const in2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
+    const in3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
+    const in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
 
     inquiry.actionTaken1 = in1 || existing1;
     if (inquiry.actionTaken1 && !inquiry.actionTaken1Date) {
