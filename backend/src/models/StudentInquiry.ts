@@ -208,6 +208,7 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
   },
   {
     timestamps: true,
+    strict: false,
   }
 );
 

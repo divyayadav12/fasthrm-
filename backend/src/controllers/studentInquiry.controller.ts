@@ -364,29 +364,50 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
           }
         }
 
-        // Link to existing inquiry means updating the existing record (no duplicate DB row)
-        // 1. Assign action taken slots directly
-        if (actionTaken1 !== undefined && actionTaken1.trim()) {
-          prevDoc.actionTaken1 = actionTaken1.trim();
-          prevDoc.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : (prevDoc.actionTaken1Date || new Date());
-          prevDoc.actionTaken1By = actionTaken1By || prevDoc.actionTaken1By || user.name;
-          prevDoc.actionTaken1Status = actionTaken1Status || prevDoc.actionTaken1Status || status || 'Follow Up';
+        // Protect existing slots from accidental overwrites:
+        const existing1 = (prevDoc.actionTaken1 || '').trim();
+        const existing2 = (prevDoc.actionTaken2 || '').trim();
+        const existing3 = (prevDoc.actionTaken3 || '').trim();
+        const existing4 = (prevDoc.actionTaken4 || '').trim();
+
+        let in1 = actionTaken1 !== undefined ? actionTaken1.trim() : '';
+        let in2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
+        let in3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
+        let in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
+
+        // If staff typed new follow-up remark into Slot 1 or as remark, but Slot 1 already exists:
+        // Automatically shift it to Slot 2! Never destroy Slot 1!
+        if (existing1 && in1 && in1 !== existing1 && !in2) {
+          in2 = in1;
+          in1 = existing1;
+        } else if (existing1 && !in1 && !in2 && remark && remark.trim() !== existing1) {
+          in2 = remark.trim();
+          in1 = existing1;
+        } else if (existing1 && in1 && in1 !== existing1 && existing2 && in2 === existing2 && !in3) {
+          in3 = in1;
+          in1 = existing1;
         }
 
-        if (actionTaken2 !== undefined && actionTaken2.trim()) {
-          prevDoc.actionTaken2 = actionTaken2.trim();
+        prevDoc.actionTaken1 = in1 || existing1;
+        if (prevDoc.actionTaken1 && !prevDoc.actionTaken1Date) {
+          prevDoc.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
+        }
+        if (actionTaken1By) prevDoc.actionTaken1By = actionTaken1By;
+
+        if (in2) {
+          prevDoc.actionTaken2 = in2;
           prevDoc.actionTaken2Date = actionTaken2Date ? new Date(actionTaken2Date) : new Date();
           prevDoc.actionTaken2By = actionTaken2By || user.name;
           prevDoc.actionTaken2Status = actionTaken2Status || status || 'Follow Up';
         }
-        if (actionTaken3 !== undefined && actionTaken3.trim()) {
-          prevDoc.actionTaken3 = actionTaken3.trim();
+        if (in3) {
+          prevDoc.actionTaken3 = in3;
           prevDoc.actionTaken3Date = actionTaken3Date ? new Date(actionTaken3Date) : new Date();
           prevDoc.actionTaken3By = actionTaken3By || user.name;
           prevDoc.actionTaken3Status = actionTaken3Status || status || 'Follow Up';
         }
-        if (actionTaken4 !== undefined && actionTaken4.trim()) {
-          prevDoc.actionTaken4 = actionTaken4.trim();
+        if (in4) {
+          prevDoc.actionTaken4 = in4;
           prevDoc.actionTaken4Date = actionTaken4Date ? new Date(actionTaken4Date) : new Date();
           prevDoc.actionTaken4By = actionTaken4By || user.name;
           prevDoc.actionTaken4Status = actionTaken4Status || status || 'Follow Up';
@@ -501,11 +522,47 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
           }
         }
 
+        prevDoc.markModified('history');
         await prevDoc.save();
+
+        await StudentInquiry.updateOne(
+          { _id: prevDoc._id },
+          {
+            $set: {
+              actionTaken1: prevDoc.actionTaken1 || '',
+              actionTaken1Date: prevDoc.actionTaken1Date,
+              actionTaken1By: prevDoc.actionTaken1By || '',
+              actionTaken1Status: prevDoc.actionTaken1Status || '',
+              actionTaken2: prevDoc.actionTaken2 || '',
+              actionTaken2Date: prevDoc.actionTaken2Date,
+              actionTaken2By: prevDoc.actionTaken2By || '',
+              actionTaken2Status: prevDoc.actionTaken2Status || '',
+              actionTaken3: prevDoc.actionTaken3 || '',
+              actionTaken3Date: prevDoc.actionTaken3Date,
+              actionTaken3By: prevDoc.actionTaken3By || '',
+              actionTaken3Status: prevDoc.actionTaken3Status || '',
+              actionTaken4: prevDoc.actionTaken4 || '',
+              actionTaken4Date: prevDoc.actionTaken4Date,
+              actionTaken4By: prevDoc.actionTaken4By || '',
+              actionTaken4Status: prevDoc.actionTaken4Status || '',
+              remark: prevDoc.remark,
+              history: prevDoc.history,
+              status: prevDoc.status,
+              callType: prevDoc.callType,
+              subject: prevDoc.subject,
+              details: prevDoc.details,
+              details2: prevDoc.details2,
+              details3: prevDoc.details3,
+              details4: prevDoc.details4,
+              updatedAt: new Date(),
+            },
+          }
+        );
 
         const populated = await StudentInquiry.findById(prevDoc._id)
           .populate('addedBy', 'name email department designation')
-          .populate('previousInquiryRef', 'inquiryId studentName status subject details');
+          .populate('previousInquiryRef', 'inquiryId studentName status subject details')
+          .lean();
 
         return res.status(200).json({
           success: true,
@@ -971,40 +1028,59 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
       inquiry.actionTaken1Status = inquiry.status || 'Follow Up';
     }
 
-    if (actionTaken1 !== undefined) {
-      const trimmed1 = actionTaken1.trim();
-      if (trimmed1 || !inquiry.actionTaken1) {
-        inquiry.actionTaken1 = trimmed1;
-        if (inquiry.actionTaken1 && !inquiry.actionTaken1Date) {
-          inquiry.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
-        }
-        if (actionTaken1By) inquiry.actionTaken1By = actionTaken1By;
-        else if (!inquiry.actionTaken1By && inquiry.actionTaken1) inquiry.actionTaken1By = currentUserName;
-        if (actionTaken1Status) inquiry.actionTaken1Status = actionTaken1Status;
-        else if (!inquiry.actionTaken1Status && inquiry.actionTaken1) inquiry.actionTaken1Status = status || inquiry.status;
-      }
+    // Existing slots in database:
+    const existing1 = (inquiry.actionTaken1 || '').trim();
+    const existing2 = (inquiry.actionTaken2 || '').trim();
+    const existing3 = (inquiry.actionTaken3 || '').trim();
+    const existing4 = (inquiry.actionTaken4 || '').trim();
+
+    let in1 = actionTaken1 !== undefined ? actionTaken1.trim() : '';
+    let in2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
+    let in3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
+    let in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
+
+    // If staff entered remark into Slot 1 or as remark, but Slot 1 already exists, shift to next available slot!
+    if (existing1 && in1 && in1 !== existing1 && !in2) {
+      in2 = in1;
+      in1 = existing1;
+    } else if (existing1 && !in1 && !in2 && remark && remark.trim() !== existing1) {
+      in2 = remark.trim();
+      in1 = existing1;
+    } else if (existing1 && in1 && in1 !== existing1 && existing2 && in2 === existing2 && !in3) {
+      in3 = in1;
+      in1 = existing1;
     }
-    if (actionTaken2 !== undefined && actionTaken2.trim()) {
+
+    inquiry.actionTaken1 = in1 || existing1;
+    if (inquiry.actionTaken1 && !inquiry.actionTaken1Date) {
+      inquiry.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
+    }
+    if (actionTaken1By) inquiry.actionTaken1By = actionTaken1By;
+    else if (!inquiry.actionTaken1By && inquiry.actionTaken1) inquiry.actionTaken1By = currentUserName;
+    if (actionTaken1Status) inquiry.actionTaken1Status = actionTaken1Status;
+    else if (!inquiry.actionTaken1Status && inquiry.actionTaken1) inquiry.actionTaken1Status = status || inquiry.status;
+
+    if (in2) {
       const prevVal = inquiry.actionTaken2 || '';
-      inquiry.actionTaken2 = actionTaken2.trim();
+      inquiry.actionTaken2 = in2;
       if (inquiry.actionTaken2 && (inquiry.actionTaken2 !== prevVal || !inquiry.actionTaken2Date)) {
         inquiry.actionTaken2Date = actionTaken2Date ? new Date(actionTaken2Date) : new Date();
         inquiry.actionTaken2By = actionTaken2By || currentUserName;
         inquiry.actionTaken2Status = actionTaken2Status || status || inquiry.status;
       }
     }
-    if (actionTaken3 !== undefined && actionTaken3.trim()) {
+    if (in3) {
       const prevVal = inquiry.actionTaken3 || '';
-      inquiry.actionTaken3 = actionTaken3.trim();
+      inquiry.actionTaken3 = in3;
       if (inquiry.actionTaken3 && (inquiry.actionTaken3 !== prevVal || !inquiry.actionTaken3Date)) {
         inquiry.actionTaken3Date = actionTaken3Date ? new Date(actionTaken3Date) : new Date();
         inquiry.actionTaken3By = actionTaken3By || currentUserName;
         inquiry.actionTaken3Status = actionTaken3Status || status || inquiry.status;
       }
     }
-    if (actionTaken4 !== undefined && actionTaken4.trim()) {
+    if (in4) {
       const prevVal = inquiry.actionTaken4 || '';
-      inquiry.actionTaken4 = actionTaken4.trim();
+      inquiry.actionTaken4 = in4;
       if (inquiry.actionTaken4 && (inquiry.actionTaken4 !== prevVal || !inquiry.actionTaken4Date)) {
         inquiry.actionTaken4Date = actionTaken4Date ? new Date(actionTaken4Date) : new Date();
         inquiry.actionTaken4By = actionTaken4By || currentUserName;
@@ -1114,12 +1190,51 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
 
     // Force updatedAt touch
     inquiry.updatedAt = new Date();
+    inquiry.markModified('history');
     await inquiry.save();
+
+    await StudentInquiry.updateOne(
+      { _id: inquiry._id },
+      {
+        $set: {
+          actionTaken1: inquiry.actionTaken1 || '',
+          actionTaken1Date: inquiry.actionTaken1Date,
+          actionTaken1By: inquiry.actionTaken1By || '',
+          actionTaken1Status: inquiry.actionTaken1Status || '',
+          actionTaken2: inquiry.actionTaken2 || '',
+          actionTaken2Date: inquiry.actionTaken2Date,
+          actionTaken2By: inquiry.actionTaken2By || '',
+          actionTaken2Status: inquiry.actionTaken2Status || '',
+          actionTaken3: inquiry.actionTaken3 || '',
+          actionTaken3Date: inquiry.actionTaken3Date,
+          actionTaken3By: inquiry.actionTaken3By || '',
+          actionTaken3Status: inquiry.actionTaken3Status || '',
+          actionTaken4: inquiry.actionTaken4 || '',
+          actionTaken4Date: inquiry.actionTaken4Date,
+          actionTaken4By: inquiry.actionTaken4By || '',
+          actionTaken4Status: inquiry.actionTaken4Status || '',
+          remark: inquiry.remark,
+          history: inquiry.history,
+          status: inquiry.status,
+          callType: inquiry.callType,
+          subject: inquiry.subject,
+          details: inquiry.details,
+          details2: inquiry.details2,
+          details3: inquiry.details3,
+          details4: inquiry.details4,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    const savedDoc = await StudentInquiry.findById(inquiry._id)
+      .populate('addedBy', 'name email department designation')
+      .lean();
 
     res.json({
       success: true,
       message: 'Inquiry updated successfully',
-      inquiry,
+      inquiry: savedDoc || inquiry,
     });
   } catch (error: any) {
     console.error('Error updating student inquiry:', error);

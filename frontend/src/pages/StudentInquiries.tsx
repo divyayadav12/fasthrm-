@@ -870,13 +870,26 @@ export default function StudentInquiries() {
         // LINKED INQUIRY: UPDATE THE EXISTING INQUIRY (NO DUPLICATE ROW CREATED)
         const updatedSubData = { ...submissionData };
 
-        // Keep existing slots if empty in the submission form
-        if (!updatedSubData.actionTaken1?.trim() && targetLinkedDoc.actionTaken1) {
+        // Safety slot preservation:
+        const prev1 = (targetLinkedDoc.actionTaken1 || '').trim();
+        const prev2 = (targetLinkedDoc.actionTaken2 || '').trim();
+        const cur1 = (updatedSubData.actionTaken1 || '').trim();
+        const cur2 = (updatedSubData.actionTaken2 || '').trim();
+
+        // If user typed follow-up remark in Slot 1 and left Slot 2 empty, shift to Slot 2!
+        if (prev1 && cur1 && cur1 !== prev1 && !cur2) {
+          updatedSubData.actionTaken2 = cur1;
+          updatedSubData.actionTaken1 = prev1;
+          updatedSubData.actionTaken2Date = new Date().toISOString();
+          updatedSubData.actionTaken2By = user?.name || 'Staff';
+          updatedSubData.actionTaken2Status = updatedSubData.status || 'Follow Up';
+        } else if (!updatedSubData.actionTaken1?.trim() && targetLinkedDoc.actionTaken1) {
           updatedSubData.actionTaken1 = targetLinkedDoc.actionTaken1;
           updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date;
           updatedSubData.actionTaken1By = targetLinkedDoc.actionTaken1By;
           updatedSubData.actionTaken1Status = targetLinkedDoc.actionTaken1Status;
         }
+
         if (!updatedSubData.actionTaken2?.trim() && targetLinkedDoc.actionTaken2) {
           updatedSubData.actionTaken2 = targetLinkedDoc.actionTaken2;
           updatedSubData.actionTaken2Date = targetLinkedDoc.actionTaken2Date;
@@ -2265,6 +2278,11 @@ export default function StudentInquiries() {
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken1Status || formData.status)}`}>
                           {formData.actionTaken1Status || formData.status}
                         </span>
+                        {formData.previousInquiryId && formData.actionTaken1 && (
+                          <span className="px-2 py-0.2 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 text-[9px] font-bold">
+                            Recorded Call 1
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] text-gray-500 font-normal">
                         {formData.actionTaken1By
@@ -2279,7 +2297,11 @@ export default function StudentInquiries() {
                       value={formData.actionTaken1}
                       onChange={(e) => setFormData({ ...formData, actionTaken1: e.target.value })}
                       placeholder="Call #1 staff remark / action taken..."
-                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-indigo-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      className={`w-full px-3.5 py-2 rounded-lg text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
+                        formData.previousInquiryId && formData.actionTaken1
+                          ? 'bg-indigo-50/50 border border-indigo-200 text-gray-900 font-semibold'
+                          : 'bg-slate-50 focus:bg-white border border-gray-200 focus:border-indigo-400 text-gray-800'
+                      }`}
                     />
                   </div>
 
@@ -2288,7 +2310,7 @@ export default function StudentInquiries() {
                     <div className={`p-3 rounded-xl border transition-all animate-in fade-in duration-150 ${
                       formData.actionTaken2
                         ? 'bg-white border-amber-300 shadow-2xs'
-                        : 'bg-white/70 border-gray-200 hover:border-amber-300'
+                        : 'bg-white/70 border-gray-200 hover:border-amber-300 ring-2 ring-amber-400/30'
                     }`}>
                       <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
                         <div className="flex items-center gap-1.5">
@@ -2296,6 +2318,11 @@ export default function StudentInquiries() {
                           <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
                             {formData.actionTaken2Status || 'Follow Up'}
                           </span>
+                          {formData.previousInquiryId && Boolean(formData.actionTaken1) && !formData.actionTaken2 && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold animate-pulse">
+                              ✍️ Type Next Follow-Up Here
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] text-gray-500 font-normal">
                           {formData.actionTaken2By

@@ -70,4 +70,12 @@ router.get('/reset-neha-password', async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
+router.get('/ping-commit', (req, res) => {
+  res.json({
+    status: 'live',
+    version: 'v-slot-fix-101',
+    serverTime: new Date().toISOString()
+  });
+});
+
 export default router;
