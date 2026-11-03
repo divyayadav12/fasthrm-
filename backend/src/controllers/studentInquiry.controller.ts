@@ -49,150 +49,220 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Auto-heal legacy inquiries where a subsequent update overwrote the 1st remark or actionTaken1 wasn't set
+    // Consolidate remarks across inquiries for this phone number
     pastInquiries.forEach((inq: any) => {
-      // 1. Specific data fix for INQ-1356 (phone: 9300261752)
-      if (inq.inquiryId === 'INQ-1356') {
-        inq.actionTaken1 = 'nfehfhewfhbwrhbfhwrbh';
-        inq.actionTaken1By = 'Divya yadav';
-        inq.actionTaken1Status = inq.actionTaken1Status || 'Pending';
-        inq.actionTaken1Date = inq.createdAt || new Date('2026-11-02T13:30:00Z');
-        inq.details = inq.details || 'ds';
-        inq.details2 = inq.details2 || '2nd Follow-up discussion';
-        inq.actionTaken2 = inq.actionTaken2 || 'fwrgfwrgwrgwr';
-        inq.actionTaken2By = inq.actionTaken2By || 'Divya yadav';
-        inq.actionTaken2Status = inq.actionTaken2Status || 'Follow Up';
-        inq.actionTaken2Date = inq.updatedAt || new Date('2026-11-02T13:36:00Z');
-        inq.remark = inq.actionTaken2 || 'fwrgfwrgwrgwr';
-        inq.history = [
-          {
-            callNumber: 1,
-            subject: inq.subject || 'cdsvs',
-            details: inq.details || 'ds',
-            remark: 'nfehfhewfhbwrhbfhwrbh',
-            status: 'Pending',
-            callType: inq.callType || 'Tech Issue',
-            attendedBy: 'Divya yadav',
-            date: inq.createdAt || new Date('2026-11-02T13:30:00Z'),
-          },
-          {
-            callNumber: 2,
-            subject: inq.subject || 'cdsvs',
-            details: inq.details2 || '2nd Follow-up discussion',
-            remark: 'fwrgfwrgwrgwr',
-            status: 'Follow Up',
-            callType: 'Follow Up',
-            attendedBy: 'Divya yadav',
-            date: inq.updatedAt || new Date('2026-11-02T13:36:00Z'),
-          },
-        ];
-        StudentInquiry.updateOne(
-          { _id: inq._id },
-          {
-            actionTaken1: 'nfehfhewfhbwrhbfhwrbh',
-            actionTaken1By: 'Divya yadav',
-            actionTaken1Status: 'Pending',
-            actionTaken1Date: inq.createdAt || new Date('2026-11-02T13:30:00Z'),
-            details: inq.details || 'ds',
-            details2: inq.details2 || '2nd Follow-up discussion',
-            actionTaken2: 'fwrgfwrgwrgwr',
-            actionTaken2By: 'Divya yadav',
-            actionTaken2Status: 'Follow Up',
-            actionTaken2Date: inq.updatedAt || new Date('2026-11-02T13:36:00Z'),
-            remark: 'fwrgfwrgwrgwr',
-            history: inq.history,
-          }
-        ).exec().catch(() => {});
-      } else if (inq.inquiryId === 'INQ-1305') {
-        inq.actionTaken1 = 'fsd';
-        inq.actionTaken1By = 'Rupali Savley';
-        inq.actionTaken1Status = inq.actionTaken1Status || 'Follow Up';
-        inq.details = 'want details';
-        inq.details2 = inq.details2 || 'Follow-up discussion';
-        inq.actionTaken2 = inq.actionTaken2 || 'hdvdc';
-        inq.actionTaken2By = inq.actionTaken2By || 'admin';
-        inq.actionTaken2Status = inq.actionTaken2Status || 'Follow Up';
-        inq.history = [
-          {
-            callNumber: 1,
-            subject: inq.subject || 'CA Inter Cost, FM & SM Exam-Oriented Batch',
-            details: 'want details',
-            remark: 'fsd',
-            status: 'Follow Up',
-            callType: 'Enquiry',
-            attendedBy: 'Rupali Savley',
-            date: inq.createdAt || new Date('2026-11-02T06:00:00Z'),
-          },
-          {
-            callNumber: 2,
-            subject: inq.subject || 'CA Inter Cost, FM & SM Exam-Oriented Batch',
-            details: inq.details2 || 'Follow-up discussion',
-            remark: inq.actionTaken2 || 'hdvdc',
-            status: 'Follow Up',
-            callType: 'Follow Up',
-            attendedBy: inq.actionTaken2By || 'admin',
-            date: inq.updatedAt || new Date('2026-11-02T07:12:00Z'),
-          },
-        ];
-        StudentInquiry.updateOne(
-          { _id: inq._id },
-          {
-            actionTaken1: 'fsd',
-            actionTaken1By: 'Rupali Savley',
-            actionTaken1Status: 'Follow Up',
-            details: 'want details',
-            details2: inq.details2 || 'Follow-up discussion',
-            actionTaken2: inq.actionTaken2 || 'hdvdc',
-            actionTaken2By: inq.actionTaken2By || 'admin',
-            actionTaken2Status: 'Follow Up',
-            history: inq.history,
-          }
-        ).exec().catch(() => {});
-      } else {
-        // General slot recovery from history
-        if (!inq.actionTaken1) {
-          const h1 = Array.isArray(inq.history) ? inq.history.find((h: any) => h.callNumber === 1) : null;
-          if (h1 && h1.remark) {
-            inq.actionTaken1 = h1.remark;
-            inq.actionTaken1Date = h1.date || inq.createdAt;
-            inq.actionTaken1By = h1.attendedBy || inq.addedByName || 'Staff';
-            inq.actionTaken1Status = h1.status || inq.status || 'Follow Up';
-          } else if (inq.remark && !inq.actionTaken2) {
-            inq.actionTaken1 = inq.remark;
-            inq.actionTaken1Date = inq.createdAt || new Date();
-            inq.actionTaken1By = inq.addedByName || 'Staff';
-            inq.actionTaken1Status = inq.status || 'Follow Up';
-          }
+      // General slot recovery from history if not explicitly populated
+      if (!inq.actionTaken1) {
+        const h1 = Array.isArray(inq.history) ? inq.history.find((h: any) => h.callNumber === 1) : null;
+        if (h1 && h1.remark) {
+          inq.actionTaken1 = h1.remark;
+          inq.actionTaken1Date = h1.date || inq.createdAt;
+          inq.actionTaken1By = h1.attendedBy || inq.addedByName || 'Staff';
+          inq.actionTaken1Status = h1.status || inq.status || 'Follow Up';
+        } else if (inq.remark && !inq.actionTaken2) {
+          inq.actionTaken1 = inq.remark;
+          inq.actionTaken1Date = inq.createdAt || new Date();
+          inq.actionTaken1By = inq.addedByName || 'Staff';
+          inq.actionTaken1Status = inq.status || 'Follow Up';
         }
-        if (!inq.actionTaken2 && Array.isArray(inq.history)) {
-          const h2 = inq.history.find((h: any) => h.callNumber === 2);
-          if (h2 && h2.remark) {
-            inq.actionTaken2 = h2.remark;
-            inq.actionTaken2Date = h2.date;
-            inq.actionTaken2By = h2.attendedBy || 'Staff';
-            inq.actionTaken2Status = h2.status || 'Follow Up';
-          }
+      }
+      if (!inq.actionTaken2 && Array.isArray(inq.history)) {
+        const h2 = inq.history.find((h: any) => h.callNumber === 2);
+        if (h2 && h2.remark) {
+          inq.actionTaken2 = h2.remark;
+          inq.actionTaken2Date = h2.date;
+          inq.actionTaken2By = h2.attendedBy || 'Staff';
+          inq.actionTaken2Status = h2.status || 'Follow Up';
         }
-        if (!inq.actionTaken3 && Array.isArray(inq.history)) {
-          const h3 = inq.history.find((h: any) => h.callNumber === 3);
-          if (h3 && h3.remark) {
-            inq.actionTaken3 = h3.remark;
-            inq.actionTaken3Date = h3.date;
-            inq.actionTaken3By = h3.attendedBy || 'Staff';
-            inq.actionTaken3Status = h3.status || 'Follow Up';
-          }
+      }
+      if (!inq.actionTaken3 && Array.isArray(inq.history)) {
+        const h3 = inq.history.find((h: any) => h.callNumber === 3);
+        if (h3 && h3.remark) {
+          inq.actionTaken3 = h3.remark;
+          inq.actionTaken3Date = h3.date;
+          inq.actionTaken3By = h3.attendedBy || 'Staff';
+          inq.actionTaken3Status = h3.status || 'Follow Up';
         }
-        if (!inq.actionTaken4 && Array.isArray(inq.history)) {
-          const h4 = inq.history.find((h: any) => h.callNumber === 4);
-          if (h4 && h4.remark) {
-            inq.actionTaken4 = h4.remark;
-            inq.actionTaken4Date = h4.date;
-            inq.actionTaken4By = h4.attendedBy || 'Staff';
-            inq.actionTaken4Status = h4.status || 'Follow Up';
-          }
+      }
+      if (!inq.actionTaken4 && Array.isArray(inq.history)) {
+        const h4 = inq.history.find((h: any) => h.callNumber === 4);
+        if (h4 && h4.remark) {
+          inq.actionTaken4 = h4.remark;
+          inq.actionTaken4Date = h4.date;
+          inq.actionTaken4By = h4.attendedBy || 'Staff';
+          inq.actionTaken4Status = h4.status || 'Follow Up';
         }
       }
     });
+
+    // Multi-inquiry consolidation: collect chronological calls across all records for this student
+    if (pastInquiries.length > 0) {
+      const chronInqs = [...pastInquiries].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      const rootInq = chronInqs[0];
+
+      // Collect all call entries
+      const allCalls: Array<{
+        remark: string;
+        date?: Date;
+        attendedBy?: string;
+        status?: string;
+        details?: string;
+      }> = [];
+
+      chronInqs.forEach((item: any) => {
+        const hList = Array.isArray(item.history) ? item.history : [];
+        if (item.actionTaken1) {
+          allCalls.push({
+            remark: item.actionTaken1,
+            date: item.actionTaken1Date || item.createdAt,
+            attendedBy: item.actionTaken1By || item.addedByName,
+            status: item.actionTaken1Status || item.status,
+            details: item.details,
+          });
+        } else if (hList[0]?.remark) {
+          allCalls.push({
+            remark: hList[0].remark,
+            date: hList[0].date,
+            attendedBy: hList[0].attendedBy,
+            status: hList[0].status,
+            details: hList[0].details,
+          });
+        } else if (item.remark) {
+          allCalls.push({
+            remark: item.remark,
+            date: item.createdAt,
+            attendedBy: item.addedByName,
+            status: item.status,
+            details: item.details,
+          });
+        }
+
+        if (item.actionTaken2) {
+          allCalls.push({
+            remark: item.actionTaken2,
+            date: item.actionTaken2Date || item.updatedAt,
+            attendedBy: item.actionTaken2By,
+            status: item.actionTaken2Status,
+            details: item.details2,
+          });
+        } else if (hList[1]?.remark) {
+          allCalls.push({
+            remark: hList[1].remark,
+            date: hList[1].date,
+            attendedBy: hList[1].attendedBy,
+            status: hList[1].status,
+            details: hList[1].details,
+          });
+        }
+
+        if (item.actionTaken3) {
+          allCalls.push({
+            remark: item.actionTaken3,
+            date: item.actionTaken3Date,
+            attendedBy: item.actionTaken3By,
+            status: item.actionTaken3Status,
+            details: item.details3,
+          });
+        } else if (hList[2]?.remark) {
+          allCalls.push({
+            remark: hList[2].remark,
+            date: hList[2].date,
+            attendedBy: hList[2].attendedBy,
+            status: hList[2].status,
+            details: hList[2].details,
+          });
+        }
+
+        if (item.actionTaken4) {
+          allCalls.push({
+            remark: item.actionTaken4,
+            date: item.actionTaken4Date,
+            attendedBy: item.actionTaken4By,
+            status: item.actionTaken4Status,
+            details: item.details4,
+          });
+        } else if (hList[3]?.remark) {
+          allCalls.push({
+            remark: hList[3].remark,
+            date: hList[3].date,
+            attendedBy: hList[3].attendedBy,
+            status: hList[3].status,
+            details: hList[3].details,
+          });
+        }
+      });
+
+      // Filter unique non-empty remarks in chronological order
+      const uniqueCalls: typeof allCalls = [];
+      allCalls.forEach((c) => {
+        const text = (c.remark || '').trim();
+        if (text && !uniqueCalls.some((u) => (u.remark || '').trim().toLowerCase() === text.toLowerCase())) {
+          uniqueCalls.push(c);
+        }
+      });
+
+      // Assign to root inquiry slots
+      if (uniqueCalls.length > 0) {
+        if (uniqueCalls[0]) {
+          rootInq.actionTaken1 = uniqueCalls[0].remark;
+          rootInq.actionTaken1Date = uniqueCalls[0].date;
+          rootInq.actionTaken1By = uniqueCalls[0].attendedBy;
+          rootInq.actionTaken1Status = uniqueCalls[0].status;
+        }
+        if (uniqueCalls[1]) {
+          rootInq.actionTaken2 = uniqueCalls[1].remark;
+          rootInq.actionTaken2Date = uniqueCalls[1].date;
+          rootInq.actionTaken2By = uniqueCalls[1].attendedBy;
+          rootInq.actionTaken2Status = uniqueCalls[1].status;
+        }
+        if (uniqueCalls[2]) {
+          rootInq.actionTaken3 = uniqueCalls[2].remark;
+          rootInq.actionTaken3Date = uniqueCalls[2].date;
+          rootInq.actionTaken3By = uniqueCalls[2].attendedBy;
+          rootInq.actionTaken3Status = uniqueCalls[2].status;
+        }
+        if (uniqueCalls[3]) {
+          rootInq.actionTaken4 = uniqueCalls[3].remark;
+          rootInq.actionTaken4Date = uniqueCalls[3].date;
+          rootInq.actionTaken4By = uniqueCalls[3].attendedBy;
+          rootInq.actionTaken4Status = uniqueCalls[3].status;
+        }
+        rootInq.remark =
+          rootInq.actionTaken4 ||
+          rootInq.actionTaken3 ||
+          rootInq.actionTaken2 ||
+          rootInq.actionTaken1 ||
+          rootInq.remark;
+
+        // Persist consolidated slots into root inquiry
+        StudentInquiry.updateOne(
+          { _id: rootInq._id },
+          {
+            $set: {
+              actionTaken1: rootInq.actionTaken1 || '',
+              actionTaken1Date: rootInq.actionTaken1Date,
+              actionTaken1By: rootInq.actionTaken1By || '',
+              actionTaken1Status: rootInq.actionTaken1Status || '',
+              actionTaken2: rootInq.actionTaken2 || '',
+              actionTaken2Date: rootInq.actionTaken2Date,
+              actionTaken2By: rootInq.actionTaken2By || '',
+              actionTaken2Status: rootInq.actionTaken2Status || '',
+              actionTaken3: rootInq.actionTaken3 || '',
+              actionTaken3Date: rootInq.actionTaken3Date,
+              actionTaken3By: rootInq.actionTaken3By || '',
+              actionTaken3Status: rootInq.actionTaken3Status || '',
+              actionTaken4: rootInq.actionTaken4 || '',
+              actionTaken4Date: rootInq.actionTaken4Date,
+              actionTaken4By: rootInq.actionTaken4By || '',
+              actionTaken4Status: rootInq.actionTaken4Status || '',
+              remark: rootInq.remark,
+            },
+          }
+        ).exec().catch(() => {});
+      }
+    }
 
     if (pastInquiries.length === 0) {
       return res.json({
@@ -376,15 +446,25 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         let in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
 
         // If staff typed new follow-up remark into Slot 1 or as remark, but Slot 1 already exists:
-        // Automatically shift it to Slot 2! Never destroy Slot 1!
-        if (existing1 && in1 && in1 !== existing1 && !in2) {
-          in2 = in1;
-          in1 = existing1;
+        // Automatically shift it to the next open slot! Never destroy earlier slots!
+        if (existing1 && in1 && in1 !== existing1) {
+          if (!existing2 && !in2) {
+            in2 = in1;
+            in1 = existing1;
+          } else if ((existing2 || in2) && !existing3 && !in3) {
+            in3 = in1;
+            in1 = existing1;
+            if (!in2) in2 = existing2;
+          } else if ((existing3 || in3) && !existing4 && !in4) {
+            in4 = in1;
+            in1 = existing1;
+            if (!in2) in2 = existing2;
+            if (!in3) in3 = existing3;
+          }
         } else if (existing1 && !in1 && !in2 && remark && remark.trim() !== existing1) {
-          in2 = remark.trim();
-          in1 = existing1;
-        } else if (existing1 && in1 && in1 !== existing1 && existing2 && in2 === existing2 && !in3) {
-          in3 = in1;
+          if (!existing2) in2 = remark.trim();
+          else if (!existing3) in3 = remark.trim();
+          else if (!existing4) in4 = remark.trim();
           in1 = existing1;
         }
 
@@ -783,19 +863,7 @@ export const getStudentInquiries = async (req: AuthRequest, res: Response) => {
     ]);
 
     inquiries.forEach((inq: any) => {
-      if (inq.inquiryId === 'INQ-1356') {
-        inq.actionTaken1 = 'nfehfhewfhbwrhbfhwrbh';
-        inq.actionTaken1By = 'Divya yadav';
-        inq.actionTaken1Status = inq.actionTaken1Status || 'Pending';
-        inq.actionTaken1Date = inq.createdAt || new Date('2026-11-02T13:30:00Z');
-        inq.details = inq.details || 'ds';
-        inq.details2 = inq.details2 || '2nd Follow-up discussion';
-        inq.actionTaken2 = inq.actionTaken2 || 'fwrgfwrgwrgwr';
-        inq.actionTaken2By = inq.actionTaken2By || 'Divya yadav';
-        inq.actionTaken2Status = inq.actionTaken2Status || 'Follow Up';
-        inq.actionTaken2Date = inq.updatedAt || new Date('2026-11-02T13:36:00Z');
-        inq.remark = inq.actionTaken2 || 'fwrgfwrgwrgwr';
-      } else if (!inq.actionTaken1) {
+      if (!inq.actionTaken1) {
         const h1 = Array.isArray(inq.history) ? inq.history.find((h: any) => h.callNumber === 1) : null;
         if (h1 && h1.remark) {
           inq.actionTaken1 = h1.remark;
@@ -1040,14 +1108,24 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
     let in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
 
     // If staff entered remark into Slot 1 or as remark, but Slot 1 already exists, shift to next available slot!
-    if (existing1 && in1 && in1 !== existing1 && !in2) {
-      in2 = in1;
-      in1 = existing1;
+    if (existing1 && in1 && in1 !== existing1) {
+      if (!existing2 && !in2) {
+        in2 = in1;
+        in1 = existing1;
+      } else if ((existing2 || in2) && !existing3 && !in3) {
+        in3 = in1;
+        in1 = existing1;
+        if (!in2) in2 = existing2;
+      } else if ((existing3 || in3) && !existing4 && !in4) {
+        in4 = in1;
+        in1 = existing1;
+        if (!in2) in2 = existing2;
+        if (!in3) in3 = existing3;
+      }
     } else if (existing1 && !in1 && !in2 && remark && remark.trim() !== existing1) {
-      in2 = remark.trim();
-      in1 = existing1;
-    } else if (existing1 && in1 && in1 !== existing1 && existing2 && in2 === existing2 && !in3) {
-      in3 = in1;
+      if (!existing2) in2 = remark.trim();
+      else if (!existing3) in3 = remark.trim();
+      else if (!existing4) in4 = remark.trim();
       in1 = existing1;
     }
 

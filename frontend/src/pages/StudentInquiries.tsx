@@ -447,56 +447,63 @@ export default function StudentInquiries() {
       ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       : (targetInq ? [targetInq] : []);
 
-    const hist = Array.isArray(targetInq?.history) ? targetInq.history : [];
-    const h1 = hist.find((h: any) => h.callNumber === 1);
-    const h2 = hist.find((h: any) => h.callNumber === 2);
-    const h3 = hist.find((h: any) => h.callNumber === 3);
-    const h4 = hist.find((h: any) => h.callNumber === 4);
+    // Gather all calls across the student's inquiry chain in chronological order
+    const rawCalls: Array<{ remark: string; date?: string; by?: string; status?: string }> = [];
 
-    // Slot 1: ALWAYS the initial inquiry call
-    let r1 =
-      targetInq?.actionTaken1 ||
-      h1?.remark ||
-      (ascInquiries.length > 0 ? (ascInquiries[0]?.actionTaken1 || ascInquiries[0]?.remark) : '') ||
-      (!targetInq?.actionTaken2 ? targetInq?.remark : '') ||
-      '';
-    let r1Date = targetInq?.actionTaken1Date || (h1?.date ? new Date(h1.date).toISOString() : '') || (targetInq?.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
-    let r1By = targetInq?.actionTaken1By || h1?.attendedBy || targetInq?.addedByName || '';
-    let r1Status = targetInq?.actionTaken1Status || h1?.status || targetInq?.status || '';
+    ascInquiries.forEach((item: any) => {
+      const hList = Array.isArray(item.history) ? item.history : [];
+      if (item.actionTaken1) rawCalls.push({ remark: item.actionTaken1, date: item.actionTaken1Date || item.createdAt, by: item.actionTaken1By || item.addedByName, status: item.actionTaken1Status || item.status });
+      else if (hList[0]?.remark) rawCalls.push({ remark: hList[0].remark, date: hList[0].date, by: hList[0].attendedBy, status: hList[0].status });
+      else if (item.remark) rawCalls.push({ remark: item.remark, date: item.createdAt, by: item.addedByName, status: item.status });
 
-    // Slot 2: 2nd follow up
-    let r2 =
-      targetInq?.actionTaken2 ||
-      h2?.remark ||
-      (ascInquiries.length > 1 ? (ascInquiries[1]?.actionTaken2 || ascInquiries[1]?.actionTaken1 || ascInquiries[1]?.remark) : '') ||
-      '';
-    let r2Date = targetInq?.actionTaken2Date || (h2?.date ? new Date(h2.date).toISOString() : '') || '';
-    let r2By = targetInq?.actionTaken2By || h2?.attendedBy || '';
-    let r2Status = targetInq?.actionTaken2Status || h2?.status || '';
+      if (item.actionTaken2) rawCalls.push({ remark: item.actionTaken2, date: item.actionTaken2Date || item.updatedAt, by: item.actionTaken2By, status: item.actionTaken2Status });
+      else if (hList[1]?.remark) rawCalls.push({ remark: hList[1].remark, date: hList[1].date, by: hList[1].attendedBy, status: hList[1].status });
 
-    // Slot 3: 3rd follow up
-    let r3 =
-      targetInq?.actionTaken3 ||
-      h3?.remark ||
-      (ascInquiries.length > 2 ? (ascInquiries[2]?.actionTaken3 || ascInquiries[2]?.actionTaken1 || ascInquiries[2]?.remark) : '') ||
-      '';
-    let r3Date = targetInq?.actionTaken3Date || (h3?.date ? new Date(h3.date).toISOString() : '') || '';
-    let r3By = targetInq?.actionTaken3By || h3?.attendedBy || '';
-    let r3Status = targetInq?.actionTaken3Status || h3?.status || '';
+      if (item.actionTaken3) rawCalls.push({ remark: item.actionTaken3, date: item.actionTaken3Date, by: item.actionTaken3By, status: item.actionTaken3Status });
+      else if (hList[2]?.remark) rawCalls.push({ remark: hList[2].remark, date: hList[2].date, by: hList[2].attendedBy, status: hList[2].status });
 
-    // Slot 4: 4th follow up
-    let r4 =
-      targetInq?.actionTaken4 ||
-      h4?.remark ||
-      (ascInquiries.length > 3 ? (ascInquiries[3]?.actionTaken4 || ascInquiries[3]?.actionTaken1 || ascInquiries[3]?.remark) : '') ||
-      '';
-    let r4Date = targetInq?.actionTaken4Date || (h4?.date ? new Date(h4.date).toISOString() : '') || '';
-    let r4By = targetInq?.actionTaken4By || h4?.attendedBy || '';
-    let r4Status = targetInq?.actionTaken4Status || h4?.status || '';
+      if (item.actionTaken4) rawCalls.push({ remark: item.actionTaken4, date: item.actionTaken4Date, by: item.actionTaken4By, status: item.actionTaken4Status });
+      else if (hList[3]?.remark) rawCalls.push({ remark: hList[3].remark, date: hList[3].date, by: hList[3].attendedBy, status: hList[3].status });
+    });
 
-    // Show filled slots + 1 next available slot so staff can immediately enter their follow-up note
-    const filledCount = r4 ? 4 : (r3 ? 3 : (r2 ? 2 : (r1 ? 1 : 1)));
-    setMaxFollowUpSlotVisible(Math.min(4, filledCount + 1));
+    if (targetInq) {
+      const hList = Array.isArray(targetInq.history) ? targetInq.history : [];
+      if (targetInq.actionTaken1) rawCalls.push({ remark: targetInq.actionTaken1, date: targetInq.actionTaken1Date || targetInq.createdAt, by: targetInq.actionTaken1By || targetInq.addedByName, status: targetInq.actionTaken1Status || targetInq.status });
+      if (targetInq.actionTaken2) rawCalls.push({ remark: targetInq.actionTaken2, date: targetInq.actionTaken2Date || targetInq.updatedAt, by: targetInq.actionTaken2By, status: targetInq.actionTaken2Status });
+      if (targetInq.actionTaken3) rawCalls.push({ remark: targetInq.actionTaken3, date: targetInq.actionTaken3Date, by: targetInq.actionTaken3By, status: targetInq.actionTaken3Status });
+      if (targetInq.actionTaken4) rawCalls.push({ remark: targetInq.actionTaken4, date: targetInq.actionTaken4Date, by: targetInq.actionTaken4By, status: targetInq.actionTaken4Status });
+    }
+
+    // Filter unique non-empty remarks in order
+    const uniqueCalls: typeof rawCalls = [];
+    rawCalls.forEach((c) => {
+      const text = (c.remark || '').trim();
+      if (text && !uniqueCalls.some((u) => (u.remark || '').trim().toLowerCase() === text.toLowerCase())) {
+        uniqueCalls.push(c);
+      }
+    });
+
+    const r1 = uniqueCalls[0]?.remark || targetInq?.actionTaken1 || '';
+    const r1Date = uniqueCalls[0]?.date || targetInq?.actionTaken1Date || (targetInq?.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
+    const r1By = uniqueCalls[0]?.by || targetInq?.actionTaken1By || targetInq?.addedByName || '';
+    const r1Status = uniqueCalls[0]?.status || targetInq?.actionTaken1Status || targetInq?.status || '';
+
+    const r2 = uniqueCalls[1]?.remark || targetInq?.actionTaken2 || '';
+    const r2Date = uniqueCalls[1]?.date || targetInq?.actionTaken2Date || '';
+    const r2By = uniqueCalls[1]?.by || targetInq?.actionTaken2By || '';
+    const r2Status = uniqueCalls[1]?.status || targetInq?.actionTaken2Status || '';
+
+    const r3 = uniqueCalls[2]?.remark || targetInq?.actionTaken3 || '';
+    const r3Date = uniqueCalls[2]?.date || targetInq?.actionTaken3Date || '';
+    const r3By = uniqueCalls[2]?.by || targetInq?.actionTaken3By || '';
+    const r3Status = uniqueCalls[2]?.status || targetInq?.actionTaken3Status || '';
+
+    const r4 = uniqueCalls[3]?.remark || targetInq?.actionTaken4 || '';
+    const r4Date = uniqueCalls[3]?.date || targetInq?.actionTaken4Date || '';
+    const r4By = uniqueCalls[3]?.by || targetInq?.actionTaken4By || '';
+    const r4Status = uniqueCalls[3]?.status || targetInq?.actionTaken4Status || '';
+
+    setMaxFollowUpSlotVisible(4);
 
     setFormData((prev) => ({
       ...prev,
@@ -572,6 +579,11 @@ export default function StudentInquiries() {
     }
     if (editingInquiry?.inquiryId) {
       inqMap.set(editingInquiry.inquiryId.toUpperCase(), editingInquiry);
+    }
+    if (lookupResult?.inquiries && lookupResult.inquiries.length > 0) {
+      lookupResult.inquiries.forEach((item) => {
+        if (item?.inquiryId) inqMap.set(item.inquiryId.toUpperCase(), item);
+      });
     }
     if (lookupResult?.latestInquiry?.inquiryId) {
       inqMap.set(lookupResult.latestInquiry.inquiryId.toUpperCase(), lookupResult.latestInquiry);
@@ -882,16 +894,36 @@ export default function StudentInquiries() {
         // Safety slot preservation:
         const prev1 = (targetLinkedDoc.actionTaken1 || '').trim();
         const prev2 = (targetLinkedDoc.actionTaken2 || '').trim();
+        const prev3 = (targetLinkedDoc.actionTaken3 || '').trim();
         const cur1 = (updatedSubData.actionTaken1 || '').trim();
         const cur2 = (updatedSubData.actionTaken2 || '').trim();
+        const cur3 = (updatedSubData.actionTaken3 || '').trim();
+        const cur4 = (updatedSubData.actionTaken4 || '').trim();
 
-        // If user typed follow-up remark in Slot 1 and left Slot 2 empty, shift to Slot 2!
-        if (prev1 && cur1 && cur1 !== prev1 && !cur2) {
-          updatedSubData.actionTaken2 = cur1;
-          updatedSubData.actionTaken1 = prev1;
-          updatedSubData.actionTaken2Date = new Date().toISOString();
-          updatedSubData.actionTaken2By = user?.name || 'Staff';
-          updatedSubData.actionTaken2Status = updatedSubData.status || 'Follow Up';
+        // If user typed follow-up remark in Slot 1, automatically shift to the next unfilled slot!
+        if (prev1 && cur1 && cur1 !== prev1) {
+          if (!prev2 && !cur2) {
+            updatedSubData.actionTaken2 = cur1;
+            updatedSubData.actionTaken1 = prev1;
+            updatedSubData.actionTaken2Date = new Date().toISOString();
+            updatedSubData.actionTaken2By = user?.name || 'Staff';
+            updatedSubData.actionTaken2Status = updatedSubData.status || 'Follow Up';
+          } else if ((prev2 || cur2) && !prev3 && !cur3) {
+            updatedSubData.actionTaken3 = cur1;
+            updatedSubData.actionTaken1 = prev1;
+            if (!cur2) updatedSubData.actionTaken2 = prev2;
+            updatedSubData.actionTaken3Date = new Date().toISOString();
+            updatedSubData.actionTaken3By = user?.name || 'Staff';
+            updatedSubData.actionTaken3Status = updatedSubData.status || 'Follow Up';
+          } else if ((prev3 || cur3) && !cur4) {
+            updatedSubData.actionTaken4 = cur1;
+            updatedSubData.actionTaken1 = prev1;
+            if (!cur2) updatedSubData.actionTaken2 = prev2;
+            if (!cur3) updatedSubData.actionTaken3 = prev3;
+            updatedSubData.actionTaken4Date = new Date().toISOString();
+            updatedSubData.actionTaken4By = user?.name || 'Staff';
+            updatedSubData.actionTaken4Status = updatedSubData.status || 'Follow Up';
+          }
         } else if (!updatedSubData.actionTaken1?.trim() && targetLinkedDoc.actionTaken1) {
           updatedSubData.actionTaken1 = targetLinkedDoc.actionTaken1;
           updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date;
@@ -2269,13 +2301,13 @@ export default function StudentInquiries() {
                     </p>
                   </div>
                   <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/90 px-2.5 py-0.5 rounded-full border border-indigo-200 shrink-0">
-                    {Math.max(1, maxFollowUpSlotVisible)} Active Slot{maxFollowUpSlotVisible > 1 ? 's' : ''}
+                    4 Follow-Up Slots (Action 1 se 4)
                   </span>
                 </div>
 
-                {/* Dynamic Action Taken / Follow-Up Cells (Only show active & filled slots) */}
+                {/* All 4 Action Taken / Follow-Up Slots ALWAYS Visible */}
                 <div className="space-y-3 pt-1">
-                  {/* CELL 1: Action Taken 1 (Always visible) */}
+                  {/* CELL 1: Action Taken 1 */}
                   <div className={`p-3 rounded-xl border transition-all ${
                     formData.actionTaken1
                       ? 'bg-white border-indigo-200 shadow-2xs'
@@ -2287,9 +2319,14 @@ export default function StudentInquiries() {
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken1Status || formData.status)}`}>
                           {formData.actionTaken1Status || formData.status}
                         </span>
-                        {formData.previousInquiryId && formData.actionTaken1 && (
+                        {formData.previousInquiryId && Boolean(formData.actionTaken1) && (
                           <span className="px-2 py-0.2 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 text-[9px] font-bold">
-                            Recorded Call 1
+                            ✓ Recorded Call 1
+                          </span>
+                        )}
+                        {!formData.actionTaken1 && (
+                          <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 text-[10px] font-bold animate-pulse">
+                            ✍️ Type Initial Inquiry Note Here
                           </span>
                         )}
                       </div>
@@ -2314,120 +2351,131 @@ export default function StudentInquiries() {
                     />
                   </div>
 
-                  {/* CELL 2: Action Taken 2 (Shown only if filled or user opened slot 2) */}
-                  {(Boolean(formData.actionTaken2?.trim()) || maxFollowUpSlotVisible >= 2) && (
-                    <div className={`p-3 rounded-xl border transition-all animate-in fade-in duration-150 ${
-                      formData.actionTaken2
-                        ? 'bg-white border-amber-300 shadow-2xs'
-                        : 'bg-white/70 border-gray-200 hover:border-amber-300 ring-2 ring-amber-400/30'
-                    }`}>
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-amber-700 font-bold">Action Taken 2 (Call / Follow-Up #2)</span>
-                          <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
-                            {formData.actionTaken2Status || 'Follow Up'}
-                          </span>
-                          {formData.previousInquiryId && Boolean(formData.actionTaken1) && !formData.actionTaken2 && (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold animate-pulse">
-                              ✍️ Type Next Follow-Up Here
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-gray-500 font-normal">
-                          {formData.actionTaken2By
-                            ? `By ${formData.actionTaken2By} ${formData.actionTaken2Date ? `on ${new Date(formData.actionTaken2Date).toLocaleDateString('en-IN')}` : ''}`
-                            : formData.actionTaken2
-                            ? `By ${user?.name || 'Staff'}`
-                            : '2nd Follow-Up'}
+                  {/* CELL 2: Action Taken 2 */}
+                  <div className={`p-3 rounded-xl border transition-all ${
+                    formData.actionTaken2
+                      ? 'bg-white border-amber-300 shadow-2xs'
+                      : Boolean(formData.actionTaken1) && !formData.actionTaken2
+                      ? 'bg-amber-50/40 border-amber-300 ring-2 ring-amber-400/30'
+                      : 'bg-white/70 border-gray-200 hover:border-amber-300'
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-700 font-bold">Action Taken 2 (Call / Follow-Up #2)</span>
+                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
+                          {formData.actionTaken2Status || 'Follow Up'}
                         </span>
-                      </div>
-                      <input
-                        type="text"
-                        value={formData.actionTaken2}
-                        onChange={(e) => setFormData({ ...formData, actionTaken2: e.target.value })}
-                        placeholder="Call #2 staff action taken / discussion notes..."
-                        className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
-                      />
-                    </div>
-                  )}
-
-                  {/* CELL 3: Action Taken 3 (Shown only if filled or user opened slot 3) */}
-                  {(Boolean(formData.actionTaken3?.trim()) || maxFollowUpSlotVisible >= 3) && (
-                    <div className={`p-3 rounded-xl border transition-all animate-in fade-in duration-150 ${
-                      formData.actionTaken3
-                        ? 'bg-white border-purple-300 shadow-2xs'
-                        : 'bg-white/70 border-gray-200 hover:border-purple-300'
-                    }`}>
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-purple-700 font-bold">Action Taken 3 (Call / Follow-Up #3)</span>
-                          <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken3Status || 'Follow Up')}`}>
-                            {formData.actionTaken3Status || 'Follow Up'}
+                        {formData.previousInquiryId && Boolean(formData.actionTaken2) && (
+                          <span className="px-2 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 text-[9px] font-bold">
+                            ✓ Recorded Call 2
                           </span>
-                        </div>
-                        <span className="text-[10px] text-gray-500 font-normal">
-                          {formData.actionTaken3By
-                            ? `By ${formData.actionTaken3By} ${formData.actionTaken3Date ? `on ${new Date(formData.actionTaken3Date).toLocaleDateString('en-IN')}` : ''}`
-                            : formData.actionTaken3
-                            ? `By ${user?.name || 'Staff'}`
-                            : '3rd Follow-Up'}
-                        </span>
-                      </div>
-                      <input
-                        type="text"
-                        value={formData.actionTaken3}
-                        onChange={(e) => setFormData({ ...formData, actionTaken3: e.target.value })}
-                        placeholder="Call #3 staff action taken / student reply notes..."
-                        className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
-                      />
-                    </div>
-                  )}
-
-                  {/* CELL 4: Action Taken 4 (Shown only if filled or user opened slot 4) */}
-                  {(Boolean(formData.actionTaken4?.trim()) || maxFollowUpSlotVisible >= 4) && (
-                    <div className={`p-3 rounded-xl border transition-all animate-in fade-in duration-150 ${
-                      formData.actionTaken4
-                        ? 'bg-white border-emerald-300 shadow-2xs'
-                        : 'bg-white/70 border-gray-200 hover:border-emerald-300'
-                    }`}>
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-emerald-700 font-bold">Action Taken 4 (Call / Follow-Up #4)</span>
-                          <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken4Status || formData.status)}`}>
-                            {formData.actionTaken4Status || formData.status}
+                        )}
+                        {Boolean(formData.actionTaken1) && !formData.actionTaken2 && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold animate-pulse">
+                            ✍️ Type Call #2 Follow-Up Here
                           </span>
-                        </div>
-                        <span className="text-[10px] text-gray-500 font-normal">
-                          {formData.actionTaken4By
-                            ? `By ${formData.actionTaken4By} ${formData.actionTaken4Date ? `on ${new Date(formData.actionTaken4Date).toLocaleDateString('en-IN')}` : ''}`
-                            : formData.actionTaken4
-                            ? `By ${user?.name || 'Staff'}`
-                            : '4th Follow-Up'}
-                        </span>
+                        )}
                       </div>
-                      <input
-                        type="text"
-                        value={formData.actionTaken4}
-                        onChange={(e) => setFormData({ ...formData, actionTaken4: e.target.value })}
-                        placeholder="Call #4 staff action taken / final confirmation or resolution..."
-                        className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                      />
+                      <span className="text-[10px] text-gray-500 font-normal">
+                        {formData.actionTaken2By
+                          ? `By ${formData.actionTaken2By} ${formData.actionTaken2Date ? `on ${new Date(formData.actionTaken2Date).toLocaleDateString('en-IN')}` : ''}`
+                          : formData.actionTaken2
+                          ? `By ${user?.name || 'Staff'}`
+                          : '2nd Follow-Up'}
+                      </span>
                     </div>
-                  )}
+                    <input
+                      type="text"
+                      value={formData.actionTaken2}
+                      onChange={(e) => setFormData({ ...formData, actionTaken2: e.target.value })}
+                      placeholder="Call #2 staff action taken / discussion notes..."
+                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
+                    />
+                  </div>
 
-                  {/* Button to reveal next follow-up slot if fewer than 4 are visible */}
-                  {maxFollowUpSlotVisible < 4 && (
-                    <div className="pt-1 flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setMaxFollowUpSlotVisible((prev) => Math.min(4, Math.max(prev + 1, 2)))}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs rounded-xl border border-indigo-200 shadow-2xs transition-all cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Follow-Up #{Math.min(4, maxFollowUpSlotVisible + 1)}</span>
-                      </button>
+                  {/* CELL 3: Action Taken 3 */}
+                  <div className={`p-3 rounded-xl border transition-all ${
+                    formData.actionTaken3
+                      ? 'bg-white border-purple-300 shadow-2xs'
+                      : Boolean(formData.actionTaken1) && Boolean(formData.actionTaken2) && !formData.actionTaken3
+                      ? 'bg-purple-50/40 border-purple-300 ring-2 ring-purple-400/30'
+                      : 'bg-white/70 border-gray-200 hover:border-purple-300'
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-purple-700 font-bold">Action Taken 3 (Call / Follow-Up #3)</span>
+                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken3Status || 'Follow Up')}`}>
+                          {formData.actionTaken3Status || 'Follow Up'}
+                        </span>
+                        {formData.previousInquiryId && Boolean(formData.actionTaken3) && (
+                          <span className="px-2 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-300 text-[9px] font-bold">
+                            ✓ Recorded Call 3
+                          </span>
+                        )}
+                        {Boolean(formData.actionTaken1) && Boolean(formData.actionTaken2) && !formData.actionTaken3 && (
+                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300 text-[10px] font-bold animate-pulse">
+                            ✍️ Type Call #3 Follow-Up Here
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-normal">
+                        {formData.actionTaken3By
+                          ? `By ${formData.actionTaken3By} ${formData.actionTaken3Date ? `on ${new Date(formData.actionTaken3Date).toLocaleDateString('en-IN')}` : ''}`
+                          : formData.actionTaken3
+                          ? `By ${user?.name || 'Staff'}`
+                          : '3rd Follow-Up'}
+                      </span>
                     </div>
-                  )}
+                    <input
+                      type="text"
+                      value={formData.actionTaken3}
+                      onChange={(e) => setFormData({ ...formData, actionTaken3: e.target.value })}
+                      placeholder="Call #3 staff action taken / student reply notes..."
+                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    />
+                  </div>
+
+                  {/* CELL 4: Action Taken 4 */}
+                  <div className={`p-3 rounded-xl border transition-all ${
+                    formData.actionTaken4
+                      ? 'bg-white border-emerald-300 shadow-2xs'
+                      : Boolean(formData.actionTaken1) && Boolean(formData.actionTaken2) && Boolean(formData.actionTaken3) && !formData.actionTaken4
+                      ? 'bg-emerald-50/40 border-emerald-300 ring-2 ring-emerald-400/30'
+                      : 'bg-white/70 border-gray-200 hover:border-emerald-300'
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-gray-700 uppercase mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-emerald-700 font-bold">Action Taken 4 (Call / Follow-Up #4)</span>
+                        <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken4Status || formData.status)}`}>
+                          {formData.actionTaken4Status || formData.status}
+                        </span>
+                        {formData.previousInquiryId && Boolean(formData.actionTaken4) && (
+                          <span className="px-2 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-bold">
+                            ✓ Recorded Call 4
+                          </span>
+                        )}
+                        {Boolean(formData.actionTaken1) && Boolean(formData.actionTaken2) && Boolean(formData.actionTaken3) && !formData.actionTaken4 && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold animate-pulse">
+                            ✍️ Type Call #4 Follow-Up Here
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-normal">
+                        {formData.actionTaken4By
+                          ? `By ${formData.actionTaken4By} ${formData.actionTaken4Date ? `on ${new Date(formData.actionTaken4Date).toLocaleDateString('en-IN')}` : ''}`
+                          : formData.actionTaken4
+                          ? `By ${user?.name || 'Staff'}`
+                          : '4th Follow-Up'}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.actionTaken4}
+                      onChange={(e) => setFormData({ ...formData, actionTaken4: e.target.value })}
+                      placeholder="Call #4 staff action taken / final confirmation or resolution..."
+                      className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 
