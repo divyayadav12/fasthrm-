@@ -447,61 +447,35 @@ export default function StudentInquiries() {
       ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       : (targetInq ? [targetInq] : []);
 
-    // Gather all calls across the student's inquiry chain in chronological order
-    const rawCalls: Array<{ remark: string; date?: string; by?: string; status?: string }> = [];
+    const history = Array.isArray(targetInq?.history) ? targetInq.history : [];
+    const getHistoryCall = (callNumber: number) =>
+      history.find((call: any) => call.callNumber === callNumber) ||
+      (history.some((call: any) => call.callNumber != null) ? undefined : history[callNumber - 1]);
+    const h1 = getHistoryCall(1);
+    const h2 = getHistoryCall(2);
+    const h3 = getHistoryCall(3);
+    const h4 = getHistoryCall(4);
 
-    ascInquiries.forEach((item: any) => {
-      const hList = Array.isArray(item.history) ? item.history : [];
-      if (item.actionTaken1) rawCalls.push({ remark: item.actionTaken1, date: item.actionTaken1Date || item.createdAt, by: item.actionTaken1By || item.addedByName, status: item.actionTaken1Status || item.status });
-      else if (hList[0]?.remark) rawCalls.push({ remark: hList[0].remark, date: hList[0].date, by: hList[0].attendedBy, status: hList[0].status });
-      else if (item.remark) rawCalls.push({ remark: item.remark, date: item.createdAt, by: item.addedByName, status: item.status });
+    const hasLaterCall = targetInq?.actionTaken2 || targetInq?.actionTaken3 || targetInq?.actionTaken4 || h2?.remark || h3?.remark || h4?.remark;
+    const r1 = targetInq?.actionTaken1 || h1?.remark || (!hasLaterCall ? targetInq?.remark : '') || '';
+    const r1Date = targetInq?.actionTaken1Date || h1?.date || targetInq?.createdAt || '';
+    const r1By = targetInq?.actionTaken1By || h1?.attendedBy || targetInq?.addedByName || '';
+    const r1Status = targetInq?.actionTaken1Status || h1?.status || targetInq?.status || '';
 
-      if (item.actionTaken2) rawCalls.push({ remark: item.actionTaken2, date: item.actionTaken2Date || item.updatedAt, by: item.actionTaken2By, status: item.actionTaken2Status });
-      else if (hList[1]?.remark) rawCalls.push({ remark: hList[1].remark, date: hList[1].date, by: hList[1].attendedBy, status: hList[1].status });
+    const r2 = targetInq?.actionTaken2 || h2?.remark || '';
+    const r2Date = targetInq?.actionTaken2Date || h2?.date || '';
+    const r2By = targetInq?.actionTaken2By || h2?.attendedBy || '';
+    const r2Status = targetInq?.actionTaken2Status || h2?.status || '';
 
-      if (item.actionTaken3) rawCalls.push({ remark: item.actionTaken3, date: item.actionTaken3Date, by: item.actionTaken3By, status: item.actionTaken3Status });
-      else if (hList[2]?.remark) rawCalls.push({ remark: hList[2].remark, date: hList[2].date, by: hList[2].attendedBy, status: hList[2].status });
+    const r3 = targetInq?.actionTaken3 || h3?.remark || '';
+    const r3Date = targetInq?.actionTaken3Date || h3?.date || '';
+    const r3By = targetInq?.actionTaken3By || h3?.attendedBy || '';
+    const r3Status = targetInq?.actionTaken3Status || h3?.status || '';
 
-      if (item.actionTaken4) rawCalls.push({ remark: item.actionTaken4, date: item.actionTaken4Date, by: item.actionTaken4By, status: item.actionTaken4Status });
-      else if (hList[3]?.remark) rawCalls.push({ remark: hList[3].remark, date: hList[3].date, by: hList[3].attendedBy, status: hList[3].status });
-    });
-
-    if (targetInq) {
-      const hList = Array.isArray(targetInq.history) ? targetInq.history : [];
-      if (targetInq.actionTaken1) rawCalls.push({ remark: targetInq.actionTaken1, date: targetInq.actionTaken1Date || targetInq.createdAt, by: targetInq.actionTaken1By || targetInq.addedByName, status: targetInq.actionTaken1Status || targetInq.status });
-      if (targetInq.actionTaken2) rawCalls.push({ remark: targetInq.actionTaken2, date: targetInq.actionTaken2Date || targetInq.updatedAt, by: targetInq.actionTaken2By, status: targetInq.actionTaken2Status });
-      if (targetInq.actionTaken3) rawCalls.push({ remark: targetInq.actionTaken3, date: targetInq.actionTaken3Date, by: targetInq.actionTaken3By, status: targetInq.actionTaken3Status });
-      if (targetInq.actionTaken4) rawCalls.push({ remark: targetInq.actionTaken4, date: targetInq.actionTaken4Date, by: targetInq.actionTaken4By, status: targetInq.actionTaken4Status });
-    }
-
-    // Filter unique non-empty remarks in order
-    const uniqueCalls: typeof rawCalls = [];
-    rawCalls.forEach((c) => {
-      const text = (c.remark || '').trim();
-      if (text && !uniqueCalls.some((u) => (u.remark || '').trim().toLowerCase() === text.toLowerCase())) {
-        uniqueCalls.push(c);
-      }
-    });
-
-    const r1 = uniqueCalls[0]?.remark || targetInq?.actionTaken1 || '';
-    const r1Date = uniqueCalls[0]?.date || targetInq?.actionTaken1Date || (targetInq?.createdAt ? new Date(targetInq.createdAt).toISOString() : '');
-    const r1By = uniqueCalls[0]?.by || targetInq?.actionTaken1By || targetInq?.addedByName || '';
-    const r1Status = uniqueCalls[0]?.status || targetInq?.actionTaken1Status || targetInq?.status || '';
-
-    const r2 = uniqueCalls[1]?.remark || targetInq?.actionTaken2 || '';
-    const r2Date = uniqueCalls[1]?.date || targetInq?.actionTaken2Date || '';
-    const r2By = uniqueCalls[1]?.by || targetInq?.actionTaken2By || '';
-    const r2Status = uniqueCalls[1]?.status || targetInq?.actionTaken2Status || '';
-
-    const r3 = uniqueCalls[2]?.remark || targetInq?.actionTaken3 || '';
-    const r3Date = uniqueCalls[2]?.date || targetInq?.actionTaken3Date || '';
-    const r3By = uniqueCalls[2]?.by || targetInq?.actionTaken3By || '';
-    const r3Status = uniqueCalls[2]?.status || targetInq?.actionTaken3Status || '';
-
-    const r4 = uniqueCalls[3]?.remark || targetInq?.actionTaken4 || '';
-    const r4Date = uniqueCalls[3]?.date || targetInq?.actionTaken4Date || '';
-    const r4By = uniqueCalls[3]?.by || targetInq?.actionTaken4By || '';
-    const r4Status = uniqueCalls[3]?.status || targetInq?.actionTaken4Status || '';
+    const r4 = targetInq?.actionTaken4 || h4?.remark || '';
+    const r4Date = targetInq?.actionTaken4Date || h4?.date || '';
+    const r4By = targetInq?.actionTaken4By || h4?.attendedBy || '';
+    const r4Status = targetInq?.actionTaken4Status || h4?.status || '';
 
     setMaxFollowUpSlotVisible(4);
 
@@ -891,40 +865,7 @@ export default function StudentInquiries() {
         // LINKED INQUIRY: UPDATE THE EXISTING INQUIRY (NO DUPLICATE ROW CREATED)
         const updatedSubData = { ...submissionData };
 
-        // Safety slot preservation:
-        const prev1 = (targetLinkedDoc.actionTaken1 || '').trim();
-        const prev2 = (targetLinkedDoc.actionTaken2 || '').trim();
-        const prev3 = (targetLinkedDoc.actionTaken3 || '').trim();
-        const cur1 = (updatedSubData.actionTaken1 || '').trim();
-        const cur2 = (updatedSubData.actionTaken2 || '').trim();
-        const cur3 = (updatedSubData.actionTaken3 || '').trim();
-        const cur4 = (updatedSubData.actionTaken4 || '').trim();
-
-        // If user typed follow-up remark in Slot 1, automatically shift to the next unfilled slot!
-        if (prev1 && cur1 && cur1 !== prev1) {
-          if (!prev2 && !cur2) {
-            updatedSubData.actionTaken2 = cur1;
-            updatedSubData.actionTaken1 = prev1;
-            updatedSubData.actionTaken2Date = new Date().toISOString();
-            updatedSubData.actionTaken2By = user?.name || 'Staff';
-            updatedSubData.actionTaken2Status = updatedSubData.status || 'Follow Up';
-          } else if ((prev2 || cur2) && !prev3 && !cur3) {
-            updatedSubData.actionTaken3 = cur1;
-            updatedSubData.actionTaken1 = prev1;
-            if (!cur2) updatedSubData.actionTaken2 = prev2;
-            updatedSubData.actionTaken3Date = new Date().toISOString();
-            updatedSubData.actionTaken3By = user?.name || 'Staff';
-            updatedSubData.actionTaken3Status = updatedSubData.status || 'Follow Up';
-          } else if ((prev3 || cur3) && !cur4) {
-            updatedSubData.actionTaken4 = cur1;
-            updatedSubData.actionTaken1 = prev1;
-            if (!cur2) updatedSubData.actionTaken2 = prev2;
-            if (!cur3) updatedSubData.actionTaken3 = prev3;
-            updatedSubData.actionTaken4Date = new Date().toISOString();
-            updatedSubData.actionTaken4By = user?.name || 'Staff';
-            updatedSubData.actionTaken4Status = updatedSubData.status || 'Follow Up';
-          }
-        } else if (!updatedSubData.actionTaken1?.trim() && targetLinkedDoc.actionTaken1) {
+        if (!updatedSubData.actionTaken1?.trim() && targetLinkedDoc.actionTaken1) {
           updatedSubData.actionTaken1 = targetLinkedDoc.actionTaken1;
           updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date;
           updatedSubData.actionTaken1By = targetLinkedDoc.actionTaken1By;
@@ -2341,7 +2282,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken1}
-                      onChange={(e) => setFormData({ ...formData, actionTaken1: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken1: e.target.value }))}
                       placeholder="Call #1 staff remark / action taken..."
                       className={`w-full px-3.5 py-2 rounded-lg text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
                         formData.previousInquiryId && formData.actionTaken1
@@ -2387,7 +2328,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken2}
-                      onChange={(e) => setFormData({ ...formData, actionTaken2: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken2: e.target.value }))}
                       placeholder="Call #2 staff action taken / discussion notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
@@ -2429,7 +2370,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken3}
-                      onChange={(e) => setFormData({ ...formData, actionTaken3: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken3: e.target.value }))}
                       placeholder="Call #3 staff action taken / student reply notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
@@ -2471,7 +2412,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken4}
-                      onChange={(e) => setFormData({ ...formData, actionTaken4: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken4: e.target.value }))}
                       placeholder="Call #4 staff action taken / final confirmation or resolution..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     />
