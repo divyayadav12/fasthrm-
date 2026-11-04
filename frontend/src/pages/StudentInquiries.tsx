@@ -85,12 +85,20 @@ const STATUS_TYPES = [
 
 const getInquiryCallCount = (inquiry: any): number => {
   if (!inquiry) return 0;
-  const historyCount = Array.isArray(inquiry.history) ? inquiry.history.length : 0;
-  const slotCount = [1, 2, 3, 4].reduce(
-    (max, callNumber) => (inquiry[`actionTaken${callNumber}`]?.trim() ? callNumber : max),
-    0
-  );
-  return Math.max(historyCount, slotCount);
+  const callNumbers = new Set<number>();
+  if (Array.isArray(inquiry.history)) {
+    inquiry.history.forEach((call: any, index: number) => {
+      const callNumber = Number(call.callNumber) || index + 1;
+      if (callNumber >= 1 && callNumber <= 4 && String(call.remark || '').trim()) {
+        callNumbers.add(callNumber);
+      }
+    });
+  }
+  [1, 2, 3, 4].forEach((callNumber) => {
+    if (String(inquiry[`actionTaken${callNumber}`] || '').trim()) callNumbers.add(callNumber);
+  });
+  if (!callNumbers.size && String(inquiry.remark || '').trim()) callNumbers.add(1);
+  return callNumbers.size;
 };
 
 const DEFAULT_SUPPORT_STAFF = [
@@ -290,11 +298,7 @@ export default function StudentInquiries() {
   const isFollowUpFieldLocked = (slotNumber: number) => {
     if (editingInquiry) return true;
     if (!isLinkedFollowUp) return false;
-
-    const slotValue = (formData as Record<string, string>)[`actionTaken${slotNumber}`] || '';
-    if (slotValue.trim()) return false;
-
-    return nextFollowUpCallNumber > slotNumber;
+    return slotNumber !== nextFollowUpCallNumber;
   };
   const lookupRootInquiry = lookupResult?.inquiries?.length
     ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0]
