@@ -2,7 +2,10 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { RootState } from '../index';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api';
+const API_URL = (import.meta.env.VITE_API_URL || 'https://fasthrm-1l03.onrender.com/api').replace(
+  'fasthrm-1103.onrender.com',
+  'fasthrm-1l03.onrender.com'
+);
 
 export interface StudentInquiry {
   _id: string;
