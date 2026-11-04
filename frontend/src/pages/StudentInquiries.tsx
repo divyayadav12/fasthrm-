@@ -477,48 +477,71 @@ export default function StudentInquiries() {
     if (inquiries && inquiries.length > 0) {
       allInqs.push(...inquiries);
     }
-    const targetInq = allInqs.find((i) => i.inquiryId?.toUpperCase() === targetId);
+    const deduped = new Map<string, any>();
+    allInqs.forEach((item) => {
+      if (!item || !item.inquiryId) return;
+      deduped.set(String(item.inquiryId).toUpperCase(), item);
+    });
+    const allUniqueInqs = Array.from(deduped.values());
+    const targetInq = allUniqueInqs.find((i) => i.inquiryId?.toUpperCase() === targetId) || null;
+    const basePhone = (targetInq?.mobileNumber || '').replace(/\D/g, '').slice(-10);
+    const relatedInqs = allUniqueInqs.filter((i) => {
+      if (!i) return false;
+      const samePhone = basePhone && (i.mobileNumber || '').replace(/\D/g, '').slice(-10) === basePhone;
+      const sameSource = i.inquiryId?.toUpperCase() === targetId || i.previousInquiryId?.toUpperCase() === targetId || i.previousInquiryId === targetInq?.inquiryId;
+      return samePhone || sameSource;
+    });
+    const orderedInqs = [...new Set(relatedInqs.length ? relatedInqs : (targetInq ? [targetInq] : []))].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const rootInquiry = orderedInqs[0] || targetInq;
 
-    const ascInquiries = lookupResult?.inquiries && lookupResult.inquiries.length > 0
-      ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      : (targetInq ? [targetInq] : []);
-
-    const rootInquiry = ascInquiries[0] || targetInq;
     const getInquiryCall = (inquiry: any, callNumber: number) => {
       const history = Array.isArray(inquiry?.history) ? inquiry.history : [];
-      const historyCall = history.find((call: any) => call.callNumber === callNumber) ||
-        (history.some((call: any) => call.callNumber != null) ? undefined : history[callNumber - 1]);
+      const historyCall = history.find((call: any) => Number(call.callNumber) === callNumber) ||
+        (history.some((call: any) => Number(call.callNumber) > 0) ? undefined : history[callNumber - 1]);
+      const remark = inquiry?.[`actionTaken${callNumber}`] || historyCall?.remark || '';
       return {
-        remark: inquiry?.[`actionTaken${callNumber}`] || historyCall?.remark || '',
+        remark: String(remark || '').trim(),
         date: inquiry?.[`actionTaken${callNumber}Date`] || historyCall?.date || '',
         by: inquiry?.[`actionTaken${callNumber}By`] || historyCall?.attendedBy || '',
         status: inquiry?.[`actionTaken${callNumber}Status`] || historyCall?.status || '',
       };
     };
-    const rootCalls = [1, 2, 3, 4].map((callNumber) => getInquiryCall(rootInquiry, callNumber));
-    const targetCalls = [1, 2, 3, 4].map((callNumber) => getInquiryCall(targetInq, callNumber));
-    const calls = rootCalls.map((call, index) => ({
-      remark: call.remark || targetCalls[index].remark,
-      date: call.date || targetCalls[index].date,
-      by: call.by || targetCalls[index].by,
-      status: call.status || targetCalls[index].status,
-    }));
+
+    const mergedCalls = [1, 2, 3, 4].map((callNumber) => {
+      const matches = orderedInqs
+        .map((inquiry) => getInquiryCall(inquiry, callNumber))
+        .filter((call) => call.remark && call.remark.length > 0);
+
+      if (!matches.length) {
+        return { remark: '', date: '', by: '', status: '' };
+      }
+
+      const earliest = matches.reduce((best, current) => {
+        const bestTime = best.date ? new Date(best.date).getTime() : Number.NEGATIVE_INFINITY;
+        const currentTime = current.date ? new Date(current.date).getTime() : Number.NEGATIVE_INFINITY;
+        return currentTime >= bestTime ? current : best;
+      });
+
+      return earliest;
+    });
+
+    const [call1, call2, call3, call4] = mergedCalls;
     const summaryRemark = targetInq?.remark || rootInquiry?.remark || '';
-    const hasLaterCall = calls.slice(1).some((call) => call.remark);
+    const hasLaterCall = mergedCalls.slice(1).some((call) => call.remark);
     if (
-      calls[0].remark &&
+      call1.remark &&
       !hasLaterCall &&
       summaryRemark.trim() &&
-      summaryRemark.trim() !== calls[0].remark.trim()
+      summaryRemark.trim() !== call1.remark.trim()
     ) {
-      calls[1] = {
-        remark: summaryRemark,
-        date: targetInq?.updatedAt || rootInquiry?.updatedAt || '',
-        by: targetInq?.addedByName || rootInquiry?.addedByName || '',
-        status: targetInq?.status || rootInquiry?.status || '',
-      };
+      call2.remark = summaryRemark;
+      call2.date = targetInq?.updatedAt || rootInquiry?.updatedAt || '';
+      call2.by = targetInq?.addedByName || rootInquiry?.addedByName || '';
+      call2.status = targetInq?.status || rootInquiry?.status || '';
     }
-    const [call1, call2, call3, call4] = calls;
+
     const r1 = call1.remark || (!hasLaterCall ? targetInq?.remark : '') || '';
     const r1Date = call1.date || targetInq?.createdAt || '';
     const r1By = call1.by || targetInq?.addedByName || '';
@@ -2342,11 +2365,6 @@ export default function StudentInquiries() {
                             ✓ Recorded Call 1
                           </span>
                         )}
-                        {!formData.actionTaken1 && (
-                          <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 text-[10px] font-bold animate-pulse">
-                            ✍️ Type Initial Inquiry Note Here
-                          </span>
-                        )}
                       </div>
                       <span className="text-[10px] text-gray-500 font-normal">
                         {formData.actionTaken1By
@@ -2389,11 +2407,6 @@ export default function StudentInquiries() {
                             ✓ Recorded Call 2
                           </span>
                         )}
-                        {Boolean(formData.actionTaken1) && !formData.actionTaken2 && (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold animate-pulse">
-                            ✍️ Type Call #2 Follow-Up Here
-                          </span>
-                        )}
                       </div>
                       <span className="text-[10px] text-gray-500 font-normal">
                         {formData.actionTaken2By
@@ -2432,11 +2445,6 @@ export default function StudentInquiries() {
                             ✓ Recorded Call 3
                           </span>
                         )}
-                        {Boolean(formData.actionTaken1) && Boolean(formData.actionTaken2) && !formData.actionTaken3 && (
-                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300 text-[10px] font-bold animate-pulse">
-                            ✍️ Type Call #3 Follow-Up Here
-                          </span>
-                        )}
                       </div>
                       <span className="text-[10px] text-gray-500 font-normal">
                         {formData.actionTaken3By
@@ -2473,11 +2481,6 @@ export default function StudentInquiries() {
                         {formData.previousInquiryId && Boolean(formData.actionTaken4) && (
                           <span className="px-2 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-bold">
                             ✓ Recorded Call 4
-                          </span>
-                        )}
-                        {Boolean(formData.actionTaken1) && Boolean(formData.actionTaken2) && Boolean(formData.actionTaken3) && !formData.actionTaken4 && (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold animate-pulse">
-                            ✍️ Type Call #4 Follow-Up Here
                           </span>
                         )}
                       </div>
