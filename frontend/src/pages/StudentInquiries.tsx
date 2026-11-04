@@ -243,6 +243,7 @@ export default function StudentInquiries() {
   const [sendingFeedbackId, setSendingFeedbackId] = useState<string | null>(null);
   const [notificationMsg, setNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [maxFollowUpSlotVisible, setMaxFollowUpSlotVisible] = useState<number>(1);
+  const [nextFollowUpCallNumber, setNextFollowUpCallNumber] = useState<number>(1);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -288,12 +289,6 @@ export default function StudentInquiries() {
   const isLinkedFollowUp = Boolean(
     !editingInquiry && formData.previousInquiryId && formData.previousInquiryId !== 'CUSTOM'
   );
-  const nextFollowUpCallNumber = [
-    formData.actionTaken1,
-    formData.actionTaken2,
-    formData.actionTaken3,
-    formData.actionTaken4,
-  ].findIndex((remark) => !remark.trim()) + 1;
   const isFollowUpLimitReached = isLinkedFollowUp && nextFollowUpCallNumber === 0;
   const isFollowUpFieldLocked = (slotNumber: number) => {
     if (editingInquiry) return true;
@@ -452,6 +447,7 @@ export default function StudentInquiries() {
   const handleSelectPreviousInquiry = (inqId: string) => {
     if (!inqId) {
       setUserManuallyDeselectedLink(true);
+      setNextFollowUpCallNumber(1);
       setFormData((prev) => ({
         ...prev,
         previousInquiryId: '',
@@ -463,6 +459,7 @@ export default function StudentInquiries() {
     setNotificationMsg(null);
 
     if (inqId === 'CUSTOM') {
+      setNextFollowUpCallNumber(1);
       setFormData((prev) => ({
         ...prev,
         previousInquiryId: 'CUSTOM',
@@ -577,6 +574,9 @@ export default function StudentInquiries() {
     const r4Date = call4.date;
     const r4By = call4.by;
     const r4Status = call4.status;
+
+    const nextCallIndex = mergedCalls.findIndex((call) => !String(call.remark || '').trim());
+    setNextFollowUpCallNumber(nextCallIndex === -1 ? 0 : nextCallIndex + 1);
 
     setMaxFollowUpSlotVisible(4);
 
@@ -923,6 +923,7 @@ export default function StudentInquiries() {
     setFormErrors({});
     setEditingInquiry(null);
     setMaxFollowUpSlotVisible(1);
+    setNextFollowUpCallNumber(1);
     dispatch(clearLookupResult());
     setShowSubjectDropdown(false);
     setSelectedSuggestionIndex(-1);
@@ -2420,7 +2421,7 @@ export default function StudentInquiries() {
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken1Status || formData.status)}`}>
                           {formData.actionTaken1Status || formData.status}
                         </span>
-                        {formData.previousInquiryId && Boolean(formData.actionTaken1) && (
+                        {formData.previousInquiryId && Boolean(formData.actionTaken1) && nextFollowUpCallNumber !== 1 && (
                           <span className="px-2 py-0.2 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 text-[9px] font-bold">
                             ✓ Recorded Call 1
                           </span>
@@ -2462,7 +2463,7 @@ export default function StudentInquiries() {
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken2Status || 'Follow Up')}`}>
                           {formData.actionTaken2Status || 'Follow Up'}
                         </span>
-                        {formData.previousInquiryId && Boolean(formData.actionTaken2) && (
+                        {formData.previousInquiryId && Boolean(formData.actionTaken2) && nextFollowUpCallNumber !== 2 && (
                           <span className="px-2 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 text-[9px] font-bold">
                             ✓ Recorded Call 2
                           </span>
@@ -2500,7 +2501,7 @@ export default function StudentInquiries() {
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken3Status || 'Follow Up')}`}>
                           {formData.actionTaken3Status || 'Follow Up'}
                         </span>
-                        {formData.previousInquiryId && Boolean(formData.actionTaken3) && (
+                        {formData.previousInquiryId && Boolean(formData.actionTaken3) && nextFollowUpCallNumber !== 3 && (
                           <span className="px-2 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-300 text-[9px] font-bold">
                             ✓ Recorded Call 3
                           </span>
@@ -2538,7 +2539,7 @@ export default function StudentInquiries() {
                         <span className={`px-2 py-0.2 rounded-md text-[10px] font-bold border ${getStatusBadge(formData.actionTaken4Status || formData.status)}`}>
                           {formData.actionTaken4Status || formData.status}
                         </span>
-                        {formData.previousInquiryId && Boolean(formData.actionTaken4) && (
+                        {formData.previousInquiryId && Boolean(formData.actionTaken4) && nextFollowUpCallNumber !== 4 && (
                           <span className="px-2 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-bold">
                             ✓ Recorded Call 4
                           </span>
