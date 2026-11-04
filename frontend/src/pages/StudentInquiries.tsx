@@ -496,35 +496,49 @@ export default function StudentInquiries() {
     );
     const rootInquiry = orderedInqs[0] || targetInq;
 
-    const getInquiryCall = (inquiry: any, callNumber: number) => {
-      const history = Array.isArray(inquiry?.history) ? inquiry.history : [];
-      const historyCall = history.find((call: any) => Number(call.callNumber) === callNumber) ||
-        (history.some((call: any) => Number(call.callNumber) > 0) ? undefined : history[callNumber - 1]);
-      const remark = inquiry?.[`actionTaken${callNumber}`] || historyCall?.remark || '';
-      return {
-        remark: String(remark || '').trim(),
-        date: inquiry?.[`actionTaken${callNumber}Date`] || historyCall?.date || '',
-        by: inquiry?.[`actionTaken${callNumber}By`] || historyCall?.attendedBy || '',
-        status: inquiry?.[`actionTaken${callNumber}Status`] || historyCall?.status || '',
-      };
+    const getHistoryEntries = (inquiry: any) => {
+      const entries: any[] = [];
+      if (Array.isArray(inquiry?.history) && inquiry.history.length > 0) {
+        inquiry.history.forEach((entry: any) => {
+          if (!entry || !String(entry.remark || '').trim()) return;
+          entries.push({
+            callNumber: Number(entry.callNumber) || 1,
+            remark: String(entry.remark).trim(),
+            date: entry.date || inquiry.createdAt || inquiry.updatedAt,
+            by: entry.attendedBy || inquiry.addedByName || '',
+            status: entry.status || inquiry.status || 'Follow Up',
+            details: entry.details || '',
+          });
+        });
+      }
+      [1, 2, 3, 4].forEach((callNumber) => {
+        const directRemark = inquiry?.[`actionTaken${callNumber}`];
+        if (directRemark && String(directRemark).trim()) {
+          const existed = entries.some((entry) => Number(entry.callNumber) === callNumber);
+          if (!existed) {
+            entries.push({
+              callNumber,
+              remark: String(directRemark).trim(),
+              date: inquiry?.[`actionTaken${callNumber}Date`] || inquiry.createdAt || inquiry.updatedAt,
+              by: inquiry?.[`actionTaken${callNumber}By`] || inquiry.addedByName || '',
+              status: inquiry?.[`actionTaken${callNumber}Status`] || inquiry.status || 'Follow Up',
+              details: inquiry?.[`details${callNumber}`] || '',
+            });
+          }
+        }
+      });
+      return entries.sort((a, b) => Number(a.callNumber) - Number(b.callNumber));
     };
 
     const mergedCalls = [1, 2, 3, 4].map((callNumber) => {
-      const matches = orderedInqs
-        .map((inquiry) => getInquiryCall(inquiry, callNumber))
-        .filter((call) => call.remark && call.remark.length > 0);
-
-      if (!matches.length) {
-        return { remark: '', date: '', by: '', status: '' };
-      }
-
-      const earliest = matches.reduce((best, current) => {
-        const bestTime = best.date ? new Date(best.date).getTime() : Number.NEGATIVE_INFINITY;
-        const currentTime = current.date ? new Date(current.date).getTime() : Number.NEGATIVE_INFINITY;
-        return currentTime >= bestTime ? current : best;
+      const matches: any[] = [];
+      orderedInqs.forEach((inquiry) => {
+        const entries = getHistoryEntries(inquiry);
+        const match = entries.find((entry) => Number(entry.callNumber) === callNumber);
+        if (match && String(match.remark || '').trim()) matches.push(match);
       });
-
-      return earliest;
+      if (!matches.length) return { remark: '', date: '', by: '', status: '' };
+      return matches.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())[0];
     });
 
     const [call1, call2, call3, call4] = mergedCalls;
@@ -684,10 +698,45 @@ export default function StudentInquiries() {
 
     // History array if available
     const hist = Array.isArray(baseInq.history) ? baseInq.history : [];
-    const h1 = hist.find((h: any) => h.callNumber === 1) || hist[0];
-    const h2 = hist.find((h: any) => h.callNumber === 2) || (hist[1]?.callNumber === 2 ? hist[1] : null);
-    const h3 = hist.find((h: any) => h.callNumber === 3) || (hist[2]?.callNumber === 3 ? hist[2] : null);
-    const h4 = hist.find((h: any) => h.callNumber === 4) || (hist[3]?.callNumber === 4 ? hist[3] : null);
+    const allRelatedEntries: any[] = [];
+    sortedInquiries.forEach((inquiry: any) => {
+      if (!inquiry) return;
+      const entries = Array.isArray(inquiry.history) ? inquiry.history : [];
+      entries.forEach((entry: any) => {
+        if (entry && String(entry.remark || '').trim()) allRelatedEntries.push({
+          ...entry,
+          inquiryId: inquiry.inquiryId,
+          inquiryDate: inquiry.createdAt,
+        });
+      });
+      [1, 2, 3, 4].forEach((callNumber) => {
+        const directRemark = inquiry?.[`actionTaken${callNumber}`];
+        if (directRemark && String(directRemark).trim()) {
+          const already = allRelatedEntries.some((entry) => Number(entry.callNumber) === callNumber && entry.inquiryId === inquiry.inquiryId);
+          if (!already) {
+            allRelatedEntries.push({
+              callNumber,
+              remark: String(directRemark).trim(),
+              date: inquiry?.[`actionTaken${callNumber}Date`] || inquiry.createdAt,
+              attendedBy: inquiry?.[`actionTaken${callNumber}By`] || inquiry.addedByName || 'Staff',
+              status: inquiry?.[`actionTaken${callNumber}Status`] || inquiry.status || 'Follow Up',
+              details: inquiry?.[`details${callNumber}`] || '',
+              inquiryId: inquiry.inquiryId,
+              inquiryDate: inquiry.createdAt,
+            });
+          }
+        }
+      });
+    });
+    const byCallNumber = [1, 2, 3, 4].map((callNumber) => {
+      const matches = allRelatedEntries.filter((entry) => Number(entry.callNumber) === callNumber);
+      if (!matches.length) return null;
+      return matches.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())[0];
+    });
+    const h1 = byCallNumber[0] || hist.find((h: any) => h.callNumber === 1) || hist[0];
+    const h2 = byCallNumber[1] || hist.find((h: any) => h.callNumber === 2) || (hist[1]?.callNumber === 2 ? hist[1] : null);
+    const h3 = byCallNumber[2] || hist.find((h: any) => h.callNumber === 3) || (hist[2]?.callNumber === 3 ? hist[2] : null);
+    const h4 = byCallNumber[3] || hist.find((h: any) => h.callNumber === 4) || (hist[3]?.callNumber === 4 ? hist[3] : null);
 
     // Slot 1
     const r1 =
@@ -970,6 +1019,7 @@ export default function StudentInquiries() {
             type: 'success',
             text: `Student Record ${editingInquiry.inquiryId} updated successfully!`,
           });
+          setIsAddModalOpen(false);
           handleCloseAddModal();
           loadData();
         } else {
@@ -1016,6 +1066,7 @@ export default function StudentInquiries() {
             type: 'success',
             text: `Call #${resultAction.payload.call.callNumber} saved to Inquiry ${targetLinkedDoc.inquiryId}.`,
           });
+          setIsAddModalOpen(false);
           handleCloseAddModal();
           loadData();
         } else {
@@ -1032,6 +1083,7 @@ export default function StudentInquiries() {
             type: 'success',
             text: `New Student Inquiry ${resultAction.payload.inquiry.inquiryId} logged successfully!`,
           });
+          setIsAddModalOpen(false);
           handleCloseAddModal();
           loadData();
         } else {
