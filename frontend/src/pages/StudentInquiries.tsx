@@ -295,6 +295,16 @@ export default function StudentInquiries() {
     if (!isLinkedFollowUp) return false;
     return slotNumber !== nextFollowUpCallNumber;
   };
+  const activateNextFollowUpSlot = (slotNumber: number) => {
+    if (!isLinkedFollowUp || editingInquiry) return;
+    const firstEmptySlot = [
+      formData.actionTaken1,
+      formData.actionTaken2,
+      formData.actionTaken3,
+      formData.actionTaken4,
+    ].findIndex((remark) => !remark.trim()) + 1;
+    if (firstEmptySlot === slotNumber) setNextFollowUpCallNumber(slotNumber);
+  };
   const lookupRootInquiry = lookupResult?.inquiries?.length
     ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0]
     : lookupResult?.latestInquiry;
@@ -2438,6 +2448,7 @@ export default function StudentInquiries() {
                       type="text"
                       value={formData.actionTaken1}
                       readOnly={isFollowUpFieldLocked(1)}
+                      onFocus={() => activateNextFollowUpSlot(1)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken1: e.target.value }))}
                       placeholder="Call #1 staff remark / action taken..."
                       className={`w-full px-3.5 py-2 rounded-lg text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
@@ -2480,6 +2491,7 @@ export default function StudentInquiries() {
                       type="text"
                       value={formData.actionTaken2}
                       readOnly={isFollowUpFieldLocked(2)}
+                      onFocus={() => activateNextFollowUpSlot(2)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken2: e.target.value }))}
                       placeholder="Call #2 staff action taken / discussion notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
@@ -2518,6 +2530,7 @@ export default function StudentInquiries() {
                       type="text"
                       value={formData.actionTaken3}
                       readOnly={isFollowUpFieldLocked(3)}
+                      onFocus={() => activateNextFollowUpSlot(3)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken3: e.target.value }))}
                       placeholder="Call #3 staff action taken / student reply notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
@@ -2556,6 +2569,7 @@ export default function StudentInquiries() {
                       type="text"
                       value={formData.actionTaken4}
                       readOnly={isFollowUpFieldLocked(4)}
+                      onFocus={() => activateNextFollowUpSlot(4)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken4: e.target.value }))}
                       placeholder="Call #4 staff action taken / final confirmation or resolution..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
