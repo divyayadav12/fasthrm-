@@ -1615,19 +1615,15 @@ export const getPurchasedStaffStats = async (req: AuthRequest, res: Response) =>
       .select('_id name email department designation role profileImage')
       .lean();
 
-    const itSupportStaff = allUsers.filter((u: any) => {
-      const dept = (u.department || '').toLowerCase().trim();
-      const desig = (u.designation || '').toLowerCase().trim();
-      return (
-        dept.includes('it') ||
-        dept.includes('support') ||
-        desig.includes('it') ||
-        desig.includes('support') ||
-        ['Divya yadav', 'Jyoti', 'Pallavi', 'Palavi', 'Admin', 'Rupali Savley'].some((n) =>
-          (u.name || '').toLowerCase().includes(n.toLowerCase())
-        )
+    const normalizeStaffCategory = (value: string) =>
+      value.toLowerCase().replace(/&/g, ' and ').replace(/\s+/g, ' ').trim();
+    const isItSupportCategory = (value: string) =>
+      ['it', 'it support', 'it and support', 'information technology', 'support'].includes(
+        normalizeStaffCategory(value)
       );
-    });
+    const itSupportStaff = allUsers.filter((user: any) =>
+      isItSupportCategory(user.department || '') || isItSupportCategory(user.designation || '')
+    );
 
     // 2. Fetch all inquiries that are marked as Purchased
     const purchasedInquiries = await StudentInquiry.find({
@@ -1673,21 +1669,8 @@ export const getPurchasedStaffStats = async (req: AuthRequest, res: Response) =>
       ).trim();
 
       const key = handlerName.toLowerCase();
-      if (!staffStatsMap.has(key)) {
-        staffStatsMap.set(key, {
-          _id: inq.addedBy || `ext-${key}`,
-          name: handlerName,
-          email: inq.addedByEmail || '',
-          department: inq.addedByDepartment || 'IT and support',
-          designation: 'Staff',
-          totalPurchased: 0,
-          todayPurchased: 0,
-          monthPurchased: 0,
-          inquiries: [],
-        });
-      }
-
       const staffStat = staffStatsMap.get(key);
+      if (!staffStat) return;
       const effectiveDate = new Date(inq.updatedAt || inq.createdAt);
 
       staffStat.totalPurchased += 1;
