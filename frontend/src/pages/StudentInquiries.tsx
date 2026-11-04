@@ -371,7 +371,7 @@ export default function StudentInquiries() {
       params.dateFrom = m.toISOString().split('T')[0];
     }
 
-    dispatch(fetchStudentInquiries(params));
+    return dispatch(fetchStudentInquiries(params));
   };
 
   useEffect(() => {
@@ -1064,15 +1064,18 @@ export default function StudentInquiries() {
             },
           })
         );
-        if (appendStudentInquiryFollowUp.fulfilled.match(resultAction)) {
+        if (
+          appendStudentInquiryFollowUp.fulfilled.match(resultAction) &&
+          resultAction.payload?.success === true &&
+          resultAction.payload?.call
+        ) {
           followUpRequest.current = null;
           setNotificationMsg({
             type: 'success',
-            text: `Call #${resultAction.payload.call.callNumber} saved to Inquiry ${targetLinkedDoc.inquiryId}.`,
+            text: 'Follow-up entry saved successfully!',
           });
-          setIsAddModalOpen(false);
           handleCloseAddModal();
-          loadData();
+          await loadData();
         } else {
           setNotificationMsg({
             type: 'error',
