@@ -217,6 +217,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
 
       // Collect all call entries
       const allCalls: Array<{
+        callNumber: number;
         remark: string;
         date?: Date;
         attendedBy?: string;
@@ -228,6 +229,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
         const hList = Array.isArray(item.history) ? item.history : [];
         if (item.actionTaken1) {
           allCalls.push({
+            callNumber: 1,
             remark: item.actionTaken1,
             date: item.actionTaken1Date || item.createdAt,
             attendedBy: item.actionTaken1By || item.addedByName,
@@ -236,6 +238,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
           });
         } else if (hList[0]?.remark) {
           allCalls.push({
+            callNumber: Number(hList[0].callNumber) || 1,
             remark: hList[0].remark,
             date: hList[0].date,
             attendedBy: hList[0].attendedBy,
@@ -244,6 +247,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
           });
         } else if (item.remark) {
           allCalls.push({
+            callNumber: 1,
             remark: item.remark,
             date: item.createdAt,
             attendedBy: item.addedByName,
@@ -254,6 +258,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
 
         if (item.actionTaken2) {
           allCalls.push({
+            callNumber: 2,
             remark: item.actionTaken2,
             date: item.actionTaken2Date || item.updatedAt,
             attendedBy: item.actionTaken2By,
@@ -262,6 +267,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
           });
         } else if (hList[1]?.remark) {
           allCalls.push({
+            callNumber: Number(hList[1].callNumber) || 2,
             remark: hList[1].remark,
             date: hList[1].date,
             attendedBy: hList[1].attendedBy,
@@ -272,6 +278,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
 
         if (item.actionTaken3) {
           allCalls.push({
+            callNumber: 3,
             remark: item.actionTaken3,
             date: item.actionTaken3Date,
             attendedBy: item.actionTaken3By,
@@ -280,6 +287,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
           });
         } else if (hList[2]?.remark) {
           allCalls.push({
+            callNumber: Number(hList[2].callNumber) || 3,
             remark: hList[2].remark,
             date: hList[2].date,
             attendedBy: hList[2].attendedBy,
@@ -290,6 +298,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
 
         if (item.actionTaken4) {
           allCalls.push({
+            callNumber: 4,
             remark: item.actionTaken4,
             date: item.actionTaken4Date,
             attendedBy: item.actionTaken4By,
@@ -298,6 +307,7 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
           });
         } else if (hList[3]?.remark) {
           allCalls.push({
+            callNumber: Number(hList[3].callNumber) || 4,
             remark: hList[3].remark,
             date: hList[3].date,
             attendedBy: hList[3].attendedBy,
@@ -307,50 +317,51 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
         }
       });
 
-      // Filter unique non-empty remarks in chronological order
-      const uniqueCalls: typeof allCalls = [];
-      const uniqueCallKeys = new Set<string>();
-      allCalls.forEach((c) => {
-        const text = (c.remark || '').trim();
-        const key = JSON.stringify([
-          text.toLowerCase(),
-          c.date ? new Date(c.date).getTime() : 0,
-          (c.attendedBy || '').trim().toLowerCase(),
-          (c.status || '').trim().toLowerCase(),
-          (c.details || '').trim().toLowerCase(),
-        ]);
-        if (text && !uniqueCallKeys.has(key)) {
-          uniqueCallKeys.add(key);
-          uniqueCalls.push(c);
-        }
+      const callsByNumber = new Map<number, typeof allCalls>();
+      allCalls.forEach((call) => {
+        const callNumber = Number(call.callNumber);
+        const text = (call.remark || '').trim();
+        if (!text || callNumber < 1 || callNumber > 4) return;
+        const calls = callsByNumber.get(callNumber) || [];
+        const duplicate = calls.some((existing) =>
+          existing.remark.trim().toLowerCase() === text.toLowerCase() &&
+          new Date(existing.date || 0).getTime() === new Date(call.date || 0).getTime()
+        );
+        if (!duplicate) calls.push(call);
+        callsByNumber.set(callNumber, calls);
       });
 
-      // Assign to root inquiry slots
-      if (uniqueCalls.length > 0) {
-        if (uniqueCalls[0]) {
-          rootInq.actionTaken1 = uniqueCalls[0].remark;
-          rootInq.actionTaken1Date = uniqueCalls[0].date;
-          rootInq.actionTaken1By = uniqueCalls[0].attendedBy;
-          rootInq.actionTaken1Status = uniqueCalls[0].status;
-        }
-        if (uniqueCalls[1]) {
-          rootInq.actionTaken2 = uniqueCalls[1].remark;
-          rootInq.actionTaken2Date = uniqueCalls[1].date;
-          rootInq.actionTaken2By = uniqueCalls[1].attendedBy;
-          rootInq.actionTaken2Status = uniqueCalls[1].status;
-        }
-        if (uniqueCalls[2]) {
-          rootInq.actionTaken3 = uniqueCalls[2].remark;
-          rootInq.actionTaken3Date = uniqueCalls[2].date;
-          rootInq.actionTaken3By = uniqueCalls[2].attendedBy;
-          rootInq.actionTaken3Status = uniqueCalls[2].status;
-        }
-        if (uniqueCalls[3]) {
-          rootInq.actionTaken4 = uniqueCalls[3].remark;
-          rootInq.actionTaken4Date = uniqueCalls[3].date;
-          rootInq.actionTaken4By = uniqueCalls[3].attendedBy;
-          rootInq.actionTaken4Status = uniqueCalls[3].status;
-        }
+      const callsBySlot = [1, 2, 3, 4].map((callNumber) =>
+        (callsByNumber.get(callNumber) || []).sort(
+          (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+        )[0]
+      );
+
+      if (callsBySlot[0]) {
+        rootInq.actionTaken1 = callsBySlot[0].remark;
+        rootInq.actionTaken1Date = callsBySlot[0].date;
+        rootInq.actionTaken1By = callsBySlot[0].attendedBy;
+        rootInq.actionTaken1Status = callsBySlot[0].status;
+      }
+      if (callsBySlot[1]) {
+        rootInq.actionTaken2 = callsBySlot[1].remark;
+        rootInq.actionTaken2Date = callsBySlot[1].date;
+        rootInq.actionTaken2By = callsBySlot[1].attendedBy;
+        rootInq.actionTaken2Status = callsBySlot[1].status;
+      }
+      if (callsBySlot[2]) {
+        rootInq.actionTaken3 = callsBySlot[2].remark;
+        rootInq.actionTaken3Date = callsBySlot[2].date;
+        rootInq.actionTaken3By = callsBySlot[2].attendedBy;
+        rootInq.actionTaken3Status = callsBySlot[2].status;
+      }
+      if (callsBySlot[3]) {
+        rootInq.actionTaken4 = callsBySlot[3].remark;
+        rootInq.actionTaken4Date = callsBySlot[3].date;
+        rootInq.actionTaken4By = callsBySlot[3].attendedBy;
+        rootInq.actionTaken4Status = callsBySlot[3].status;
+      }
+      if (callsBySlot.some(Boolean)) {
         rootInq.remark =
           rootInq.actionTaken4 ||
           rootInq.actionTaken3 ||
