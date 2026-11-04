@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import {
   fetchStudentInquiries,
   lookupStudentPhone,
   createStudentInquiry,
+  appendStudentInquiryFollowUp,
   updateStudentInquiry,
   deleteStudentInquiry,
   fetchStudentInquiryDetails,
@@ -81,6 +82,16 @@ const STATUS_TYPES = [
   'Pending',
   'Others',
 ] as const;
+
+const getInquiryCallCount = (inquiry: any): number => {
+  if (!inquiry) return 0;
+  const historyCount = Array.isArray(inquiry.history) ? inquiry.history.length : 0;
+  const slotCount = [1, 2, 3, 4].reduce(
+    (max, callNumber) => (inquiry[`actionTaken${callNumber}`]?.trim() ? callNumber : max),
+    0
+  );
+  return Math.max(historyCount, slotCount);
+};
 
 const DEFAULT_SUPPORT_STAFF = [
   { _id: 'def-1', name: 'Divya yadav', department: 'IT and support', designation: 'IT Support' },
@@ -264,6 +275,22 @@ export default function StudentInquiries() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userManuallyDeselectedLink, setUserManuallyDeselectedLink] = useState(false);
+  const submissionInFlight = useRef(false);
+  const followUpRequest = useRef<{ signature: string; requestId: string } | null>(null);
+  const isLinkedFollowUp = Boolean(
+    !editingInquiry && formData.previousInquiryId && formData.previousInquiryId !== 'CUSTOM'
+  );
+  const nextFollowUpCallNumber = [
+    formData.actionTaken1,
+    formData.actionTaken2,
+    formData.actionTaken3,
+    formData.actionTaken4,
+  ].findIndex((remark) => !remark.trim()) + 1;
+  const isFollowUpLimitReached = isLinkedFollowUp && nextFollowUpCallNumber === 0;
+  const lookupRootInquiry = lookupResult?.inquiries?.length
+    ? [...lookupResult.inquiries].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0]
+    : lookupResult?.latestInquiry;
+  const isLookupAtCallLimit = getInquiryCallCount(lookupRootInquiry) >= 4;
 
   // Subject Suggestions State
   const [subjectSuggestions, setSubjectSuggestions] = useState<{ subject: string; count: number }[]>([]);
@@ -504,41 +531,45 @@ export default function StudentInquiries() {
 
     setFormData((prev) => ({
       ...prev,
-      previousInquiryId: inqId,
-      studentName: targetInq?.studentName || prev.studentName,
-      callType: (CALL_TYPES as readonly string[]).includes(targetInq?.callType)
-        ? (targetInq.callType as (typeof CALL_TYPES)[number])
+      previousInquiryId: rootInquiry?.inquiryId || inqId,
+      studentName: rootInquiry?.studentName || targetInq?.studentName || prev.studentName,
+      callType: (CALL_TYPES as readonly string[]).includes(rootInquiry?.callType || targetInq?.callType)
+        ? ((rootInquiry?.callType || targetInq?.callType) as (typeof CALL_TYPES)[number])
         : prev.callType,
-      status: (STATUS_TYPES as readonly string[]).includes(targetInq?.status)
-        ? (targetInq.status as (typeof STATUS_TYPES)[number])
+      status: (STATUS_TYPES as readonly string[]).includes(rootInquiry?.status || targetInq?.status)
+        ? ((rootInquiry?.status || targetInq?.status) as (typeof STATUS_TYPES)[number])
         : prev.status,
-      subject: targetInq?.subject || prev.subject,
-      details: targetInq?.details || prev.details,
-      details2: targetInq?.details2 || prev.details2,
-      details3: targetInq?.details3 || prev.details3,
-      details4: targetInq?.details4 || prev.details4,
-      remark: targetInq?.remark || prev.remark,
-      actionTaken1: r1 || prev.actionTaken1,
-      actionTaken1Date: r1Date || prev.actionTaken1Date,
-      actionTaken1By: r1By || prev.actionTaken1By,
-      actionTaken1Status: r1Status || prev.actionTaken1Status,
-      actionTaken2: r2 || prev.actionTaken2,
-      actionTaken2Date: r2Date || prev.actionTaken2Date,
-      actionTaken2By: r2By || prev.actionTaken2By,
-      actionTaken2Status: r2Status || prev.actionTaken2Status,
-      actionTaken3: r3 || prev.actionTaken3,
-      actionTaken3Date: r3Date || prev.actionTaken3Date,
-      actionTaken3By: r3By || prev.actionTaken3By,
-      actionTaken3Status: r3Status || prev.actionTaken3Status,
-      actionTaken4: r4 || prev.actionTaken4,
-      actionTaken4Date: r4Date || prev.actionTaken4Date,
-      actionTaken4By: r4By || prev.actionTaken4By,
-      actionTaken4Status: r4Status || prev.actionTaken4Status,
-      forwardedBy: targetInq?.forwardedBy || prev.forwardedBy,
-      forwardedTo: targetInq?.forwardedTo || prev.forwardedTo,
-      alternateNumber: targetInq?.alternateNumber || prev.alternateNumber,
-      email: targetInq?.email || prev.email,
-      followUpDate: targetInq?.followUpDate ? targetInq.followUpDate.split('T')[0] : prev.followUpDate,
+      subject: rootInquiry?.subject || targetInq?.subject || prev.subject,
+      details: '',
+      details2: rootInquiry?.details2 || targetInq?.details2 || prev.details2,
+      details3: rootInquiry?.details3 || targetInq?.details3 || prev.details3,
+      details4: rootInquiry?.details4 || targetInq?.details4 || prev.details4,
+      remark: rootInquiry?.remark || targetInq?.remark || prev.remark,
+      actionTaken1: r1,
+      actionTaken1Date: r1Date,
+      actionTaken1By: r1By,
+      actionTaken1Status: r1Status,
+      actionTaken2: r2,
+      actionTaken2Date: r2Date,
+      actionTaken2By: r2By,
+      actionTaken2Status: r2Status,
+      actionTaken3: r3,
+      actionTaken3Date: r3Date,
+      actionTaken3By: r3By,
+      actionTaken3Status: r3Status,
+      actionTaken4: r4,
+      actionTaken4Date: r4Date,
+      actionTaken4By: r4By,
+      actionTaken4Status: r4Status,
+      forwardedBy: rootInquiry?.forwardedBy || targetInq?.forwardedBy || prev.forwardedBy,
+      forwardedTo: rootInquiry?.forwardedTo || targetInq?.forwardedTo || prev.forwardedTo,
+      alternateNumber: rootInquiry?.alternateNumber || targetInq?.alternateNumber || prev.alternateNumber,
+      email: rootInquiry?.email || targetInq?.email || prev.email,
+      followUpDate: rootInquiry?.followUpDate
+        ? rootInquiry.followUpDate.split('T')[0]
+        : targetInq?.followUpDate
+          ? targetInq.followUpDate.split('T')[0]
+          : prev.followUpDate,
     }));
   };
 
@@ -597,8 +628,8 @@ export default function StudentInquiries() {
 
     // Determine the primary reference inquiry (prioritize fresh server lookupResult)
     const baseInq =
-      lookupResult?.latestInquiry ||
       selectedPrevInquiry ||
+      lookupResult?.latestInquiry ||
       editingInquiry ||
       sortedInquiries[sortedInquiries.length - 1] ||
       sortedInquiries[0] ||
@@ -608,8 +639,16 @@ export default function StudentInquiries() {
     const subj = baseInq.subject || formData.subject || 'Student Inquiry';
     const baseStaff = baseInq.addedByName || baseInq.actionTaken1By || user?.name || 'Staff';
     const formatDate = (d: any) =>
-      d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-    const baseDate = formatDate(baseInq.createdAt) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      d
+        ? new Date(d).toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '';
+    const baseDate = formatDate(baseInq.createdAt) || formatDate(new Date());
 
     // History array if available
     const hist = Array.isArray(baseInq.history) ? baseInq.history : [];
@@ -692,7 +731,7 @@ export default function StudentInquiries() {
         key: `call-2-${inqId}`,
         callNumber: 2,
         inquiryId: inqId,
-        dateStr: formatDate(date2) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        dateStr: formatDate(date2) || formatDate(new Date()),
         subject: subj,
         details: d2 || '2nd Follow-up discussion',
         remark: r2,
@@ -709,7 +748,7 @@ export default function StudentInquiries() {
         key: `call-3-${inqId}`,
         callNumber: 3,
         inquiryId: inqId,
-        dateStr: formatDate(date3) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        dateStr: formatDate(date3) || formatDate(new Date()),
         subject: subj,
         details: d3 || '3rd Follow-up discussion',
         remark: r3,
@@ -726,7 +765,7 @@ export default function StudentInquiries() {
         key: `call-4-${inqId}`,
         callNumber: 4,
         inquiryId: inqId,
-        dateStr: formatDate(date4) || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        dateStr: formatDate(date4) || formatDate(new Date()),
         subject: subj,
         details: d4 || '4th Follow-up discussion',
         remark: r4,
@@ -828,8 +867,26 @@ export default function StudentInquiries() {
 
   const handleSubmitNewInquiry = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submissionInFlight.current) return;
     if (!validateForm()) return;
+    if (isLinkedFollowUp) {
+      if (isFollowUpLimitReached) {
+        setNotificationMsg({ type: 'error', text: 'Maximum 4 follow-up calls reached.' });
+        return;
+      }
+      const nextRemark = [
+        formData.actionTaken1,
+        formData.actionTaken2,
+        formData.actionTaken3,
+        formData.actionTaken4,
+      ][nextFollowUpCallNumber - 1]?.trim();
+      if (!nextRemark) {
+        setNotificationMsg({ type: 'error', text: `Enter the Call #${nextFollowUpCallNumber} remark before saving.` });
+        return;
+      }
+    }
 
+    submissionInFlight.current = true;
     setIsSubmitting(true);
     try {
       // Determine latest remark from the 4 action taken slots
@@ -866,6 +923,11 @@ export default function StudentInquiries() {
         targetLinkedDoc = lookupResult.latestInquiry;
       }
 
+      if (isLinkedFollowUp && !targetLinkedDoc) {
+        setNotificationMsg({ type: 'error', text: 'Selected inquiry was not found. Choose an existing inquiry before adding a follow-up.' });
+        return;
+      }
+
       if (editingInquiry && editingInquiry._id) {
         // User clicked edit on existing record: update it
         const resultAction = await dispatch(
@@ -885,68 +947,42 @@ export default function StudentInquiries() {
           });
         }
       } else if (targetLinkedDoc && targetLinkedDoc._id) {
-        // LINKED INQUIRY: UPDATE THE EXISTING INQUIRY (NO DUPLICATE ROW CREATED)
-        const updatedSubData = { ...submissionData };
-
-        if (!updatedSubData.actionTaken1?.trim() && targetLinkedDoc.actionTaken1) {
-          updatedSubData.actionTaken1 = targetLinkedDoc.actionTaken1;
-          updatedSubData.actionTaken1Date = targetLinkedDoc.actionTaken1Date;
-          updatedSubData.actionTaken1By = targetLinkedDoc.actionTaken1By;
-          updatedSubData.actionTaken1Status = targetLinkedDoc.actionTaken1Status;
+        const nextRemark = [
+          formData.actionTaken1,
+          formData.actionTaken2,
+          formData.actionTaken3,
+          formData.actionTaken4,
+        ][nextFollowUpCallNumber - 1]?.trim() || '';
+        const requestSignature = JSON.stringify([
+          targetLinkedDoc._id,
+          nextFollowUpCallNumber,
+          nextRemark,
+          formData.details.trim(),
+          formData.status,
+        ]);
+        if (followUpRequest.current?.signature !== requestSignature) {
+          followUpRequest.current = {
+            signature: requestSignature,
+            requestId: crypto.randomUUID(),
+          };
         }
-
-        if (!updatedSubData.actionTaken2?.trim() && targetLinkedDoc.actionTaken2) {
-          updatedSubData.actionTaken2 = targetLinkedDoc.actionTaken2;
-          updatedSubData.actionTaken2Date = targetLinkedDoc.actionTaken2Date;
-          updatedSubData.actionTaken2By = targetLinkedDoc.actionTaken2By;
-          updatedSubData.actionTaken2Status = targetLinkedDoc.actionTaken2Status;
-        }
-        if (!updatedSubData.actionTaken3?.trim() && targetLinkedDoc.actionTaken3) {
-          updatedSubData.actionTaken3 = targetLinkedDoc.actionTaken3;
-          updatedSubData.actionTaken3Date = targetLinkedDoc.actionTaken3Date;
-          updatedSubData.actionTaken3By = targetLinkedDoc.actionTaken3By;
-          updatedSubData.actionTaken3Status = targetLinkedDoc.actionTaken3Status;
-        }
-        if (!updatedSubData.actionTaken4?.trim() && targetLinkedDoc.actionTaken4) {
-          updatedSubData.actionTaken4 = targetLinkedDoc.actionTaken4;
-          updatedSubData.actionTaken4Date = targetLinkedDoc.actionTaken4Date;
-          updatedSubData.actionTaken4By = targetLinkedDoc.actionTaken4By;
-          updatedSubData.actionTaken4Status = targetLinkedDoc.actionTaken4Status;
-        }
-
-        if (updatedSubData.actionTaken1?.trim() && !updatedSubData.actionTaken1Date) {
-          updatedSubData.actionTaken1Date = new Date().toISOString();
-          updatedSubData.actionTaken1By = updatedSubData.actionTaken1By || user?.name || 'Staff';
-        }
-        if (updatedSubData.actionTaken2?.trim() && !updatedSubData.actionTaken2Date) {
-          updatedSubData.actionTaken2Date = new Date().toISOString();
-          updatedSubData.actionTaken2By = updatedSubData.actionTaken2By || user?.name || 'Staff';
-        }
-        if (updatedSubData.actionTaken3?.trim() && !updatedSubData.actionTaken3Date) {
-          updatedSubData.actionTaken3Date = new Date().toISOString();
-          updatedSubData.actionTaken3By = updatedSubData.actionTaken3By || user?.name || 'Staff';
-        }
-        if (updatedSubData.actionTaken4?.trim() && !updatedSubData.actionTaken4Date) {
-          updatedSubData.actionTaken4Date = new Date().toISOString();
-          updatedSubData.actionTaken4By = updatedSubData.actionTaken4By || user?.name || 'Staff';
-        }
-
-        // Ensure final remark is the latest active actionTaken
-        updatedSubData.remark =
-          updatedSubData.actionTaken4?.trim() ||
-          updatedSubData.actionTaken3?.trim() ||
-          updatedSubData.actionTaken2?.trim() ||
-          updatedSubData.actionTaken1?.trim() ||
-          updatedSubData.remark?.trim() ||
-          '';
-
         const resultAction = await dispatch(
-          updateStudentInquiry({ id: targetLinkedDoc._id, data: updatedSubData })
+          appendStudentInquiryFollowUp({
+            id: targetLinkedDoc._id,
+            followUp: {
+              requestId: followUpRequest.current.requestId,
+              remark: nextRemark,
+              details: formData.details.trim(),
+              subject: formData.subject.trim() || targetLinkedDoc.subject || '',
+              status: formData.status,
+            },
+          })
         );
-        if (updateStudentInquiry.fulfilled.match(resultAction)) {
+        if (appendStudentInquiryFollowUp.fulfilled.match(resultAction)) {
+          followUpRequest.current = null;
           setNotificationMsg({
             type: 'success',
-            text: `Inquiry ${targetLinkedDoc.inquiryId} updated with linked follow-up successfully!`,
+            text: `Call #${resultAction.payload.call.callNumber} saved to Inquiry ${targetLinkedDoc.inquiryId}.`,
           });
           handleCloseAddModal();
           loadData();
@@ -976,6 +1012,7 @@ export default function StudentInquiries() {
     } catch (err: any) {
       setNotificationMsg({ type: 'error', text: err.message || 'Error saving inquiry' });
     } finally {
+      submissionInFlight.current = false;
       setIsSubmitting(false);
       setTimeout(() => setNotificationMsg(null), 4000);
     }
@@ -2058,6 +2095,7 @@ export default function StudentInquiries() {
                       type="checkbox"
                       id="linkRefCheck"
                       checked={!!formData.previousInquiryId}
+                      disabled={isLookupAtCallLimit && !formData.previousInquiryId}
                       onChange={(e) =>
                         handleSelectPreviousInquiry(
                           e.target.checked
@@ -2071,6 +2109,11 @@ export default function StudentInquiries() {
                       Link as Follow-up to Previous Inquiry ({lookupResult.latestInquiry.inquiryId})
                     </label>
                   </div>
+                  {isLookupAtCallLimit && (
+                    <p className="text-xs font-semibold text-red-700" role="status">
+                      Maximum 4 follow-up calls reached.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -2242,13 +2285,15 @@ export default function StudentInquiries() {
               {/* Details */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Inquiry Details / Issue Description
+                  {isLinkedFollowUp
+                    ? `Call #${nextFollowUpCallNumber || 4} Problem / Issue`
+                    : 'Inquiry Details / Issue Description'}
                 </label>
                 <textarea
                   rows={3}
                   value={formData.details}
                   onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                  placeholder="Provide complete notes of what student asked or issue faced..."
+                  placeholder={isLinkedFollowUp ? 'Describe this follow-up call issue...' : 'Provide complete notes of what student asked or issue faced...'}
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 />
               </div>
@@ -2305,6 +2350,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken1}
+                      readOnly={Boolean(editingInquiry) || (isLinkedFollowUp && nextFollowUpCallNumber !== 1)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken1: e.target.value }))}
                       placeholder="Call #1 staff remark / action taken..."
                       className={`w-full px-3.5 py-2 rounded-lg text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-all ${
@@ -2351,6 +2397,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken2}
+                      readOnly={Boolean(editingInquiry) || (isLinkedFollowUp && nextFollowUpCallNumber !== 2)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken2: e.target.value }))}
                       placeholder="Call #2 staff action taken / discussion notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-amber-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
@@ -2393,6 +2440,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken3}
+                      readOnly={Boolean(editingInquiry) || (isLinkedFollowUp && nextFollowUpCallNumber !== 3)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken3: e.target.value }))}
                       placeholder="Call #3 staff action taken / student reply notes..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-purple-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 transition-all"
@@ -2435,6 +2483,7 @@ export default function StudentInquiries() {
                     <input
                       type="text"
                       value={formData.actionTaken4}
+                      readOnly={Boolean(editingInquiry) || (isLinkedFollowUp && nextFollowUpCallNumber !== 4)}
                       onChange={(e) => setFormData((prev) => ({ ...prev, actionTaken4: e.target.value }))}
                       placeholder="Call #4 staff action taken / final confirmation or resolution..."
                       className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-gray-200 focus:border-emerald-400 rounded-lg text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 transition-all"
@@ -2442,6 +2491,12 @@ export default function StudentInquiries() {
                   </div>
                 </div>
               </div>
+
+              {isFollowUpLimitReached && (
+                <p className="text-sm font-semibold text-red-700" role="status">
+                  Maximum 4 follow-up calls reached.
+                </p>
+              )}
 
               {/* Handled By & Handled To Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2546,7 +2601,7 @@ export default function StudentInquiries() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isFollowUpLimitReached}
                   className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2"
                 >
                   {isSubmitting ? (

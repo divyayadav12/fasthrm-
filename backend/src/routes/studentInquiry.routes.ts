@@ -11,6 +11,7 @@ import {
   sendStudentFeedback,
   getSubjectSuggestions,
   getPurchasedStaffStats,
+  appendStudentInquiryFollowUp,
 } from '../controllers/studentInquiry.controller';
 
 const router = express.Router();
@@ -31,6 +32,7 @@ router.get('/lookup', lookupStudentByPhone);
 router.get('/subject-suggestions', getSubjectSuggestions);
 
 router.post('/:id/send-feedback', sendStudentFeedback);
+router.post('/:id/follow-ups', appendStudentInquiryFollowUp);
 
 router.route('/:id')
   .get(getStudentInquiryById)

@@ -51,6 +51,7 @@ export interface IStudentInquiry extends Document {
     callType?: string;
     attendedBy?: string;
     date?: Date;
+    requestId?: string;
   }>;
   createdAt: Date;
   updatedAt: Date;
@@ -203,6 +204,7 @@ const studentInquirySchema = new Schema<IStudentInquiry>(
         callType: { type: String, trim: true, default: '' },
         attendedBy: { type: String, trim: true, default: '' },
         date: { type: Date, default: Date.now },
+        requestId: { type: String, trim: true, default: '' },
       },
     ],
   },

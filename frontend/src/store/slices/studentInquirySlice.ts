@@ -62,6 +62,7 @@ export interface StudentInquiry {
     callType?: string;
     attendedBy?: string;
     date?: string;
+    requestId?: string;
   }>;
   createdAt: string;
   updatedAt: string;
@@ -170,6 +171,28 @@ export const createStudentInquiry = createAsyncThunk(
       };
 
       const response = await axios.post(`${API_URL}/student-inquiries`, inquiryData, config);
+      return response.data;
+    } catch (error: any) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+export const appendStudentInquiryFollowUp = createAsyncThunk(
+  'studentInquiries/appendFollowUp',
+  async ({ id, followUp }: { id: string; followUp: any }, thunkAPI) => {
+    try {
+      const state = thunkAPI.getState() as RootState;
+      const token = state.auth.user?.token;
+      const config = {
+        headers: { Authorization: `Bearer ${token}` },
+      };
+
+      const response = await axios.post(`${API_URL}/student-inquiries/${id}/follow-ups`, followUp, config);
       return response.data;
     } catch (error: any) {
       const message =

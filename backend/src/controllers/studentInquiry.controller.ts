@@ -25,6 +25,101 @@ export const generateNextInquiryId = async (): Promise<string> => {
   return `INQ-${1001 + count}`;
 };
 
+const MAX_FOLLOW_UP_CALLS = 4;
+
+const getCanonicalCallHistory = (inquiry: any) => {
+  const history = Array.isArray(inquiry.history)
+    ? inquiry.history.map((call: any, index: number) => ({
+        ...call,
+        callNumber: Number(call.callNumber) || index + 1,
+      }))
+    : [];
+
+  for (let callNumber = 1; callNumber <= MAX_FOLLOW_UP_CALLS; callNumber += 1) {
+    const remark = (inquiry[`actionTaken${callNumber}`] || '').trim();
+    const existing = history.find((call: any) => call.callNumber === callNumber);
+    if (existing) {
+      if (!existing.remark && remark) existing.remark = remark;
+      existing.details = existing.details || inquiry[callNumber === 1 ? 'details' : `details${callNumber}`] || '';
+      existing.status = existing.status || inquiry[`actionTaken${callNumber}Status`] || inquiry.status || '';
+      existing.attendedBy = existing.attendedBy || inquiry[`actionTaken${callNumber}By`] || inquiry.addedByName || '';
+      existing.date = existing.date || inquiry[`actionTaken${callNumber}Date`] || inquiry.createdAt;
+      continue;
+    }
+    if (remark) {
+      history.push({
+        callNumber,
+        subject: inquiry.subject || '',
+        details: inquiry[callNumber === 1 ? 'details' : `details${callNumber}`] || '',
+        remark,
+        status: inquiry[`actionTaken${callNumber}Status`] || inquiry.status || 'Follow Up',
+        callType: callNumber === 1 ? inquiry.callType || 'Enquiry' : 'Follow Up',
+        attendedBy: inquiry[`actionTaken${callNumber}By`] || inquiry.addedByName || 'Staff',
+        date: inquiry[`actionTaken${callNumber}Date`] || inquiry.createdAt,
+      });
+    }
+  }
+
+  const summaryRemark = (inquiry.remark || '').trim();
+  let call1 = history.find((call: any) => call.callNumber === 1);
+  if (
+    !call1 &&
+    summaryRemark &&
+    !history.some((call: any) => call.callNumber > 1) &&
+    !inquiry.actionTaken2 &&
+    !inquiry.actionTaken3 &&
+    !inquiry.actionTaken4
+  ) {
+    call1 = {
+      callNumber: 1,
+      subject: inquiry.subject || '',
+      details: inquiry.details || '',
+      remark: summaryRemark,
+      status: inquiry.status || 'Follow Up',
+      callType: inquiry.callType || 'Enquiry',
+      attendedBy: inquiry.addedByName || 'Staff',
+      date: inquiry.createdAt,
+    };
+    history.push(call1);
+  }
+  const hasLaterCall = history.some((call: any) => call.callNumber > 1 && call.remark);
+  if (
+    call1?.remark &&
+    !hasLaterCall &&
+    summaryRemark &&
+    summaryRemark !== call1.remark.trim()
+  ) {
+    history.push({
+      callNumber: 2,
+      subject: inquiry.subject || '',
+      details: inquiry.details2 || '2nd Follow-up discussion',
+      remark: summaryRemark,
+      status: inquiry.status || 'Follow Up',
+      callType: 'Follow Up',
+      attendedBy: inquiry.addedByName || 'Staff',
+      date: inquiry.updatedAt || inquiry.createdAt,
+    });
+  }
+
+  return history.sort((a: any, b: any) => a.callNumber - b.callNumber);
+};
+
+const callHistoryNeedsMigration = (stored: any[], canonical: any[]) =>
+  stored.length !== canonical.length ||
+  stored.some((call, index) => {
+    const normalized = canonical[index];
+    return (
+      call.callNumber !== normalized.callNumber ||
+      call.subject !== normalized.subject ||
+      call.remark !== normalized.remark ||
+      call.details !== normalized.details ||
+      call.status !== normalized.status ||
+      call.callType !== normalized.callType ||
+      call.attendedBy !== normalized.attendedBy ||
+      new Date(call.date || 0).getTime() !== new Date(normalized.date || 0).getTime()
+    );
+  });
+
 /**
  * @desc    Lookup student call history by phone number
  * @route   GET /api/student-inquiries/lookup?phone=9876543210
@@ -214,9 +309,18 @@ export const lookupStudentByPhone = async (req: AuthRequest, res: Response) => {
 
       // Filter unique non-empty remarks in chronological order
       const uniqueCalls: typeof allCalls = [];
+      const uniqueCallKeys = new Set<string>();
       allCalls.forEach((c) => {
         const text = (c.remark || '').trim();
-        if (text && !uniqueCalls.some((u) => (u.remark || '').trim().toLowerCase() === text.toLowerCase())) {
+        const key = JSON.stringify([
+          text.toLowerCase(),
+          c.date ? new Date(c.date).getTime() : 0,
+          (c.attendedBy || '').trim().toLowerCase(),
+          (c.status || '').trim().toLowerCase(),
+          (c.details || '').trim().toLowerCase(),
+        ]);
+        if (text && !uniqueCallKeys.has(key)) {
+          uniqueCallKeys.add(key);
           uniqueCalls.push(c);
         }
       });
@@ -436,6 +540,41 @@ export const createStudentInquiry = async (req: AuthRequest, res: Response) => {
         inquiryId: new RegExp('^' + cleanPrevId + '$', 'i'),
       });
       if (prevDoc) {
+        const existingCalls = getCanonicalCallHistory(prevDoc.toObject());
+        if (existingCalls.length >= MAX_FOLLOW_UP_CALLS) {
+          return res.status(409).json({ message: 'Maximum 4 follow-up calls reached.' });
+        }
+        const occupiedCallNumbers = new Set(existingCalls.map((call: any) => call.callNumber));
+        const nextCallNumber = [1, 2, 3, 4].find((number) => !occupiedCallNumbers.has(number));
+        if (!nextCallNumber) {
+          return res.status(409).json({ message: 'Maximum 4 follow-up calls reached.' });
+        }
+
+        const submittedSlots = [actionTaken1, actionTaken2, actionTaken3, actionTaken4];
+        const submittedRemark = typeof submittedSlots[nextCallNumber - 1] === 'string'
+          ? submittedSlots[nextCallNumber - 1].trim()
+          : '';
+        const changedRemark = submittedSlots.find((slot, index) => {
+          if (typeof slot !== 'string' || !slot.trim()) return false;
+          const previous = (prevDoc as any)[`actionTaken${index + 1}`] || '';
+          return slot.trim() !== previous.trim();
+        });
+        const followUpRemark = submittedRemark || (typeof changedRemark === 'string' ? changedRemark.trim() : '') ||
+          (remark && remark.trim() !== (prevDoc.remark || '').trim() ? remark.trim() : '');
+        if (!followUpRemark) {
+          return res.status(400).json({ message: `Enter the Call #${nextCallNumber} remark before saving.` });
+        }
+
+        req.params.id = prevDoc._id.toString();
+        req.body = {
+          requestId: req.body.requestId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          remark: followUpRemark,
+          details: req.body[`details${nextCallNumber}`] || details || '',
+          subject: subject || prevDoc.subject || '',
+          status: status || 'Follow Up',
+        };
+        return appendStudentInquiryFollowUp(req, res);
+
         // Auto-heal legacy inquiry if actionTaken1 was not set, but remark had initial note
         if (!prevDoc.actionTaken1) {
           const h1 = Array.isArray(prevDoc.history) ? prevDoc.history.find((h: any) => h.callNumber === 1) : null;
@@ -1004,6 +1143,142 @@ export const getStudentInquiryById = async (req: AuthRequest, res: Response) => 
 };
 
 /**
+ * @desc    Append a follow-up call to the existing main inquiry
+ * @route   POST /api/student-inquiries/:id/follow-ups
+ * @access  Private (Support & Admin)
+ */
+export const appendStudentInquiryFollowUp = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const remark = typeof req.body.remark === 'string' ? req.body.remark.trim() : '';
+    const details = typeof req.body.details === 'string' ? req.body.details.trim() : '';
+    const subject = typeof req.body.subject === 'string' ? req.body.subject.trim() : '';
+    const status = typeof req.body.status === 'string' ? req.body.status.trim() : 'Follow Up';
+    const requestId = typeof req.body.requestId === 'string' ? req.body.requestId.trim() : '';
+
+    if (!remark || !requestId || requestId.length > 128) {
+      return res.status(400).json({ message: 'A remark and valid request ID are required.' });
+    }
+
+    let mainId = id;
+    const visited = new Set<string>();
+    let inquiry: any = null;
+    for (let depth = 0; depth < 10; depth += 1) {
+      if (visited.has(mainId)) break;
+      visited.add(mainId);
+      inquiry = await StudentInquiry.findById(mainId).lean();
+      if (!inquiry) break;
+
+      const parentId = inquiry.previousInquiryRef
+        ? inquiry.previousInquiryRef.toString()
+        : inquiry.previousInquiryId && inquiry.previousInquiryId !== 'CUSTOM'
+          ? (await StudentInquiry.findOne({ inquiryId: inquiry.previousInquiryId }, { _id: 1 }).lean())?._id?.toString()
+          : undefined;
+      if (!parentId || parentId === inquiry._id.toString()) break;
+      mainId = parentId;
+    }
+
+    if (!inquiry) return res.status(404).json({ message: 'Inquiry not found.' });
+    let mainInquiry: any = await StudentInquiry.findById(mainId).lean();
+    if (!mainInquiry) return res.status(404).json({ message: 'Main inquiry not found.' });
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const storedHistory = Array.isArray(mainInquiry.history) ? mainInquiry.history : [];
+      const duplicate = storedHistory.find((call: any) => call.requestId === requestId);
+      if (duplicate) {
+        return res.status(200).json({ success: true, duplicate: true, call: duplicate, inquiry: mainInquiry });
+      }
+
+      const callHistory = getCanonicalCallHistory(mainInquiry);
+      if (callHistory.length >= MAX_FOLLOW_UP_CALLS) {
+        return res.status(409).json({ message: 'Maximum 4 follow-up calls reached.' });
+      }
+
+      if (!Array.isArray(mainInquiry.history) || callHistoryNeedsMigration(storedHistory, callHistory)) {
+        const migrationFilter: any = { _id: mainInquiry._id };
+        if (mainInquiry.updatedAt) migrationFilter.updatedAt = mainInquiry.updatedAt;
+        migrationFilter.history = Array.isArray(mainInquiry.history)
+          ? { $size: storedHistory.length }
+          : mainInquiry.history === null
+            ? null
+            : { $exists: false };
+        const migration = await StudentInquiry.updateOne(migrationFilter, { $set: { history: callHistory } });
+        if (migration.modifiedCount === 0) {
+          const refreshed = await StudentInquiry.findById(mainInquiry._id).lean();
+          if (!refreshed) return res.status(404).json({ message: 'Main inquiry not found.' });
+          mainInquiry = refreshed;
+          continue;
+        }
+        const refreshed = await StudentInquiry.findById(mainInquiry._id).lean();
+        if (!refreshed) return res.status(404).json({ message: 'Main inquiry not found.' });
+        mainInquiry = refreshed;
+        continue;
+      }
+
+      const occupiedCallNumbers = new Set(callHistory.map((call: any) => call.callNumber));
+      const callNumber = [1, 2, 3, 4].find((number) => !occupiedCallNumbers.has(number));
+      if (!callNumber) return res.status(409).json({ message: 'Maximum 4 follow-up calls reached.' });
+
+      const date = new Date();
+      const attendedBy = req.user?.name || 'Staff';
+      const call = {
+        callNumber,
+        subject: subject || mainInquiry.subject || '',
+        details,
+        remark,
+        status: status || 'Follow Up',
+        callType: 'Follow Up',
+        attendedBy,
+        date,
+        requestId,
+      };
+      const updateFilter: any = { _id: mainInquiry._id };
+      updateFilter.history = Array.isArray(mainInquiry.history)
+        ? { $size: storedHistory.length }
+        : mainInquiry.history === null
+          ? null
+          : { $exists: false };
+      if (mainInquiry.updatedAt) updateFilter.updatedAt = mainInquiry.updatedAt;
+
+      const updates: Record<string, any> = {
+        remark,
+        updatedAt: date,
+        [`actionTaken${callNumber}`]: remark,
+        [`actionTaken${callNumber}Date`]: date,
+        [`actionTaken${callNumber}By`]: attendedBy,
+        [`actionTaken${callNumber}Status`]: call.status,
+      };
+      if (callNumber > 1) updates[`details${callNumber}`] = details;
+
+      const updatedInquiry = await StudentInquiry.findOneAndUpdate(
+        updateFilter,
+        { $push: { history: call }, $set: updates },
+        { new: true, runValidators: true }
+      ).lean();
+
+      if (updatedInquiry) {
+        return res.status(200).json({ success: true, call, inquiry: updatedInquiry });
+      }
+
+      const refreshed = await StudentInquiry.findById(mainInquiry._id).lean();
+      if (!refreshed) return res.status(404).json({ message: 'Main inquiry not found.' });
+      const repeatedCall = Array.isArray(refreshed.history)
+        ? refreshed.history.find((entry: any) => entry.requestId === requestId)
+        : undefined;
+      if (repeatedCall) {
+        return res.status(200).json({ success: true, duplicate: true, call: repeatedCall, inquiry: refreshed });
+      }
+      mainInquiry = refreshed;
+    }
+
+    return res.status(409).json({ message: 'Inquiry changed while saving. Refresh and try again.' });
+  } catch (error: any) {
+    console.error('Error appending student inquiry follow-up:', error);
+    return res.status(500).json({ message: error.message || 'Failed to save follow-up' });
+  }
+};
+
+/**
  * @desc    Update inquiry status, remark, or details
  * @route   PUT /api/student-inquiries/:id
  * @access  Private (Support & Admin)
@@ -1076,80 +1351,6 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
     if (previousInquiryId !== undefined) inquiry.previousInquiryId = previousInquiryId.trim().toUpperCase();
     if (followUpDate !== undefined) inquiry.followUpDate = followUpDate ? new Date(followUpDate) : undefined;
 
-    // Action Taken 1 to 4 updates
-    const currentUserName = req.user?.name || 'Staff';
-
-    if (!inquiry.actionTaken1) {
-      const history = Array.isArray(inquiry.history) ? inquiry.history : [];
-      const historyCall1 = history.find((call: any) => call.callNumber === 1);
-      const hasLaterHistory = history.some((call: any) => call.callNumber > 1 && call.remark);
-      if (historyCall1?.remark) {
-        inquiry.actionTaken1 = historyCall1.remark;
-        inquiry.actionTaken1Date = historyCall1.date || inquiry.createdAt || new Date();
-        inquiry.actionTaken1By = historyCall1.attendedBy || inquiry.addedByName || currentUserName;
-        inquiry.actionTaken1Status = historyCall1.status || inquiry.status || 'Follow Up';
-      } else if (inquiry.remark && !inquiry.actionTaken2 && !inquiry.actionTaken3 && !inquiry.actionTaken4 && !hasLaterHistory) {
-        inquiry.actionTaken1 = inquiry.remark;
-        inquiry.actionTaken1Date = inquiry.createdAt || new Date();
-        inquiry.actionTaken1By = inquiry.addedByName || currentUserName;
-        inquiry.actionTaken1Status = inquiry.status || 'Follow Up';
-      }
-    }
-
-    const existing1 = (inquiry.actionTaken1 || '').trim();
-
-    const in1 = actionTaken1 !== undefined ? actionTaken1.trim() : '';
-    const in2 = actionTaken2 !== undefined ? actionTaken2.trim() : '';
-    const in3 = actionTaken3 !== undefined ? actionTaken3.trim() : '';
-    const in4 = actionTaken4 !== undefined ? actionTaken4.trim() : '';
-
-    inquiry.actionTaken1 = in1 || existing1;
-    if (inquiry.actionTaken1 && !inquiry.actionTaken1Date) {
-      inquiry.actionTaken1Date = actionTaken1Date ? new Date(actionTaken1Date) : new Date();
-    }
-    if (actionTaken1By) inquiry.actionTaken1By = actionTaken1By;
-    else if (!inquiry.actionTaken1By && inquiry.actionTaken1) inquiry.actionTaken1By = currentUserName;
-    if (actionTaken1Status) inquiry.actionTaken1Status = actionTaken1Status;
-    else if (!inquiry.actionTaken1Status && inquiry.actionTaken1) inquiry.actionTaken1Status = status || inquiry.status;
-
-    if (in2) {
-      const prevVal = inquiry.actionTaken2 || '';
-      inquiry.actionTaken2 = in2;
-      if (inquiry.actionTaken2 && (inquiry.actionTaken2 !== prevVal || !inquiry.actionTaken2Date)) {
-        inquiry.actionTaken2Date = actionTaken2Date ? new Date(actionTaken2Date) : new Date();
-        inquiry.actionTaken2By = actionTaken2By || currentUserName;
-        inquiry.actionTaken2Status = actionTaken2Status || status || inquiry.status;
-      }
-    }
-    if (in3) {
-      const prevVal = inquiry.actionTaken3 || '';
-      inquiry.actionTaken3 = in3;
-      if (inquiry.actionTaken3 && (inquiry.actionTaken3 !== prevVal || !inquiry.actionTaken3Date)) {
-        inquiry.actionTaken3Date = actionTaken3Date ? new Date(actionTaken3Date) : new Date();
-        inquiry.actionTaken3By = actionTaken3By || currentUserName;
-        inquiry.actionTaken3Status = actionTaken3Status || status || inquiry.status;
-      }
-    }
-    if (in4) {
-      const prevVal = inquiry.actionTaken4 || '';
-      inquiry.actionTaken4 = in4;
-      if (inquiry.actionTaken4 && (inquiry.actionTaken4 !== prevVal || !inquiry.actionTaken4Date)) {
-        inquiry.actionTaken4Date = actionTaken4Date ? new Date(actionTaken4Date) : new Date();
-        inquiry.actionTaken4By = actionTaken4By || currentUserName;
-        inquiry.actionTaken4Status = actionTaken4Status || status || inquiry.status;
-      }
-    }
-
-    const latestRemark =
-      (inquiry.actionTaken4 && inquiry.actionTaken4.trim()) ||
-      (inquiry.actionTaken3 && inquiry.actionTaken3.trim()) ||
-      (inquiry.actionTaken2 && inquiry.actionTaken2.trim()) ||
-      (inquiry.actionTaken1 && inquiry.actionTaken1.trim()) ||
-      (remark !== undefined && remark.trim()) ||
-      inquiry.remark ||
-      '';
-    inquiry.remark = latestRemark;
-
     if (status !== undefined) {
       inquiry.status = status;
       if (status === 'Solved' && !inquiry.resolvedAt) {
@@ -1157,127 +1358,9 @@ export const updateStudentInquiry = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Synchronize full call history by callNumber
-    if (!Array.isArray(inquiry.history)) {
-      inquiry.history = [];
-    }
-
-    // Call 1
-    const idx1 = inquiry.history.findIndex((h: any) => h.callNumber === 1);
-    const call1Obj = {
-      callNumber: 1,
-      subject: inquiry.subject || '',
-      details: inquiry.details || 'Initial inquiry discussion',
-      remark: inquiry.actionTaken1 || inquiry.remark || '',
-      status: inquiry.actionTaken1Status || inquiry.status || 'Follow Up',
-      callType: inquiry.callType || 'Enquiry',
-      attendedBy: inquiry.actionTaken1By || inquiry.addedByName || currentUserName,
-      date: inquiry.actionTaken1Date || inquiry.createdAt || new Date(),
-    };
-    if (idx1 >= 0) {
-      inquiry.history[idx1] = { ...inquiry.history[idx1], ...call1Obj };
-    } else {
-      inquiry.history.unshift(call1Obj);
-    }
-
-    // Call 2
-    if (inquiry.actionTaken2) {
-      const idx2 = inquiry.history.findIndex((h: any) => h.callNumber === 2);
-      const call2Obj = {
-        callNumber: 2,
-        subject: inquiry.subject || '',
-        details: inquiry.details2 || details2 || '2nd Follow-up discussion',
-        remark: inquiry.actionTaken2,
-        status: inquiry.actionTaken2Status || inquiry.status || 'Follow Up',
-        callType: 'Follow Up',
-        attendedBy: inquiry.actionTaken2By || currentUserName,
-        date: inquiry.actionTaken2Date || new Date(),
-      };
-      if (idx2 >= 0) {
-        inquiry.history[idx2] = { ...inquiry.history[idx2], ...call2Obj };
-      } else {
-        inquiry.history.push(call2Obj);
-      }
-    }
-
-    // Call 3
-    if (inquiry.actionTaken3) {
-      const idx3 = inquiry.history.findIndex((h: any) => h.callNumber === 3);
-      const call3Obj = {
-        callNumber: 3,
-        subject: inquiry.subject || '',
-        details: inquiry.details3 || details3 || '3rd Follow-up discussion',
-        remark: inquiry.actionTaken3,
-        status: inquiry.actionTaken3Status || inquiry.status || 'Follow Up',
-        callType: 'Follow Up',
-        attendedBy: inquiry.actionTaken3By || currentUserName,
-        date: inquiry.actionTaken3Date || new Date(),
-      };
-      if (idx3 >= 0) {
-        inquiry.history[idx3] = { ...inquiry.history[idx3], ...call3Obj };
-      } else {
-        inquiry.history.push(call3Obj);
-      }
-    }
-
-    // Call 4
-    if (inquiry.actionTaken4) {
-      const idx4 = inquiry.history.findIndex((h: any) => h.callNumber === 4);
-      const call4Obj = {
-        callNumber: 4,
-        subject: inquiry.subject || '',
-        details: inquiry.details4 || details4 || '4th Follow-up discussion',
-        remark: inquiry.actionTaken4,
-        status: inquiry.actionTaken4Status || inquiry.status || 'Follow Up',
-        callType: 'Follow Up',
-        attendedBy: inquiry.actionTaken4By || currentUserName,
-        date: inquiry.actionTaken4Date || new Date(),
-      };
-      if (idx4 >= 0) {
-        inquiry.history[idx4] = { ...inquiry.history[idx4], ...call4Obj };
-      } else {
-        inquiry.history.push(call4Obj);
-      }
-    }
-
     // Force updatedAt touch
     inquiry.updatedAt = new Date();
-    inquiry.markModified('history');
     await inquiry.save();
-
-    await StudentInquiry.updateOne(
-      { _id: inquiry._id },
-      {
-        $set: {
-          actionTaken1: inquiry.actionTaken1 || '',
-          actionTaken1Date: inquiry.actionTaken1Date,
-          actionTaken1By: inquiry.actionTaken1By || '',
-          actionTaken1Status: inquiry.actionTaken1Status || '',
-          actionTaken2: inquiry.actionTaken2 || '',
-          actionTaken2Date: inquiry.actionTaken2Date,
-          actionTaken2By: inquiry.actionTaken2By || '',
-          actionTaken2Status: inquiry.actionTaken2Status || '',
-          actionTaken3: inquiry.actionTaken3 || '',
-          actionTaken3Date: inquiry.actionTaken3Date,
-          actionTaken3By: inquiry.actionTaken3By || '',
-          actionTaken3Status: inquiry.actionTaken3Status || '',
-          actionTaken4: inquiry.actionTaken4 || '',
-          actionTaken4Date: inquiry.actionTaken4Date,
-          actionTaken4By: inquiry.actionTaken4By || '',
-          actionTaken4Status: inquiry.actionTaken4Status || '',
-          remark: inquiry.remark,
-          history: inquiry.history,
-          status: inquiry.status,
-          callType: inquiry.callType,
-          subject: inquiry.subject,
-          details: inquiry.details,
-          details2: inquiry.details2,
-          details3: inquiry.details3,
-          details4: inquiry.details4,
-          updatedAt: new Date(),
-        },
-      }
-    );
 
     const savedDoc = await StudentInquiry.findById(inquiry._id)
       .populate('addedBy', 'name email department designation')
