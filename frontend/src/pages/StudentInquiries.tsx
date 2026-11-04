@@ -2375,21 +2375,20 @@ export default function StudentInquiries() {
                 )}
               </div>
 
-              {/* Details */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  {isLinkedFollowUp
-                    ? `Call #${nextFollowUpCallNumber || 4} Problem / Issue`
-                    : 'Inquiry Details / Issue Description'}
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.details}
-                  onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                  placeholder={isLinkedFollowUp ? 'Describe this follow-up call issue...' : 'Provide complete notes of what student asked or issue faced...'}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                />
-              </div>
+              {!isLinkedFollowUp && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Inquiry Details / Issue Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={formData.details}
+                    onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                    placeholder="Provide complete notes of what student asked or issue faced..."
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              )}
 
               {/* Staff Remark / Action Taken (4 Follow-Up Details / Cells) */}
               <div className="space-y-3.5 bg-slate-50/90 p-4 rounded-2xl border border-slate-200">
