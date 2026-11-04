@@ -1166,6 +1166,13 @@ export const appendStudentInquiryFollowUp = async (req: AuthRequest, res: Respon
     const subject = typeof req.body.subject === 'string' ? req.body.subject.trim() : '';
     const status = typeof req.body.status === 'string' ? req.body.status.trim() : 'Follow Up';
     const requestId = typeof req.body.requestId === 'string' ? req.body.requestId.trim() : '';
+    const hasFollowUpDate = Object.prototype.hasOwnProperty.call(req.body, 'followUpDate');
+    const followUpDateValue = typeof req.body.followUpDate === 'string' ? req.body.followUpDate.trim() : '';
+    const followUpDate = followUpDateValue ? new Date(followUpDateValue) : null;
+
+    if (followUpDateValue && Number.isNaN(followUpDate?.getTime())) {
+      return res.status(400).json({ message: 'A valid follow-up date is required.' });
+    }
 
     if (!remark || !requestId || requestId.length > 128) {
       return res.status(400).json({ message: 'A remark and valid request ID are required.' });
@@ -1260,6 +1267,7 @@ export const appendStudentInquiryFollowUp = async (req: AuthRequest, res: Respon
         [`actionTaken${callNumber}Status`]: call.status,
       };
       if (callNumber > 1) updates[`details${callNumber}`] = details;
+      if (hasFollowUpDate) updates.followUpDate = followUpDate;
 
       const updatedInquiry = await StudentInquiry.findOneAndUpdate(
         updateFilter,

@@ -1060,6 +1060,7 @@ export default function StudentInquiries() {
           nextRemark,
           formData.details.trim(),
           formData.status,
+          formData.followUpDate,
         ]);
         if (followUpRequest.current?.signature !== requestSignature) {
           followUpRequest.current = {
@@ -1076,6 +1077,7 @@ export default function StudentInquiries() {
               details: formData.details.trim(),
               subject: formData.subject.trim() || targetLinkedDoc.subject || '',
               status: formData.status,
+              followUpDate: formData.followUpDate,
             },
           })
         );
